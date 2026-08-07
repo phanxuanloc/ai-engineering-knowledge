@@ -25,6 +25,7 @@ npm run build
 .
 ├── .github/workflows/deploy.yml  # GitHub Pages build and deployment
 ├── AGENTS.md                     # Repository-wide AI agent rules
+├── learning-progress.yaml        # Machine-readable learning state
 ├── docs/                         # All knowledge notes
 │   ├── _templates/               # Reusable authoring templates
 │   ├── start-here/               # Learning and maintenance workflow
@@ -61,6 +62,12 @@ Agents use the standard learning-note template, keep each concept in one primary
 `My Understanding` and `My Experiment` are personal learning records. Agents preserve their existing text and experiment history unless explicitly asked to change them. They may append clearly labeled questions or proposals, but should never replace the owner's perspective with generated prose merely for consistency.
 
 Every knowledge change ends with a duplication review, link check, structure check, and successful `npm run build`.
+
+## Learning progress index
+
+`/docs` is the source of truth for knowledge actually learned. [learning-progress.yaml](learning-progress.yaml) is the source of truth for the learner's current state for each real topic, including status, confidence, review dates, experiments, prerequisites, and relationships.
+
+The index starts with `topics: {}` because no knowledge topic has been learned yet. Missing topics are intentionally absent—not queued or pre-populated. Agents update the index in the same change whenever a real learning note is created or meaningfully updated, and advance status or confidence only when the learner's understanding, experiments, self-tests, reviews, or application provide evidence.
 
 ## Deployment
 
