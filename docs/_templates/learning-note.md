@@ -1,48 +1,56 @@
 ---
-title: Learning Note Title
-description: One-sentence summary that makes the note's scope distinct.
+title: Tên technical concept
+description: Mô tả bằng một câu để phân biệt rõ phạm vi của note.
 tags: [primary-topic, related-topic]
 draft: true
 ---
 
-# Learning Note Title
+# Tên technical concept
+
+<!--
+Ngôn ngữ chính của phần giải thích là tiếng Việt. Giữ nguyên những technical term
+tiếng Anh mà software engineer thường sử dụng; có thể giải thích ngắn bằng tiếng
+Việt khi term quan trọng xuất hiện lần đầu. Không dịch code, API, class,
+configuration, command, filename, protocol hoặc identifier. Giữ nguyên các section
+heading tiếng Anh bên dưới để toàn bộ knowledge base nhất quán.
+-->
 
 ## TL;DR
 
-Summarize the most useful takeaway in two or three sentences. State what the concept is and why it matters.
+Tóm tắt takeaway quan trọng nhất trong hai hoặc ba câu. Nêu concept là gì và vì sao nó quan trọng.
 
 ## Mental Model
 
-Explain the simplest model that makes the idea intuitive. Connect inputs, behavior, and outcomes; add a diagram or analogy when it helps.
+Giải thích mental model đơn giản nhất để concept trở nên trực quan. Kết nối input, behavior và outcome; thêm diagram hoặc analogy khi hữu ích.
 
 ## Core Concepts
 
-- **Concept:** Define it and explain why it matters.
-- **Concept:** Define it and connect it to the mental model.
+- **Concept:** Định nghĩa và giải thích vì sao nó quan trọng.
+- **Concept:** Định nghĩa và kết nối nó với mental model.
 
 ## Example
 
-Show a small, concrete example. Prefer executable code, sample data, or a realistic scenario that demonstrates the mental model.
+Đưa ra một ví dụ nhỏ và cụ thể. Ưu tiên executable code, sample data hoặc scenario thực tế thể hiện được mental model.
 
 ```ts
-// Minimal example
+// Minimal example; keep code and identifiers in their original language.
 ```
 
 ## When to Use
 
-- Situation where this approach fits.
-- Signal that suggests choosing it.
-- Trade-off that might favor another approach.
+- Tình huống phù hợp với approach này.
+- Signal cho thấy nên chọn nó.
+- Trade-off có thể khiến approach khác phù hợp hơn.
 
 ## Common Mistakes
 
-- **Mistake:** Explain why it happens and how to avoid or detect it.
+- **Mistake:** Giải thích vì sao lỗi này xảy ra và cách tránh hoặc phát hiện nó.
 
 ## My Understanding
 
 <!-- Personal learning state: agents must preserve existing owner-authored text. -->
 
-Restate the idea in your own words. Record what remains uncertain or has changed in your thinking.
+Diễn đạt lại concept bằng lời của bạn. Ghi lại điều vẫn chưa chắc chắn hoặc sự thay đổi trong cách bạn hiểu nó.
 
 ## My Experiment
 
@@ -50,31 +58,31 @@ Restate the idea in your own words. Record what remains uncertain or has changed
 
 **Status:** Planned / In progress / Complete
 
-**Hypothesis:** What do I expect, and why?
+**Hypothesis:** Tôi kỳ vọng điều gì, và vì sao?
 
-**Setup:** What will I build, hold constant, and measure?
+**Setup:** Tôi sẽ xây dựng gì, giữ yếu tố nào cố định và đo lường gì?
 
-**Result:** What happened?
+**Result:** Điều gì đã xảy ra?
 
-**Conclusion:** What changed in my understanding?
+**Conclusion:** Điều gì đã thay đổi trong understanding của tôi?
 
 ## Related Knowledge
 
-- [Existing related note](../category/related-note.md) — explain the connection and use a valid relative path.
+- [Related note hiện có](../category/related-note.md) — giải thích mối liên hệ và dùng relative path hợp lệ.
 
 ## Self-test
 
-1. Question that checks recall?
-2. Question that checks whether the mental model can be explained?
-3. Question that checks application in a new scenario?
-4. What trade-off would change the decision?
+1. Câu hỏi kiểm tra recall?
+2. Câu hỏi kiểm tra khả năng giải thích mental model?
+3. Câu hỏi kiểm tra khả năng áp dụng trong scenario mới?
+4. Trade-off nào sẽ làm thay đổi quyết định?
 
 <details>
 <summary>Answers</summary>
 
-1. Answer.
-2. Answer.
-3. Answer.
-4. Answer.
+1. Câu trả lời.
+2. Câu trả lời.
+3. Câu trả lời.
+4. Câu trả lời.
 
 </details>
