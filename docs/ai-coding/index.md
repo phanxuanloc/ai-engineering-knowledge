@@ -4,4 +4,6 @@ sidebar_position: 1
 slug: /ai-coding
 ---
 
-Patterns for using AI throughout the software development lifecycle.
+**Knowledge learned: 0**
+
+Chưa có knowledge article nào trong category này.

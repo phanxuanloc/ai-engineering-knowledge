@@ -4,4 +4,6 @@ sidebar_position: 1
 slug: /experiments
 ---
 
-Reproducible explorations that test assumptions about AI engineering.
+**Knowledge learned: 0**
+
+Chưa có experiment nào được ghi lại trong category này.

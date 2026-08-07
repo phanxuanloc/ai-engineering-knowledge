@@ -18,8 +18,8 @@ function HomepageHeader() {
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/ai-coding/context-engineering">
-            Explore the knowledge base
+            to="/docs/start-here/learning-workflow">
+            Start the learning workflow
           </Link>
         </div>
       </div>

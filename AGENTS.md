@@ -4,6 +4,14 @@ This repository is a personal, evolving AI Engineering knowledge base. AI coding
 
 These instructions apply to the entire repository.
 
+## Knowledge must come from learning
+
+- Knowledge articles must only be created or expanded from actual learning, discussion, research, or experiments performed by the learner.
+- Do not pre-populate the knowledge base with generic AI-generated knowledge.
+- Treat a request to explain or brainstorm as discussion, not automatic permission to save a knowledge article. Save or update knowledge only when the learner asks to capture the learning outcome or the active learning workflow explicitly reaches that step.
+- Do not invent the learner's understanding, experiment hypothesis, observations, results, or mastery status. Record only what the learner actually expressed or performed; leave explicit gaps when those stages have not happened.
+- Infrastructure documents, category metadata, and templates organize learning but do not count as learned knowledge.
+
 ## Before editing knowledge
 
 1. Read `README.md`, this file, and `docs/_templates/learning-note.md`.

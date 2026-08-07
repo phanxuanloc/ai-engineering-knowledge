@@ -4,4 +4,6 @@ sidebar_position: 1
 slug: /coding-agents
 ---
 
-Architecture, workflows, and practices for agentic software development.
+**Knowledge learned: 0**
+
+Chưa có knowledge article nào trong category này.

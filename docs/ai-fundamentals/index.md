@@ -4,4 +4,6 @@ sidebar_position: 1
 slug: /ai-fundamentals
 ---
 
-Core ideas in machine learning, deep learning, language models, and evaluation.
+**Knowledge learned: 0**
+
+Chưa có knowledge article nào trong category này.
