@@ -22,8 +22,10 @@ npm run build
 ```text
 .
 ├── .github/workflows/deploy.yml  # GitHub Pages build and deployment
+├── AGENTS.md                     # Repository-wide AI agent rules
 ├── docs/                         # All knowledge notes
 │   ├── _templates/               # Reusable authoring templates
+│   ├── start-here/               # Learning and maintenance workflow
 │   ├── ai-fundamentals/
 │   ├── ai-coding/
 │   ├── coding-agents/
@@ -41,6 +43,20 @@ npm run build
 Each note belongs to one topic directory under `docs/`. Start new notes by copying `docs/_templates/learning-note.md`; the template separates the takeaway, mental model, concepts, examples, practical guidance, personal understanding, experiments, related ideas, and a self-test.
 
 Use a short, descriptive kebab-case filename and complete the front matter at the top. Category landing pages are named `index.md`, and each `_category_.json` controls its sidebar label and order.
+
+The learning loop is documented in [docs/start-here/learning-workflow.md](docs/start-here/learning-workflow.md):
+
+**Learn → Discuss → Summarize → Save/update knowledge → Experiment → Review → Master**
+
+## How AI agents maintain the knowledge base
+
+Repository-wide instructions live in [AGENTS.md](AGENTS.md). Before creating a note, an AI agent must search the existing documentation by topic and synonyms, read likely related notes, and decide whether the new information belongs in a canonical existing article. Updating is preferred when the concept already exists; a new page is appropriate only when it has a distinct mental model or practical purpose.
+
+Agents use the standard learning-note template, keep each concept in one primary location, and maintain useful relative links between related notes. When files move or concepts are consolidated, agents repair inbound links and add reciprocal links where they improve navigation.
+
+`My Understanding` and `My Experiment` are personal learning records. Agents preserve their existing text and experiment history unless explicitly asked to change them. They may append clearly labeled questions or proposals, but should never replace the owner's perspective with generated prose merely for consistency.
+
+Every knowledge change ends with a duplication review, link check, structure check, and successful `npm run build`.
 
 ## Deployment
 

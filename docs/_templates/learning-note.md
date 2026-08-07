@@ -1,7 +1,7 @@
 ---
 title: Learning Note Title
-description: One-sentence summary of the note.
-tags: [topic]
+description: One-sentence summary that makes the note's scope distinct.
+tags: [primary-topic, related-topic]
 draft: true
 ---
 
@@ -9,20 +9,20 @@ draft: true
 
 ## TL;DR
 
-Summarize the most useful takeaway in two or three sentences.
+Summarize the most useful takeaway in two or three sentences. State what the concept is and why it matters.
 
 ## Mental Model
 
-Explain the simplest model that makes the idea intuitive. Add a diagram or analogy when it helps.
+Explain the simplest model that makes the idea intuitive. Connect inputs, behavior, and outcomes; add a diagram or analogy when it helps.
 
 ## Core Concepts
 
-- **Concept:** Definition and why it matters.
-- **Concept:** Definition and how it connects to the mental model.
+- **Concept:** Define it and explain why it matters.
+- **Concept:** Define it and connect it to the mental model.
 
 ## Example
 
-Show a small, concrete example. Prefer executable code or a realistic scenario.
+Show a small, concrete example. Prefer executable code, sample data, or a realistic scenario that demonstrates the mental model.
 
 ```ts
 // Minimal example
@@ -32,20 +32,27 @@ Show a small, concrete example. Prefer executable code or a realistic scenario.
 
 - Situation where this approach fits.
 - Signal that suggests choosing it.
+- Trade-off that might favor another approach.
 
 ## Common Mistakes
 
-- Mistake, why it happens, and how to avoid it.
+- **Mistake:** Explain why it happens and how to avoid or detect it.
 
 ## My Understanding
 
-Restate the idea in your own words. Record what remains uncertain.
+<!-- Personal learning state: agents must preserve existing owner-authored text. -->
+
+Restate the idea in your own words. Record what remains uncertain or has changed in your thinking.
 
 ## My Experiment
 
-**Hypothesis:** What do I expect?
+<!-- Personal learning state: agents must preserve experiment history and results. -->
 
-**Setup:** What will I build or measure?
+**Status:** Planned / In progress / Complete
+
+**Hypothesis:** What do I expect, and why?
+
+**Setup:** What will I build, hold constant, and measure?
 
 **Result:** What happened?
 
@@ -53,13 +60,14 @@ Restate the idea in your own words. Record what remains uncertain.
 
 ## Related Knowledge
 
-- [Related note](../category/related-note.md) — explain the connection.
+- [Existing related note](../category/related-note.md) — explain the connection and use a valid relative path.
 
 ## Self-test
 
 1. Question that checks recall?
-2. Question that checks application?
-3. What trade-off would change the decision?
+2. Question that checks whether the mental model can be explained?
+3. Question that checks application in a new scenario?
+4. What trade-off would change the decision?
 
 <details>
 <summary>Answers</summary>
@@ -67,5 +75,6 @@ Restate the idea in your own words. Record what remains uncertain.
 1. Answer.
 2. Answer.
 3. Answer.
+4. Answer.
 
 </details>

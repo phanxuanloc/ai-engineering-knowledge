@@ -76,6 +76,7 @@ Prompt engineering improves an individual request. Context engineering designs t
 
 ## Related Knowledge
 
+- [Learning Workflow](../start-here/learning-workflow.md) — uses context-rich discussion and experimentation to turn new information into durable knowledge.
 - [AI Coding](./index.md) — context engineering is a core practice for reliable AI-assisted development.
 - [Coding Agents](../coding-agents/index.md) — agents dynamically gather and update context as they work.
 - [RAG](../rag/index.md) — retrieval is one mechanism for selecting external knowledge into context.
