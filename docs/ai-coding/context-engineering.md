@@ -20,12 +20,22 @@ sidebar_position: 2
 Một chiếc bàn lớn hơn không tự quyết định được tài liệu nào cần thiết. Tương tự, Context Window lớn không loại bỏ nhu cầu chọn lọc context.
 
 ```text
-Everything we know
-        ↓
-Select / Retrieve / Filter / Compress
-        ↓
-Best Context → Context Window → LLM → Decision / Action
+Knowledge / Repository / Memory / Tools
+                ↓
+             Retrieve
+                ↓
+            Candidates
+                ↓
+              Select
+                ↓
+        Relevant Context
+                ↓
+         Context Window
+                ↓
+               LLM
 ```
+
+`Retrieve` mở rộng tập thông tin có thể dùng; `Select` thu hẹp tập đó thành context phù hợp với quyết định hiện tại. Hai bước này bảo vệ nguyên tắc **Relevant context > More context**.
 
 ## Core Concepts
 
@@ -52,9 +62,48 @@ Prompt là một phần của context; viết prompt tốt không thay thế vi�
 
 Nhiều context hơn không tự động tốt hơn. Thông tin không liên quan tạo noise, tốn token và khiến model khó tập trung vào tín hiệu quan trọng. Chẳng hạn, 20K token gồm đúng source files, error logs, tests và instructions có thể hữu ích hơn hàng trăm nghìn token chứa toàn bộ repository.
 
-### Context động trong AI agent
+### Context Lifecycle — Retrieve vs Select
 
-AI agent là một hệ thống cho phép model lặp lại chu trình quan sát, quyết định và hành động thông qua tools. Agent thường tự xây dựng context theo từng bước: nó có thể dùng kết quả của search, file đã đọc, test và tool call trước đó để quyết định thông tin nào cần đưa vào lần gọi model tiếp theo. Vì vậy, context construction là một phần cốt lõi trong behavior của agent, không chỉ là dữ liệu đầu vào tĩnh do user cung cấp.
+**Retrieve** là tìm các candidate information có thể hữu ích cho task hiện tại. Một coding agent có thể retrieve bằng:
+
+- **Keyword / lexical search:** tìm theo từ khóa hoặc chuỗi ký tự chính xác.
+- **Semantic Search:** tìm theo mức độ tương đồng về ý nghĩa.
+- **Code structure và references:** lần theo symbol, definition, caller, import hoặc dependency.
+- **Tool-generated evidence:** lấy evidence từ tests, logs và các tool result trước đó.
+
+Retrieval không phải thao tác một lần. Evidence mới từ quá trình reason và act có thể làm rõ agent cần tìm thêm gì hoặc cần đổi hướng search.
+
+**Select** là quyết định candidate nào thực sự hữu ích cho quyết định hiện tại. Selection cần cân nhắc:
+
+- **Relevance:** có liên quan trực tiếp đến task và bước hiện tại không?
+- **Usefulness:** có giúp model đưa ra quyết định hoặc hành động tốt hơn không?
+- **Freshness:** thông tin còn phản ánh đúng state hiện tại không?
+- **Redundancy:** có lặp lại tín hiệu đã có không?
+- **Token/context cost:** giá trị mang lại có xứng với capacity trong Context Window không?
+
+Retrieve được một candidate không có nghĩa phải đưa candidate đó vào Context Window. Retrieval tạo tập lựa chọn; selection mới tạo `Relevant Context`.
+
+### Context động và iterative agent loop
+
+AI agent xây dựng context qua một lifecycle lặp, không phải một lần ghép prompt ở đầu task:
+
+```text
+Task
+ ↓
+Retrieve
+ ↓
+Select
+ ↓
+Reason
+ ↓
+Act / Tool
+ ↓
+Observe
+ ↓
+Retrieve again
+```
+
+Mỗi action hoặc tool call có thể tạo evidence mới như test failure, log hay code reference. Observation đó thay đổi nhu cầu thông tin, nên agent retrieve và select lại cho lần quyết định tiếp theo.
 
 ### Tách Context Manager khỏi Model Adapter
 
@@ -91,7 +140,7 @@ Với task `Fix authentication bug`, một coding agent có thể:
 7. Kết hợp instructions, relevant code và test evidence thành context.
 8. Đưa context này cho LLM để quyết định hành động tiếp theo.
 
-Agent đang liên tục retrieve, filter và cập nhật context. Chất lượng quyết định phụ thuộc vào việc agent tìm được đúng tín hiệu, không chỉ vào kích thước Context Window.
+Agent đang liên tục retrieve, select và cập nhật context. Chất lượng quyết định phụ thuộc vào việc agent tìm được rồi chọn đúng tín hiệu, không chỉ vào kích thước Context Window.
 
 ## When to Use
 
@@ -114,6 +163,8 @@ Context Engineering rộng hơn việc viết prompt tốt.
 
 Đây là bài toán engineering về chọn, truy xuất, tổ chức và duy trì thông tin mà LLM cần đúng tại thời điểm thực hiện một task. Model có Context Window rất lớn không có nghĩa application nên đưa mọi thứ vào; một AI system hoặc agent tốt cần xây dựng context chất lượng cao, liên quan với task một cách linh hoạt.
 
+Context construction là một lifecycle lặp: agent `Retrieve` các candidate, `Select` context phù hợp, reason và act, rồi dùng observation mới để retrieve lại. Vì vậy đây không phải thao tác build một prompt duy nhất ở đầu task.
+
 ## My Experiment
 
 Chưa thực hiện experiment trong learning session này.
@@ -131,6 +182,10 @@ Chưa có learning note liên quan trong knowledge base. Khi có canonical note 
 5. Vì sao quá nhiều context có thể làm giảm hiệu quả của model?
 6. Coding agent xây dựng context động như thế nào?
 7. Vì sao custom agent nên tách Context Manager khỏi Model Adapter?
+8. `Retrieve` khác `Select` như thế nào?
+9. Vì sao agent không nên đưa mọi candidate đã retrieve vào Context Window?
+10. Vì sao retrieval trong agent là iterative?
+11. Coding agent có thể dùng những retrieval mechanism nào?
 
 <details>
 <summary>Answers</summary>
@@ -142,5 +197,9 @@ Chưa có learning note liên quan trong knowledge base. Khi có canonical note 
 5. Thông tin không liên quan tiêu tốn token, tạo noise và làm model khó tập trung vào tín hiệu quan trọng.
 6. Agent search, retrieve, đọc relevant files, chạy tools/tests, rồi filter và kết hợp kết quả cho lần quyết định tiếp theo.
 7. Việc tách trách nhiệm giúp logic chọn context độc lập với khác biệt API và có thể tái sử dụng khi đổi model provider.
+8. `Retrieve` tìm candidate information có thể hữu ích; `Select` đánh giá và chọn candidate thực sự phù hợp với quyết định hiện tại.
+9. Candidate có thể không liên quan, đã cũ, trùng lặp hoặc tốn quá nhiều token so với giá trị; đưa tất cả vào sẽ tạo noise và chiếm Context Window.
+10. Mỗi lần reason, act và observe có thể tạo evidence mới, làm thay đổi điều agent cần tìm cho bước tiếp theo.
+11. Ví dụ gồm keyword/lexical search, Semantic Search, lần theo code structure và references, cùng evidence do tools tạo ra như tests, logs và previous tool results.
 
 </details>
