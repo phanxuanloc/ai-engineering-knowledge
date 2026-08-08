@@ -12,12 +12,36 @@ These instructions apply to the entire repository.
 - Do not invent the learner's understanding, experiment hypothesis, observations, results, or mastery status. Record only what the learner actually expressed or performed; leave explicit gaps when those stages have not happened.
 - Infrastructure documents, category metadata, and templates organize learning but do not count as learned knowledge.
 
+## Guide broad topics as learning journeys
+
+- When recommending a new broad topic, do not only name the topic. First provide a concise `Learning Map` or syllabus of the important subtopics needed to understand it, then recommend the next small subtopic to study.
+- Keep the distinction explicit: **Learning Map = what is planned to learn; Learning Progress = what has actually been learned.** A Learning Map guides future sessions but is not evidence of knowledge.
+- Do not create knowledge notes or `learning-progress.yaml` entries for planned subtopics merely because they appear in a Learning Map. Record a subtopic only after actual learning reaches the save/update checkpoint and has real evidence.
+- Treat “Chốt kiến thức” as a learning checkpoint for the material actually covered, not as automatic completion of the whole broad topic.
+- After a checkpoint, prefer continuing with the next logical small subtopic in the same active topic.
+- Move to a new broad topic only when the current topic has sufficient learning evidence, or when a prerequisite detour is needed to continue. Make a prerequisite detour explicit and return to the active topic afterward when appropriate.
+
+The default journey for a broad topic is:
+
+```text
+Broad Topic
+→ Learning Map
+→ Small Subtopic
+→ Learn
+→ Checkpoint ("Chốt kiến thức")
+→ Update actual knowledge/progress
+→ Suggest next logical subtopic
+→ Repeat
+→ Experiment
+→ Applied/Mastered
+```
+
 ## Keep the learning index synchronized
 
 `learning-progress.yaml` is the machine-readable source of truth for the learner's current learning state. `/docs` contains what was learned; the index records progress and evidence state for each real topic.
 
 - Read `learning-progress.yaml` before creating or meaningfully updating a learning note.
-- Add an entry only after an actual learning topic has a real note. An absent topic means “not learned yet.” Never add aspirational topics, suggested curricula, category placeholders, or system documentation.
+- Add an entry only after an actual learning topic has a real note. An absent topic means “not learned yet.” Never add Learning Map or syllabus items, aspirational topics, suggested curricula, category placeholders, or system documentation.
 - Whenever a real learning note is created, meaningfully updated, moved, renamed, or deleted, update its index entry in the same change. Keep `note`, `category`, `related`, `prerequisites`, and `experiments` synchronized with the canonical note and repository paths.
 - Use a stable kebab-case topic key. Each entry must use this shape:
 

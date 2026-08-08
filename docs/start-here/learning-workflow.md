@@ -8,27 +8,44 @@ sidebar_position: 1
 
 This is system documentation for maintaining the knowledge base. It is not a learned-knowledge article and does not count toward the knowledge total.
 
-The repository has two complementary sources of truth:
+The repository separates plans from evidence:
 
-- `/docs` = **knowledge learned**: canonical notes produced from actual learning sessions.
-- `learning-progress.yaml` = **learning state**: machine-readable status, confidence, reviews, experiments, prerequisites, and relationships for those notes.
+- **Learning Map = what is planned to learn:** a concise syllabus of the important subtopics within a broad topic. It guides the learning journey but is not learned knowledge.
+- **Learning Progress = what has actually been learned:** `/docs` contains canonical notes produced from actual learning sessions, while `learning-progress.yaml` records their evidence-based state, confidence, reviews, experiments, prerequisites, and relationships.
 
-An absent topic in `learning-progress.yaml` means it has not been learned yet.
+An absent topic in `learning-progress.yaml` means it has not been learned yet. Never pre-populate the index with planned subtopics from a Learning Map.
 
 ## Workflow
 
-**Learn → Discuss → Summarize → Save/update knowledge → Experiment → Review → Master**
+```text
+Broad Topic
+→ Learning Map
+→ Small Subtopic
+→ Learn
+→ Checkpoint ("Chốt kiến thức")
+→ Update actual knowledge/progress
+→ Suggest next logical subtopic
+→ Repeat
+→ Experiment
+→ Applied/Mastered
+```
 
-1. **Learn:** Start with an actual source, question, observation, or problem chosen by the learner.
-2. **Discuss:** Explore the learner's questions, interpretations, counterexamples, and uncertainty.
-3. **Summarize:** Confirm the takeaway and mental model with the learner. Do not invent agreement or understanding.
-4. **Save/update knowledge:** Search existing notes first. Update the canonical note when appropriate; otherwise create a note from the learning-note template. In the same change, add or synchronize its `learning-progress.yaml` entry.
-5. **Experiment:** Record an experiment only when it is proposed or performed as part of the learning process. Never fabricate results.
-6. **Review:** Revisit the note and self-test using the learner's actual answers and observations.
-7. **Master:** Mark mastery only when demonstrated through recall, explanation, application, and judgment.
+1. **Broad Topic:** Start from the broad area the learner wants or needs to understand.
+2. **Learning Map:** Present a concise syllabus of the important subtopics. Do not treat this plan as evidence or record its items in `learning-progress.yaml`.
+3. **Small Subtopic:** Recommend one manageable, logical next subtopic rather than attempting the whole map at once.
+4. **Learn:** Use an actual source, question, observation, discussion, or problem. Explore the learner's interpretations, counterexamples, and uncertainty.
+5. **Checkpoint — “Chốt kiến thức”:** Confirm the takeaway and mental model for only the material covered. This checkpoint does not automatically complete the broad topic.
+6. **Update actual knowledge/progress:** Search existing notes first. Update the canonical note when appropriate; otherwise create one from the learning-note template. Synchronize `learning-progress.yaml` using only demonstrated evidence.
+7. **Suggest next logical subtopic:** Prefer continuing within the same active broad topic. Move to another broad topic only when the current one has sufficient evidence or a prerequisite detour is necessary.
+8. **Repeat:** Work through the Learning Map in small learning and checkpoint cycles. If taking a prerequisite detour, make it explicit and return when appropriate.
+9. **Experiment:** Record an experiment only when it is genuinely proposed or performed. Never fabricate setup, observations, or results.
+10. **Applied/Mastered:** Advance status only when application or mastery is demonstrated through evidence such as recall, explanation, experiments, independent use, and judgment.
 
-## Initial state
+## Checkpoint behavior
 
-**Knowledge learned: 0**
+After “Chốt kiến thức,” the tutor or agent should:
 
-The first learning article and first progress entry will be created together only after the first real learning session reaches the save/update step. Until then, the progress index remains `topics: {}`.
+- Capture only what the learner actually learned in that checkpoint.
+- Preserve gaps, uncertainty, and unfinished subtopics.
+- Update progress without promoting the entire broad topic automatically.
+- Recommend the next logical small subtopic in the active Learning Map.
