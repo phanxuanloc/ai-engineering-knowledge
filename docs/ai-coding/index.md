@@ -4,6 +4,6 @@ sidebar_position: 1
 slug: /ai-coding
 ---
 
-**Knowledge learned: 0**
+**Knowledge learned: 1**
 
-Chưa có knowledge article nào trong category này.
+- [Context Engineering](./context-engineering.md) — chọn và quản lý thông tin phù hợp cho LLM hoặc AI agent tại thời điểm thực hiện task.

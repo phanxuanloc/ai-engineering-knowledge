@@ -1,1 +1,12 @@
-topics: {}
+topics:
+  context-engineering:
+    title: Context Engineering
+    category: AI Coding
+    status: learning
+    note: docs/ai-coding/context-engineering.md
+    learned_at: 2026-08-08
+    last_reviewed: null
+    confidence: 3
+    experiments: []
+    prerequisites: []
+    related: []

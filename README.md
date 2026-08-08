@@ -2,7 +2,7 @@
 
 A personal, practical knowledge base for learning AI engineering. It captures concise mental models, working examples, experiments, mistakes, and self-tests instead of collecting disconnected links.
 
-> **Knowledge learned: 0** — The repository currently contains only infrastructure, category structure, a reusable template, and the learning workflow. The first knowledge article will be created after the first real learning session.
+> **Knowledge learned: 1** — The repository contains knowledge captured from real learning sessions, alongside its infrastructure, category structure, reusable template, and learning workflow.
 
 The site is built with [Docusaurus](https://docusaurus.io/) and TypeScript and is published to GitHub Pages at `https://phanxuanloc.github.io/ai-engineering-knowledge/`.
 
@@ -30,7 +30,7 @@ npm run build
 │   ├── _templates/               # Reusable authoring templates
 │   ├── start-here/               # Learning and maintenance workflow
 │   ├── ai-fundamentals/          # Empty until a real learning session
-│   ├── ai-coding/                # Empty until a real learning session
+│   ├── ai-coding/                # AI-assisted software development knowledge
 │   ├── coding-agents/            # Empty until a real learning session
 │   ├── ai-agents/                # Empty until a real learning session
 │   ├── rag/                      # Empty until a real learning session
@@ -67,7 +67,7 @@ Every knowledge change ends with a duplication review, link check, structure che
 
 `/docs` is the source of truth for knowledge actually learned. [learning-progress.yaml](learning-progress.yaml) is the source of truth for the learner's current state for each real topic, including status, confidence, review dates, experiments, prerequisites, and relationships.
 
-The index starts with `topics: {}` because no knowledge topic has been learned yet. Missing topics are intentionally absent—not queued or pre-populated. Agents update the index in the same change whenever a real learning note is created or meaningfully updated, and advance status or confidence only when the learner's understanding, experiments, self-tests, reviews, or application provide evidence.
+Missing topics are intentionally absent from the index—not queued or pre-populated. Agents update the index in the same change whenever a real learning note is created or meaningfully updated, and advance status or confidence only when the learner's understanding, experiments, self-tests, reviews, or application provide evidence.
 
 ## Deployment
 
