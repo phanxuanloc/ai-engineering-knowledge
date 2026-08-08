@@ -35,12 +35,12 @@ Best Context → Context Window → LLM → Decision / Action
 
 `Context Engineering` trả lời câu hỏi rộng hơn: **Model cần biết gì khi thực hiện task này?** Vì vậy context không chỉ có user prompt, mà có thể gồm:
 
-- System instructions và user request.
-- Conversation history và memory.
-- Retrieved knowledge và kết quả RAG.
-- Source code, files và project rules.
-- Tool definitions và tool results.
-- Trạng thái hiện tại của environment hoặc application.
+- **System instructions và user request:** Các chỉ dẫn xác định behavior, constraints và mục tiêu cụ thể mà model cần thực hiện.
+- **Conversation history và memory:** History giữ các lượt trao đổi trước trong phiên; memory lưu thông tin cần dùng lại qua một khoảng thời gian dài hơn hoặc qua nhiều phiên.
+- **Retrieved knowledge và kết quả RAG:** Retrieval tìm thông tin liên quan từ nguồn bên ngoài. RAG (`Retrieval-Augmented Generation`) đưa thông tin tìm được vào context để model dựa trên nguồn đó khi tạo câu trả lời.
+- **Source code, files và project rules:** Các artifact mô tả implementation thực tế và những quy ước mà thay đổi phải tuân theo.
+- **Tool definitions và tool results:** Definition cho model biết một tool có thể làm gì và cách gọi; result là dữ liệu tool trả về để hỗ trợ quyết định tiếp theo.
+- **Environment hoặc application state:** Trạng thái hiện tại như Git diff, test status, màn hình đang mở hoặc dữ liệu đang được xử lý.
 
 Prompt là một phần của context; viết prompt tốt không thay thế việc cung cấp đúng thông tin.
 
@@ -54,7 +54,7 @@ Nhiều context hơn không tự động tốt hơn. Thông tin không liên qua
 
 ### Context động trong AI agent
 
-AI agent thường tự xây dựng context theo từng bước. Nó có thể dùng kết quả của search, file đã đọc, test và tool call trước đó để quyết định thông tin nào cần đưa vào lần gọi model tiếp theo. Vì vậy, context construction là một phần cốt lõi trong behavior của agent, không chỉ là dữ liệu đầu vào tĩnh do user cung cấp.
+AI agent là một hệ thống cho phép model lặp lại chu trình quan sát, quyết định và hành động thông qua tools. Agent thường tự xây dựng context theo từng bước: nó có thể dùng kết quả của search, file đã đọc, test và tool call trước đó để quyết định thông tin nào cần đưa vào lần gọi model tiếp theo. Vì vậy, context construction là một phần cốt lõi trong behavior của agent, không chỉ là dữ liệu đầu vào tĩnh do user cung cấp.
 
 ### Tách Context Manager khỏi Model Adapter
 
@@ -76,7 +76,7 @@ Agent
 └── Tools
 ```
 
-`Context Manager` quyết định thông tin nào liên quan với task hiện tại. `Model Adapter` xử lý khác biệt trong API của từng provider. Các model và coding agent như ChatGPT, Claude, Gemini, Codex-style agents, Claude Code hoặc Cursor có thể expose và assemble context khác nhau, nhưng vẫn giải cùng một bài toán: model cần biết gì tại thời điểm này?
+`Context Manager` quyết định thông tin nào liên quan với task hiện tại. `Model Adapter` là lớp chuyển đổi request và response theo API cụ thể của từng provider. Các model và coding agent như ChatGPT, Claude, Gemini, Codex-style agents, Claude Code hoặc Cursor có thể expose và assemble context khác nhau, nhưng vẫn giải cùng một bài toán: model cần biết gì tại thời điểm này?
 
 ## Example
 

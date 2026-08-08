@@ -9,8 +9,10 @@ draft: true
 
 <!--
 Ngôn ngữ chính của phần giải thích là tiếng Việt. Giữ nguyên những technical term
-tiếng Anh mà software engineer thường sử dụng; có thể giải thích ngắn bằng tiếng
-Việt khi term quan trọng xuất hiện lần đầu. Không dịch code, API, class,
+tiếng Anh mà software engineer thường sử dụng. Explain locally, link when learned:
+giải thích term đủ để note tự hiểu được; chỉ link tới learning note thực sự đã tồn
+tại và cung cấp thêm understanding. Không tạo note cho concept chưa học chỉ để có
+link. Không dịch code, API, class,
 configuration, command, filename, protocol hoặc identifier. Giữ nguyên các section
 heading tiếng Anh bên dưới để toàn bộ knowledge base nhất quán.
 -->
@@ -25,8 +27,9 @@ Giải thích mental model đơn giản nhất để concept trở nên trực q
 
 ## Core Concepts
 
-- **Concept:** Định nghĩa và giải thích vì sao nó quan trọng.
-- **Concept:** Định nghĩa và kết nối nó với mental model.
+- **Concept:** Định nghĩa đủ ngữ cảnh ngay tại đây và giải thích vì sao nó quan trọng. Với term đơn giản, một hoặc hai câu là đủ.
+- **Learned related concept:** Tóm tắt ngắn để note vẫn tự hiểu được, rồi thêm internal link tới canonical learning note nếu link cung cấp understanding sâu hơn.
+- **Unlearned supporting concept:** Chỉ giải thích mức tối thiểu cần cho topic hiện tại; không tạo article hoặc progress entry chỉ để có link.
 
 ## Example
 
@@ -68,7 +71,14 @@ Diễn đạt lại concept bằng lời của bạn. Ghi lại điều vẫn ch
 
 ## Related Knowledge
 
-- [Related note hiện có](../category/related-note.md) — giải thích mối liên hệ và dùng relative path hợp lệ.
+<!--
+Chỉ link tới learning note thực sự đã tồn tại. Chọn quan hệ có ý nghĩa, giải thích
+mối liên hệ sau mỗi link và thêm reciprocal link khi hữu ích. Nếu chưa có related
+note đã học, nói rõ khoảng trống thay vì để placeholder hoặc tạo knowledge giả.
+
+Example khi target thực sự tồn tại:
+- [Related note đã học](../category/related-note.md) — giải thích mối liên hệ và giá trị understanding bổ sung của target note.
+-->
 
 ## Self-test
 

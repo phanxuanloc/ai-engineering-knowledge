@@ -113,6 +113,21 @@ Use descriptive kebab-case filenames and Docusaurus front matter. Keep explanati
 - The goal is not literal translation or eliminating English. The goal is natural Vietnamese explanation with recognizable industry terminology.
 - Apply this policy to new notes and future edits. Do not translate or rewrite unrelated existing articles solely to make them conform.
 
+## Explain technical terms and link learned knowledge
+
+Use this principle: **Explain locally, link when learned, never generate unlearned knowledge just to satisfy a link.**
+
+- Do not list a technical term without enough context for the learner to understand what it means in the current article.
+- Keep every knowledge article understandable on its own. A reader should not have to open every linked concept to follow the current explanation.
+- If a concept is simple or needs only a short explanation, explain it locally in one or two concise sentences. Do not create a separate article unnecessarily.
+- If a concept already has a real learning note in `/docs`, provide enough local context for the current article to remain self-contained, then link to the canonical note when it offers meaningful deeper understanding.
+- If an important concept has not actually been learned yet, provide only the minimum explanation needed for the current topic. Do not create a full note or add it to `learning-progress.yaml` merely to satisfy a link. It may be identified as a related or future learning topic when useful.
+- Prefer meaningful internal links between concepts the learner has actually learned. For example, `Context Engineering` may connect to `Context Window`, `RAG`, or `Tool Calling` only after those target learning notes exist.
+- Avoid excessive linking. Link when the target note adds meaningful understanding, not at every occurrence of a technical term.
+- When creating or updating a learning note, search `/docs` for related learned concepts and add useful bidirectional relationships when appropriate. If a later `RAG` learning session creates its canonical note and an existing `Context Engineering` note discusses RAG, consider linking both notes and adding concise relationship explanations.
+- Updating an old article to add links or improve short explanations is a presentation and knowledge-connection improvement. It must not invent learning evidence, increase confidence automatically, change learning status automatically, or represent unlearned knowledge as learned.
+- Do not introduce or maintain a separate glossary system yet. Use concise local explanations and links between real learning notes until the knowledge base is large enough to justify a glossary.
+
 ## Preserve personal learning state
 
 - `My Understanding` and `My Experiment` are owner-authored learning records. Never delete, overwrite, rewrite, or mark them complete merely to make an article look polished.
@@ -123,8 +138,9 @@ Use descriptive kebab-case filenames and Docusaurus front matter. Keep explanati
 
 ## Maintain the knowledge graph
 
-- Every learning note must have a `Related Knowledge` section with useful relative Markdown links to existing notes.
+- Every learning note must have a `Related Knowledge` section. Add useful relative Markdown links when related learned notes exist; otherwise state the current gap without creating a placeholder note.
 - Explain the relationship after each link; do not produce an unexplained link dump.
+- Before adding a link, confirm that its target note exists and represents actual learned knowledge. Never create a placeholder target solely to complete the graph.
 - When adding, renaming, moving, merging, or deleting a note, search `docs/` for inbound links and update them.
 - Add a reciprocal link when the relationship helps readers navigate in both directions.
 - Prefer links to canonical learning notes over category landing pages when a relevant note exists.
