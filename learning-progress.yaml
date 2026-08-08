@@ -7,6 +7,13 @@ topics:
     learned_at: 2026-08-08
     last_reviewed: null
     confidence: 3
+    checkpoints:
+      - context-fundamentals
+      - context-sources
+      - retrieve-vs-select
+      - iterative-context-lifecycle
+      - context-compression
+    next_checkpoint: context-budgeting
     experiments: []
     prerequisites: []
     related: []
