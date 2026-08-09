@@ -74,23 +74,60 @@ export function Comparison({items, className, label = 'Concept comparison'}: Com
   );
 }
 
-type PipelineProps = {
-  steps: string[];
-  className?: string;
+export type PipelineStep = {
+  title: string;
+  description?: string;
   label?: string;
+  optional?: boolean;
 };
 
-export function Pipeline({steps, className, label = 'Process pipeline'}: PipelineProps) {
+type PipelineProps = {
+  steps: Array<string | PipelineStep>;
+  className?: string;
+  label?: string;
+  loopLabel?: string;
+};
+
+function normalizePipelineStep(step: string | PipelineStep): PipelineStep {
+  return typeof step === 'string' ? {title: step} : step;
+}
+
+export function Pipeline({
+  steps,
+  className,
+  label = 'Process pipeline',
+  loopLabel,
+}: PipelineProps) {
   return (
-    <ol className={clsx(styles.pipeline, className)} aria-label={label}>
-      {steps.map((step, index) => (
-        <li className={styles.pipelineStep} key={`${step}-${index}`}>
-          <span className={styles.pipelineIndex} aria-hidden="true">
-            {String(index + 1).padStart(2, '0')}
-          </span>
-          <span>{step}</span>
-        </li>
-      ))}
-    </ol>
+    <figure className={clsx(styles.pipelineFigure, className)} aria-label={label}>
+      <ol className={styles.pipeline}>
+        {steps.map((rawStep, index) => {
+          const step = normalizePipelineStep(rawStep);
+
+          return (
+            <li
+              className={clsx(styles.pipelineStep, step.optional && styles.pipelineStepOptional)}
+              key={`${step.title}-${index}`}>
+              <span className={styles.pipelineMeta}>
+                <span className={styles.pipelineIndex} aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                {step.label && <span className={styles.pipelineLabel}>{step.label}</span>}
+              </span>
+              <span className={styles.pipelineTitle}>{step.title}</span>
+              {step.description && (
+                <span className={styles.pipelineDescription}>{step.description}</span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+      {loopLabel && (
+        <figcaption className={styles.pipelineLoop}>
+          <span aria-hidden="true">↺</span>
+          {loopLabel}
+        </figcaption>
+      )}
+    </figure>
   );
 }

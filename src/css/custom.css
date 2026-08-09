@@ -110,12 +110,20 @@
 }
 
 .theme-doc-markdown .mermaid {
+  width: 100%;
   margin: 1.5rem 0 2rem;
   padding: 1rem;
   overflow-x: auto;
   background: var(--learning-surface);
   border: 1px solid var(--learning-border);
   border-radius: 12px;
+}
+
+.theme-doc-markdown .mermaid svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
 }
 
 @media (max-width: 996px) {

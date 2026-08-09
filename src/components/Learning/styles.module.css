@@ -1,8 +1,7 @@
 .tldr,
 .principle,
 .conceptCard,
-.comparison,
-.pipeline {
+.comparison {
   --learning-accent: var(--ifm-color-primary);
   border: 1px solid var(--learning-border);
   border-radius: 12px;
@@ -119,35 +118,43 @@
   line-height: 1.6;
 }
 
+.pipelineFigure {
+  --learning-accent: var(--ifm-color-primary);
+  container-type: inline-size;
+  width: 100%;
+  margin: 1.35rem 0 1.9rem;
+}
+
 .pipeline {
   display: flex;
-  gap: 1.7rem;
-  margin: 1.35rem 0 1.8rem;
+  gap: 1.45rem;
+  width: 100%;
+  margin: 0;
   padding: 0;
-  overflow-x: auto;
   list-style: none;
-  background: transparent;
-  border: 0;
-  scrollbar-width: thin;
 }
 
 .pipelineStep {
   position: relative;
   display: flex;
-  flex: 1 0 8.5rem;
+  flex: 1 1 0;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
   justify-content: center;
-  min-height: 5.1rem;
-  padding: 0.85rem 1rem;
+  min-width: 0;
+  min-height: 5.4rem;
+  padding: 0.8rem 0.85rem;
   color: var(--ifm-heading-color);
-  font-size: 0.9rem;
-  font-weight: 650;
-  line-height: 1.35;
+  line-height: 1.3;
   background: var(--learning-surface);
   border: 1px solid var(--learning-border);
   border-radius: 10px;
   box-shadow: var(--learning-shadow);
+}
+
+.pipelineStepOptional {
+  background: var(--learning-accent-soft);
+  border-color: var(--learning-accent-border);
 }
 
 .pipelineStep:not(:last-child)::after {
@@ -168,6 +175,75 @@
   letter-spacing: 0.08em;
 }
 
+.pipelineMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.45rem;
+  align-items: center;
+}
+
+.pipelineLabel {
+  color: var(--learning-accent);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.pipelineTitle {
+  overflow-wrap: normal;
+  word-break: normal;
+  font-size: 0.86rem;
+  font-weight: 680;
+}
+
+.pipelineDescription {
+  color: var(--ifm-font-color-secondary);
+  font-size: 0.72rem;
+  font-weight: 450;
+  line-height: 1.4;
+}
+
+.pipelineLoop {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  margin: 0.8rem auto 0;
+  padding: 0.35rem 0.7rem;
+  color: var(--ifm-font-color-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  background: var(--learning-accent-soft);
+  border: 1px solid var(--learning-accent-border);
+  border-radius: 999px;
+}
+
+.pipelineLoop span {
+  color: var(--learning-accent);
+  font-size: 1rem;
+}
+
+@container (max-width: 38rem) {
+  .pipeline {
+    flex-direction: column;
+    gap: 1.35rem;
+  }
+
+  .pipelineStep {
+    min-height: 0;
+  }
+
+  .pipelineStep:not(:last-child)::after {
+    top: auto;
+    right: 50%;
+    bottom: -1.17rem;
+    content: '↓';
+    transform: translateX(50%);
+  }
+}
+
 @media (max-width: 700px) {
   .principle {
     grid-template-columns: 1fr;
@@ -177,11 +253,5 @@
   .comparisonItem + .comparisonItem {
     border-top: 1px solid var(--learning-border);
     border-left: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pipeline {
-    scroll-behavior: auto;
   }
 }

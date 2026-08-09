@@ -47,15 +47,24 @@ Viết principle ngắn, cụ thể và có thể recall độc lập.
 
 ## Mental Model
 
-Giải thích mental model đơn giản nhất để concept trở nên trực quan. Kết nối input, behavior và outcome. Dùng `ConceptGrid` + `ConceptCard` cho một nhóm nhỏ các vai trò liên quan; dùng `Pipeline` cho flow tuyến tính ngắn; dùng Mermaid cho architecture, lifecycle, sequence hoặc relationships phức tạp hơn.
+Giải thích mental model đơn giản nhất để concept trở nên trực quan. Kết nối input, behavior và outcome. Dùng `ConceptGrid` + `ConceptCard` cho một nhóm nhỏ các vai trò liên quan; dùng `Pipeline` cho simple flow, pipeline hoặc linear lifecycle; chỉ dùng Mermaid cho branching, graph layout, sequence hoặc relationships phức tạp.
 
 <!-- Optional linear flow; remove when it does not improve understanding.
-<Pipeline label="Concept pipeline" steps={['Input', 'Behavior', 'Outcome']} />
+<Pipeline
+  label="Concept pipeline"
+  steps={[
+    'Input',
+    {label: 'Optional', title: 'Transform when useful', optional: true},
+    {title: 'Outcome', description: 'Optional concise description.'},
+  ]}
+/>
 
-Optional complex flow:
+Optional complex graph:
 ```mermaid
-flowchart LR
-    A["Input"] --> B["Behavior"] --> C["Outcome"]
+flowchart TD
+    A["Input"] --> B{"Decision"}
+    B --> C["Path A"]
+    B --> D["Path B"]
 ```
 -->
 
