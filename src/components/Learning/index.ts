@@ -2,6 +2,6 @@ export * from './Callout';
 export * from './Cards';
 export * from './Diagrams';
 export * from './ExperimentCard';
-export * from './LearningPath';
+export * from './KnowledgeMap';
 export * from './SelfTest';
-
+export * from './TopicPath';

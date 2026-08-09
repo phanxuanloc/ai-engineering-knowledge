@@ -18,9 +18,8 @@ Important diagrams must remain understandable without animation and stack cleanl
 
 ## Learning state
 
-`learning-progress.yaml` is the source of truth. Never infer a learned state from a file, a planned syllabus, or visual completeness. Homepage presentation data in `src/data/learning.ts` must stay synchronized with it and must use simpler wording rather than invented percentages.
+`learning-progress.yaml` is the internal source of truth for the author's learning workflow. Never infer a learned state from a file, a planned syllabus, or visual completeness. Public website data in `src/data/knowledge.ts` describes published content and reader navigation only; it must not expose personal progress.
 
 ## Visual hierarchy
 
-Use `TLDR`, `KeyInsight`, `Remember`, and `ImportantDistinction` for high-value recall cues; `Comparison` for genuine comparisons; `ExperimentCard` for explicit experiment state; `LearningPath` for evidence-backed checkpoints; and `SelfTest` for question-by-question recall. Do not turn ordinary prose into cards.
-
+Use `TLDR`, `KeyInsight`, `Remember`, and `ImportantDistinction` for high-value recall cues; `Comparison` for genuine comparisons; `ExperimentCard` for explicit experiment state; `TopicPath` for reader-oriented article structure; and `SelfTest` for question-by-question recall. Do not turn ordinary prose into cards.
