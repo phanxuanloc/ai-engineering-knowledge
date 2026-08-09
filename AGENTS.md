@@ -21,20 +21,7 @@ These instructions apply to the entire repository.
 - After a checkpoint, prefer continuing with the next logical small subtopic in the same active topic.
 - Move to a new broad topic only when the current topic has sufficient learning evidence, or when a prerequisite detour is needed to continue. Make a prerequisite detour explicit and return to the active topic afterward when appropriate.
 
-The default journey for a broad topic is:
-
-```text
-Broad Topic
-→ Learning Map
-→ Small Subtopic
-→ Learn
-→ Checkpoint ("Chốt kiến thức")
-→ Update actual knowledge/progress
-→ Suggest next logical subtopic
-→ Repeat
-→ Experiment
-→ Applied/Mastered
-```
+The default journey for a broad topic is: Broad Topic → Learning Map → Small Subtopic → Learn → Checkpoint ("Chốt kiến thức") → Update actual knowledge/progress → Suggest next logical subtopic → Repeat → Experiment → Applied/Mastered.
 
 ## Keep the learning index synchronized
 
@@ -51,7 +38,7 @@ Broad Topic
       title: Standard Topic Name
       category: Category Name
       status: learning
-      note: docs/category/topic-key.md
+      note: docs/category/topic-key.mdx
       learned_at: YYYY-MM-DD
       last_reviewed: null
       confidence: 1
@@ -66,11 +53,11 @@ Broad Topic
 - Base status and confidence changes on actual evidence from `My Understanding`, experiments, self-test results, reviews, discussion, or demonstrated application. Never fabricate evidence or promote progress automatically.
 - Set `learned_at` to the date of the first real learning session, not the file creation date when those differ. Change `last_reviewed` only after an actual review.
 - Keep arrays empty when there is no actual relationship or experiment to record. Do not pre-populate a curriculum.
-- A structural category `index.md`, `docs/_templates/learning-note.md`, and `docs/start-here/learning-workflow.md` must never receive topic entries.
+- A structural category `index.mdx`, `docs/_templates/learning-note.mdx`, and `docs/start-here/learning-workflow.mdx` must never receive topic entries.
 
 ## Before editing knowledge
 
-1. Read `README.md`, this file, and `docs/_templates/learning-note.md`.
+1. Read `README.md`, this file, and `docs/_templates/learning-note.mdx`.
 2. Inspect the relevant category and search all of `docs/` for the topic, its synonyms, and closely related concepts. Use filenames, titles, headings, tags, and body text—not filenames alone.
 3. Read the full contents of likely related notes before deciding what to change.
 4. Identify the canonical existing note, overlapping notes, and links that may need updating.
@@ -85,7 +72,7 @@ Broad Topic
 
 ## Standard learning-note structure
 
-Start new learning notes from `docs/_templates/learning-note.md`. Every learning note must contain these second-level headings in this order:
+Start new learning notes from `docs/_templates/learning-note.mdx`. Every learning note must contain these second-level headings in this order:
 
 1. `TL;DR`
 2. `Mental Model`
@@ -101,6 +88,16 @@ Start new learning notes from `docs/_templates/learning-note.md`. Every learning
 Category landing pages, navigation files, and templates are not learning notes and do not need this structure.
 
 Use descriptive kebab-case filenames and Docusaurus front matter. Keep explanations concise, practical, and grounded in examples. Mark assumptions and unverified claims clearly.
+
+## Documentation format and visual conventions
+
+- Use `.mdx` for all files under `docs/`, including learning notes, category landing pages, workflow documentation, and templates. Preserve existing front matter, slugs, sidebar order, public URLs, and internal links when migrating or renaming a source file.
+- Follow this order of preference: standard Markdown → Mermaid → native Docusaurus features → JSX/React only when materially justified. MDX does not by itself justify a React component.
+- Use Mermaid when architecture, workflow, data flow, agent flow, context pipeline, sequence, or concept relationships become easier to understand visually. Do not use plain-text code blocks as diagrams or use Mermaid as decoration.
+- Reserve fenced code blocks for source code, commands, configuration, prompts, literal input/output, and raw data representations.
+- Use Docusaurus `info`, `tip`, and `warning` admonitions selectively for important distinctions, practical guidance, and risks. Use tables when comparison is the primary purpose.
+- Keep visual styling restrained, technical, semantic, and legible in light and dark themes. Visuals must reduce the effort needed to understand or remember a concept.
+- Keep paragraphs focused and scannable, use emphasis sparingly, and avoid premature reusable components. The primary goal is learning clarity.
 
 ## Language policy
 

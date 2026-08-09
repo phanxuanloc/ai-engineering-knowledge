@@ -27,7 +27,7 @@ npm run build
 ├── AGENTS.md                     # Repository-wide AI agent rules
 ├── learning-progress.yaml        # Machine-readable learning state
 ├── docs/                         # All knowledge notes
-│   ├── _templates/               # Reusable authoring templates
+│   ├── _templates/               # Reusable MDX authoring templates
 │   ├── start-here/               # Learning and maintenance workflow
 │   ├── ai-fundamentals/          # Empty until a real learning session
 │   ├── ai-coding/                # AI-assisted software development knowledge
@@ -43,11 +43,11 @@ npm run build
 
 ## How notes are organized
 
-Each note belongs to one topic directory under `docs/`. Start new notes by copying `docs/_templates/learning-note.md`; the template separates the takeaway, mental model, concepts, examples, practical guidance, personal understanding, experiments, related ideas, and a self-test.
+Each note belongs to one topic directory under `docs/`. Start new notes by copying `docs/_templates/learning-note.mdx`; the template separates the takeaway, mental model, concepts, examples, practical guidance, personal understanding, experiments, related ideas, and a self-test.
 
-Use a short, descriptive kebab-case filename and complete the front matter at the top. Category landing pages are named `index.md`, and each `_category_.json` controls its sidebar label and order.
+Use a short, descriptive kebab-case `.mdx` filename and complete the front matter at the top. Category landing pages are named `index.mdx`, and each `_category_.json` controls its sidebar label and order. Write standard Markdown first; add Mermaid, native Docusaurus features, or JSX only when they materially improve learning clarity.
 
-The learning loop is documented in [docs/start-here/learning-workflow.md](docs/start-here/learning-workflow.md):
+The learning loop is documented in [docs/start-here/learning-workflow.mdx](docs/start-here/learning-workflow.mdx):
 
 **Learn → Discuss → Summarize → Save/update knowledge → Experiment → Review → Master**
 

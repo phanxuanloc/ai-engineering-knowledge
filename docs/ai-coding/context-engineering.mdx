@@ -19,20 +19,17 @@ sidebar_position: 2
 
 Một chiếc bàn lớn hơn không tự quyết định được tài liệu nào cần thiết. Tương tự, Context Window lớn không loại bỏ nhu cầu chọn lọc context.
 
-```text
-Knowledge / Repository / Memory / Tools
-                ↓
-             Retrieve
-                ↓
-            Candidates
-                ↓
-              Select
-                ↓
-        Relevant Context
-                ↓
-         Context Window
-                ↓
-               LLM
+```mermaid
+flowchart TD
+    A["Knowledge · Repository · Memory · Tools"]
+    B["Retrieve"]
+    C["Candidates"]
+    D["Select"]
+    E["Relevant Context"]
+    F["Context Window"]
+    G["LLM"]
+
+    A --> B --> C --> D --> E --> F --> G
 ```
 
 `Retrieve` mở rộng tập thông tin có thể dùng; `Select` thu hẹp tập đó thành context phù hợp với quyết định hiện tại. Hai bước này bảo vệ nguyên tắc **Relevant context > More context**.
@@ -56,9 +53,11 @@ Prompt là một phần của context; viết prompt tốt không thay thế vi�
 
 ### Context và Context Window
 
-- **Context:** thông tin thực tế được cung cấp cho model.
-- **Context Window:** lượng thông tin tối đa model có thể xử lý trong một lần invocation, thường được đo bằng token.
-- **Context Engineering:** quyết định thông tin nào nên chiếm capacity đó.
+| Khái niệm | Vai trò |
+|---|---|
+| **Context** | Thông tin thực tế được cung cấp cho model. |
+| **Context Window** | Lượng thông tin tối đa model có thể xử lý trong một lần invocation, thường được đo bằng token. |
+| **Context Engineering** | Quyết định thông tin nào nên chiếm capacity đó. |
 
 Nhiều context hơn không tự động tốt hơn. Thông tin không liên quan tạo noise, tốn token và khiến model khó tập trung vào tín hiệu quan trọng. Chẳng hạn, 20K token gồm đúng source files, error logs, tests và instructions có thể hữu ích hơn hàng trăm nghìn token chứa toàn bộ repository.
 
@@ -92,18 +91,13 @@ Retrieve được một candidate không có nghĩa phải đưa candidate đó 
 
 Summarization chỉ là một kỹ thuật compression. Các kỹ thuật khác gồm deduplication, trích xuất facts hoặc errors quan trọng, truncation phần có giá trị thấp, và chuyển conversation hay tool history dài thành structured working state.
 
-```text
-Retrieve
-   ↓
-Select
-   ↓
-Compress
-   ↓
-Assemble
-   ↓
-Context Window
-   ↓
-LLM
+```mermaid
+flowchart TD
+    A["Retrieve"] --> B["Select"]
+    B --> C["Compress when useful"]
+    C --> D["Assemble"]
+    D --> E["Context Window"]
+    E --> F["LLM"]
 ```
 
 Có hai mức đánh đổi chính:
@@ -113,7 +107,11 @@ Có hai mức đánh đổi chính:
 
 Mỗi loại context cần compression policy khác nhau. Current user request, critical constraints và source code cần độ chính xác cao thường nên được giữ nguyên. Old conversation history, obsolete tool outputs, repeated information và long logs thường là candidate tốt hơn để compress.
 
-> The goal is not the smallest context. The goal is the smallest context that still contains enough information for the next decision to be reliable.
+:::tip[Compression target]
+
+The goal is not the smallest context. The goal is the smallest context that still contains enough information for the next decision to be reliable.
+
+:::
 
 Compression thường là trách nhiệm của application hoặc agent, được `Context Manager` thực hiện khi assemble context cung cấp cho model. LLM không tự kiểm soát độc lập context của nó, và user không cần yêu cầu compression thủ công ở mỗi turn.
 
@@ -123,20 +121,14 @@ Agent thường kích hoạt compression theo context/token budget trước khi 
 
 AI agent xây dựng context qua một lifecycle lặp, không phải một lần ghép prompt ở đầu task:
 
-```text
-Task
- ↓
-Retrieve
- ↓
-Select
- ↓
-Reason
- ↓
-Act / Tool
- ↓
-Observe
- ↓
-Retrieve again
+```mermaid
+flowchart TD
+    A["Task"] --> B["Retrieve"]
+    B --> C["Select"]
+    C --> D["Reason"]
+    D --> E["Act / Tool"]
+    E --> F["Observe"]
+    F -->|"Evidence changes information needs"| B
 ```
 
 Mỗi action hoặc tool call có thể tạo evidence mới như test failure, log hay code reference. Observation đó thay đổi nhu cầu thông tin, nên agent retrieve và select lại cho lần quyết định tiếp theo.
@@ -145,22 +137,35 @@ Mỗi action hoặc tool call có thể tạo evidence mới như test failure, 
 
 Khi thiết kế custom AI agent, có thể tách hai trách nhiệm:
 
-```text
-Agent
-├── Context Manager / Context Builder
-│   ├── Instructions
-│   ├── Memory
-│   ├── Retrieval / RAG
-│   ├── Code retrieval
-│   ├── Tool results
-│   ├── Current state
-│   ├── Compression
-│   └── Assembly
-├── Model Adapter
-│   ├── OpenAI
-│   ├── Anthropic
-│   └── Gemini
-└── Tools
+```mermaid
+flowchart LR
+    A["Agent"] --> CM["Context Manager / Builder"]
+    A --> MA["Model Adapter"]
+    A --> T["Tools"]
+
+    subgraph ContextSources["Context responsibilities"]
+        I["Instructions"]
+        M["Memory"]
+        R["Retrieval / RAG"]
+        CR["Code retrieval"]
+        TR["Tool results"]
+        S["Current state"]
+        C["Compression"]
+        AS["Assembly"]
+    end
+
+    CM --> I
+    CM --> M
+    CM --> R
+    CM --> CR
+    CM --> TR
+    CM --> S
+    CM --> C
+    CM --> AS
+
+    MA --> O["OpenAI"]
+    MA --> AN["Anthropic"]
+    MA --> G["Gemini"]
 ```
 
 `Context Manager` retrieve, select, compress khi cần và assemble thông tin cho task hiện tại. `Model Adapter` là lớp chuyển đổi request và response theo API cụ thể của từng provider. Các model và coding agent như ChatGPT, Claude, Gemini, Codex-style agents, Claude Code hoặc Cursor có thể expose và assemble context khác nhau, nhưng application vẫn là bên xây dựng context được cung cấp cho model.
@@ -189,11 +194,15 @@ Agent đang liên tục retrieve, select và cập nhật context. Chất lượ
 
 ## Common Mistakes
 
+:::warning[Misconceptions that degrade context quality]
+
 - **Đồng nhất Context với Context Window:** Một bên là thông tin thực tế, bên kia là capacity tối đa.
 - **Cho rằng nhiều context luôn tốt hơn:** Context không liên quan có thể làm loãng tín hiệu quan trọng và tiêu tốn token.
 - **Đưa toàn bộ repository cho coding agent:** Search và chọn đúng files, tests, logs thường hiệu quả hơn nhồi mọi thứ vào Context Window.
 - **Chỉ tối ưu user prompt:** Prompt tốt vẫn thiếu hiệu quả nếu model không có source, state hoặc tool result cần thiết.
 - **Trộn context construction với provider integration:** Thiết kế này làm logic retrieval và filtering khó tái sử dụng khi đổi model provider.
+
+:::
 
 ## My Understanding
 

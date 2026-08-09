@@ -15,19 +15,26 @@ The repository separates plans from evidence:
 
 An absent topic in `learning-progress.yaml` means it has not been learned yet. Never pre-populate the index with planned subtopics from a Learning Map.
 
+:::info[Important distinction]
+
+Learning Map describes intent; Learning Progress records evidence. A planned subtopic must not appear in `learning-progress.yaml` until an actual learning checkpoint produces a real note.
+
+:::
+
 ## Workflow
 
-```text
-Broad Topic
-→ Learning Map
-→ Small Subtopic
-→ Learn
-→ Checkpoint ("Chốt kiến thức")
-→ Update actual knowledge/progress
-→ Suggest next logical subtopic
-→ Repeat
-→ Experiment
-→ Applied/Mastered
+```mermaid
+flowchart TD
+    A["Broad Topic"] --> B["Learning Map"]
+    B --> C["Small Subtopic"]
+    C --> D["Learn"]
+    D --> E["Checkpoint: Chốt kiến thức"]
+    E --> F["Update actual knowledge and progress"]
+    F --> G["Suggest next logical subtopic"]
+    G --> H{"More subtopics?"}
+    H -- "Yes" --> C
+    H -- "Experiment" --> I["Experiment"]
+    I --> J["Applied / Mastered"]
 ```
 
 1. **Broad Topic:** Start from the broad area the learner wants or needs to understand.
@@ -49,3 +56,9 @@ After “Chốt kiến thức,” the tutor or agent should:
 - Preserve gaps, uncertainty, and unfinished subtopics.
 - Update progress without promoting the entire broad topic automatically.
 - Recommend the next logical small subtopic in the active Learning Map.
+
+:::warning[Evidence boundary]
+
+Do not promote status or confidence because a syllabus item exists or a note looks complete. Progress changes require evidence from the learner's understanding, self-test, review, experiment, or demonstrated application.
+
+:::
