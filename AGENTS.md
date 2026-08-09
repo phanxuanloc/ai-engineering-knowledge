@@ -92,12 +92,13 @@ Use descriptive kebab-case filenames and Docusaurus front matter. Keep explanati
 ## Documentation format and visual conventions
 
 - Use `.mdx` for all files under `docs/`, including learning notes, category landing pages, workflow documentation, and templates. Preserve existing front matter, slugs, sidebar order, public URLs, and internal links when migrating or renaming a source file.
-- Follow this order of preference: standard Markdown → Mermaid → native Docusaurus features → JSX/React only when materially justified. MDX does not by itself justify a React component.
+- Follow this order of preference: standard Markdown → established learning components → Mermaid → native Docusaurus features → new JSX/React only when materially justified. MDX does not by itself justify a new component.
+- Reuse components from `src/components/Learning`: `TLDR` for the required summary, `Principle` for memorable invariants or decision rules, `ConceptCard` with `ConceptGrid` for small related mental-model groups, `Comparison` when comparison is the primary teaching structure, and `Pipeline` for short linear flows. Import only the components a note uses.
 - Use Mermaid when architecture, workflow, data flow, agent flow, context pipeline, sequence, or concept relationships become easier to understand visually. Do not use plain-text code blocks as diagrams or use Mermaid as decoration.
 - Reserve fenced code blocks for source code, commands, configuration, prompts, literal input/output, and raw data representations.
 - Use Docusaurus `info`, `tip`, and `warning` admonitions selectively for important distinctions, practical guidance, and risks. Use tables when comparison is the primary purpose.
 - Keep visual styling restrained, technical, semantic, and legible in light and dark themes. Visuals must reduce the effort needed to understand or remember a concept.
-- Keep paragraphs focused and scannable, use emphasis sparingly, and avoid premature reusable components. The primary goal is learning clarity.
+- Keep paragraphs focused and scannable, use emphasis sparingly, and avoid creating new abstractions unless a repeated pattern is not covered by the established components. Do not turn ordinary prose into cards. The primary goal is learning clarity.
 
 ## Language policy
 

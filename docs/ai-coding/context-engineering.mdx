@@ -5,32 +5,59 @@ tags: [context-engineering, context-window, ai-agent]
 sidebar_position: 2
 ---
 
+import {
+  Comparison,
+  ConceptCard,
+  ConceptGrid,
+  Pipeline,
+  Principle,
+  TLDR,
+} from '@site/src/components/Learning';
+
 # Context Engineering
 
 ## TL;DR
 
+<TLDR>
+
 `Context Engineering` là việc thiết kế và quản lý thông tin mà một LLM hoặc AI agent có tại thời điểm cần ra quyết định hay thực hiện task. Mục tiêu không phải đưa vào nhiều thông tin nhất, mà là xây dựng context liên quan nhất với task hiện tại: **Relevant context > More context**.
+
+</TLDR>
+
+<Principle label="Quality bar">
+
+Relevant context &gt; More context
+
+</Principle>
 
 ## Mental Model
 
-- **Context Window = cái bàn:** sức chứa tối đa của một lần gọi model.
-- **Context = thông tin đang được đặt trên bàn.**
-- **Context Engineering = quyết định nên đặt gì lên bàn.**
+<ConceptGrid>
+  <ConceptCard eyebrow="Capacity" title="Context Window">
+    Cái bàn — sức chứa tối đa của một lần gọi model.
+  </ConceptCard>
+  <ConceptCard eyebrow="Information" title="Context">
+    Những thông tin thực tế đang được đặt trên bàn.
+  </ConceptCard>
+  <ConceptCard eyebrow="Decision" title="Context Engineering">
+    Quyết định nên đặt thông tin nào lên bàn cho task hiện tại.
+  </ConceptCard>
+</ConceptGrid>
 
 Một chiếc bàn lớn hơn không tự quyết định được tài liệu nào cần thiết. Tương tự, Context Window lớn không loại bỏ nhu cầu chọn lọc context.
 
-```mermaid
-flowchart TD
-    A["Knowledge · Repository · Memory · Tools"]
-    B["Retrieve"]
-    C["Candidates"]
-    D["Select"]
-    E["Relevant Context"]
-    F["Context Window"]
-    G["LLM"]
-
-    A --> B --> C --> D --> E --> F --> G
-```
+<Pipeline
+  label="Context construction pipeline"
+  steps={[
+    'Knowledge · Repository · Memory · Tools',
+    'Retrieve',
+    'Candidates',
+    'Select',
+    'Relevant Context',
+    'Context Window',
+    'LLM',
+  ]}
+/>
 
 `Retrieve` mở rộng tập thông tin có thể dùng; `Select` thu hẹp tập đó thành context phù hợp với quyết định hiện tại. Hai bước này bảo vệ nguyên tắc **Relevant context > More context**.
 
@@ -53,15 +80,36 @@ Prompt là một phần của context; viết prompt tốt không thay thế vi�
 
 ### Context và Context Window
 
-| Khái niệm | Vai trò |
-|---|---|
-| **Context** | Thông tin thực tế được cung cấp cho model. |
-| **Context Window** | Lượng thông tin tối đa model có thể xử lý trong một lần invocation, thường được đo bằng token. |
-| **Context Engineering** | Quyết định thông tin nào nên chiếm capacity đó. |
+<Comparison
+  label="Context, Context Window, and Context Engineering"
+  items={[
+    {
+      eyebrow: 'Information',
+      title: 'Context',
+      description: 'Thông tin thực tế được cung cấp cho model.',
+    },
+    {
+      eyebrow: 'Capacity',
+      title: 'Context Window',
+      description: 'Lượng thông tin tối đa model có thể xử lý trong một invocation, thường được đo bằng token.',
+    },
+    {
+      eyebrow: 'Decision',
+      title: 'Context Engineering',
+      description: 'Quyết định thông tin nào nên chiếm capacity đó.',
+    },
+  ]}
+/>
 
 Nhiều context hơn không tự động tốt hơn. Thông tin không liên quan tạo noise, tốn token và khiến model khó tập trung vào tín hiệu quan trọng. Chẳng hạn, 20K token gồm đúng source files, error logs, tests và instructions có thể hữu ích hơn hàng trăm nghìn token chứa toàn bộ repository.
 
 ### Context Lifecycle — Retrieve vs Select
+
+<Principle label="Important distinction">
+
+Retrieve ≠ Select
+
+</Principle>
 
 **Retrieve** là tìm các candidate information có thể hữu ích cho task hiện tại. Một coding agent có thể retrieve bằng:
 
@@ -107,11 +155,11 @@ Có hai mức đánh đổi chính:
 
 Mỗi loại context cần compression policy khác nhau. Current user request, critical constraints và source code cần độ chính xác cao thường nên được giữ nguyên. Old conversation history, obsolete tool outputs, repeated information và long logs thường là candidate tốt hơn để compress.
 
-:::tip[Compression target]
+<Principle label="Compression target">
 
 The goal is not the smallest context. The goal is the smallest context that still contains enough information for the next decision to be reliable.
 
-:::
+</Principle>
 
 Compression thường là trách nhiệm của application hoặc agent, được `Context Manager` thực hiện khi assemble context cung cấp cho model. LLM không tự kiểm soát độc lập context của nó, và user không cần yêu cầu compression thủ công ở mỗi turn.
 

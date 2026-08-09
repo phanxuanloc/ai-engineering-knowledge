@@ -5,6 +5,15 @@ tags: [primary-topic, related-topic]
 draft: true
 ---
 
+import {
+  Comparison,
+  ConceptCard,
+  ConceptGrid,
+  Pipeline,
+  Principle,
+  TLDR,
+} from '@site/src/components/Learning';
+
 # Tên technical concept
 
 <!--
@@ -16,21 +25,34 @@ link. Không dịch code, API, class, configuration, command, filename, protocol
 identifier. Giữ nguyên các section
 heading tiếng Anh bên dưới để toàn bộ knowledge base nhất quán.
 
-Markdown first: chỉ dùng Mermaid, Docusaurus admonition, table hoặc JSX khi chúng
-thực sự làm concept dễ hiểu và dễ scan hơn. Không bắt buộc article phải có các yếu
-tố này. Không dùng text code block thay cho diagram; không tạo React component chỉ
-vì file có định dạng MDX.
+Markdown first: chỉ dùng shared learning component, Mermaid, Docusaurus admonition
+hoặc table khi chúng thực sự làm concept dễ hiểu và dễ scan hơn. Không bắt buộc
+article phải dùng mọi component. Không dùng text code block thay cho diagram và
+không tạo component mới nếu pattern hiện có đã đáp ứng được.
 -->
 
 ## TL;DR
 
+<TLDR>
+
 Tóm tắt takeaway quan trọng nhất trong hai hoặc ba câu. Nêu concept là gì và vì sao nó quan trọng.
+
+</TLDR>
+
+<!-- Dùng khi article có một invariant hoặc decision rule thật sự đáng nhớ.
+<Principle label="Principle">
+Viết principle ngắn, cụ thể và có thể recall độc lập.
+</Principle>
+-->
 
 ## Mental Model
 
-Giải thích mental model đơn giản nhất để concept trở nên trực quan. Kết nối input, behavior và outcome. Cân nhắc Mermaid khi flow, architecture, lifecycle, sequence hoặc relationships trở nên dễ hiểu hơn qua diagram.
+Giải thích mental model đơn giản nhất để concept trở nên trực quan. Kết nối input, behavior và outcome. Dùng `ConceptGrid` + `ConceptCard` cho một nhóm nhỏ các vai trò liên quan; dùng `Pipeline` cho flow tuyến tính ngắn; dùng Mermaid cho architecture, lifecycle, sequence hoặc relationships phức tạp hơn.
 
-<!-- Optional, remove when a diagram does not materially improve understanding.
+<!-- Optional linear flow; remove when it does not improve understanding.
+<Pipeline label="Concept pipeline" steps={['Input', 'Behavior', 'Outcome']} />
+
+Optional complex flow:
 ```mermaid
 flowchart LR
     A["Input"] --> B["Behavior"] --> C["Outcome"]
@@ -42,6 +64,15 @@ flowchart LR
 - **Concept:** Định nghĩa đủ ngữ cảnh ngay tại đây và giải thích vì sao nó quan trọng. Với term đơn giản, một hoặc hai câu là đủ.
 - **Learned related concept:** Tóm tắt ngắn để note vẫn tự hiểu được, rồi thêm internal link tới canonical learning note nếu link cung cấp understanding sâu hơn.
 - **Unlearned supporting concept:** Chỉ giải thích mức tối thiểu cần cho topic hiện tại; không tạo article hoặc progress entry chỉ để có link.
+
+<!-- Dùng Comparison khi comparison là cách hiểu tự nhiên nhất, không dùng thay prose mặc định.
+<Comparison
+  items={[
+    {title: 'Concept A', description: 'Điểm phân biệt quan trọng.'},
+    {title: 'Concept B', description: 'Điểm phân biệt quan trọng.'},
+  ]}
+/>
+-->
 
 ## Example
 
