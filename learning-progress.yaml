@@ -15,7 +15,8 @@ topics:
       - context-compression
       - context-budgeting
       - context-quality-evaluation
-    next_checkpoint: context-assembly-and-ordering
+      - context-assembly-and-ordering
+    next_checkpoint: context-observability-and-debugging
     experiments: []
     prerequisites: []
     related: []

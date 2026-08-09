@@ -434,6 +434,124 @@ Một evaluation rubric tốt nên:
 4. Yêu cầu judge chọn category được định nghĩa phù hợp nhất thay vì tự nghĩ ra một con số chủ quan.
 5. Chỉ yêu cầu judge đánh giá thuộc tính có đủ evidence trong input.
 
+### Context Assembly & Ordering
+
+Selection trả lời **“Thông tin nào nên được giữ?”**; `Context Assembly` trả lời **“Những thông tin đã chọn nên được kết hợp thành context cho model invocation hiện tại như thế nào?”**. Một coding agent có thể đã chọn đúng project rules, current user task, relevant source code, latest errors/evidence và working state, nhưng model vẫn có thể hiểu sai nếu các phần này bị trộn lẫn, thiếu nhãn hoặc không thể hiện quan hệ giữa chúng.
+
+<Pipeline
+  label="Context assembly mental model"
+  steps={[
+    'Selected Context',
+    'Assemble',
+    'Structure',
+    'Order',
+    'Resolve Priority / Conflicts',
+    'LLM',
+  ]}
+/>
+
+<KeyInsight title="Selection is necessary, not sufficient">
+  Selecting the right information is not enough. Good context engineering also makes the role, priority, relationships, and current state of that information clear to the model.
+</KeyInsight>
+
+#### Select, Assemble và Order
+
+<Comparison
+  label="Three context decisions"
+  items={[
+    {
+      eyebrow: 'Keep',
+      title: 'Select',
+      description: 'Thông tin nào nên được giữ cho current decision?',
+    },
+    {
+      eyebrow: 'Combine',
+      title: 'Assemble',
+      description: 'Các phần đã chọn trở thành model context như thế nào?',
+    },
+    {
+      eyebrow: 'Place',
+      title: 'Order',
+      description: 'Mỗi phần nên xuất hiện ở đâu để role và relationship rõ ràng?',
+    },
+  ]}
+/>
+
+Một cấu trúc thực dụng cho coding agent có thể là:
+
+1. **Instructions / project rules**
+2. **Current task**
+3. **Relevant code or knowledge**
+4. **Current evidence / tool results**
+5. **Working state / previous findings**
+
+Đây là mental model, không phải universal fixed ordering. Thứ tự nên giúp model nhận ra vai trò, mức quan trọng và quan hệ giữa các phần; nó có thể đổi theo current decision. Khi debugging, latest error nên nằm gần relevant code để quan hệ failure–implementation dễ thấy. Khi code generation, specifications và interfaces có thể cần được nhấn mạnh trước implementation context.
+
+#### Priority & Conflict Resolution
+
+Các context piece không mặc nhiên có priority ngang nhau. Khi chúng xung đột, agent cần đánh giá:
+
+- **Authority:** nguồn nào có quyền đặt instruction hoặc constraint?
+- **Freshness:** observation nào phản ánh state mới nhất?
+- **Proximity to source of truth:** thông tin nào gần artifact hoặc hệ thống authoritative nhất?
+- **Relevance:** conflict nào ảnh hưởng trực tiếp đến current decision?
+
+<ImportantDistinction title="Instruction authority ≠ factual freshness">
+  Authority giúp giải quyết conflict giữa instructions; freshness và proximity to source of truth giúp giải quyết conflict giữa factual claims. Một instruction có authority cao không tự động là observation mới nhất, và một observation mới không tự động có quyền thay đổi constraint.
+</ImportantDistinction>
+
+Ví dụ:
+
+- Project rule nói generated files không được edit, trong khi user yêu cầu sửa trực tiếp một generated file. Đây là conflict về **instruction authority và constraint**; cách xử lý phụ thuộc authority rules của agent/application.
+- Old test result là `PASS`, latest result là `FAIL`. Với cùng setup và target, latest result thường có factual freshness cao hơn.
+- Old conversation summary mâu thuẫn với current source code. Source code hiện tại gần source of truth hơn cho implementation state.
+
+Không có một instruction hierarchy universal cho mọi AI system. System, application hoặc agent architecture phải định nghĩa authority rules của chính nó; mọi hierarchy trong mental model chỉ là điểm khởi đầu để reason. Nếu chưa thể resolve conflict đáng tin cậy, agent nên retrieve thêm evidence, chạy tool/test, inspect source of truth hoặc hỏi user thay vì đoán.
+
+#### Context Structure & Working State
+
+Thông tin **có mặt** trong context không đồng nghĩa với việc model có thể dễ dàng **nhận diện và sử dụng** nó. Labels và sections rõ ràng giúp tách constraints khỏi evidence, facts khỏi hypotheses và current state khỏi history.
+
+<ConceptGrid>
+  <ConceptCard eyebrow="Rules" title="Instructions / Constraints">
+    Những điều model phải tuân theo và boundary của task.
+  </ConceptCard>
+  <ConceptCard eyebrow="Goal" title="Current Task">
+    Outcome cần đạt trong invocation hiện tại.
+  </ConceptCard>
+  <ConceptCard eyebrow="Inputs" title="Relevant Context">
+    Code, knowledge và artifacts cần để reason.
+  </ConceptCard>
+  <ConceptCard eyebrow="Observations" title="Current Evidence">
+    Latest errors, test results và tool outputs.
+  </ConceptCard>
+  <ConceptCard eyebrow="Continuity" title="Working State">
+    Kết quả đã biết, hypothesis và next action cần giữ qua các vòng.
+  </ConceptCard>
+</ConceptGrid>
+
+Structured working state đặc biệt hữu ích cho iterative agents vì nó bảo toàn continuity mà không phải giữ toàn bộ history. Một working state ngắn có thể gồm:
+
+- **Goal:** outcome hiện tại.
+- **Known facts:** facts đã được evidence hỗ trợ.
+- **Current hypothesis:** giải thích đang được kiểm tra, không giả dạng fact.
+- **Changes made:** actions đã làm thay đổi environment.
+- **Next action:** bước kiểm chứng hoặc thực thi kế tiếp.
+
+Điều này nối trực tiếp với [Context Compression](#context-compression), [Context Budgeting](#context-budgeting) và [iterative context lifecycle](#context-động-và-iterative-agent-loop): compress history thành important state, dành budget cho current evidence và assemble lại context cho mỗi decision.
+
+<Pipeline
+  label="Working state across iterative invocations"
+  steps={[
+    'Old Context',
+    'Extract Important State',
+    'Release Obsolete Evidence',
+    'Retrieve New Evidence',
+    'Assemble Next Context',
+  ]}
+  loopLabel="Repeat when actions or observations change the current state"
+/>
+
 ### Context động và iterative agent loop
 
 AI agent xây dựng context qua một lifecycle lặp, không phải một lần ghép prompt ở đầu task:
@@ -503,6 +621,8 @@ Context construction là một lifecycle lặp: agent `Retrieve` các candidate,
 
 Context quality có thể được đánh giá có hệ thống thay vì chỉ dựa vào cảm giác. Tôi cần chẩn đoán riêng `Relevance`, `Sufficiency`, `Low Noise` và `Freshness / Correctness`, vì một overall score có thể che giấu dimension đang fail. Rubric với scoring level được định nghĩa rõ giúp semantic evaluation nhất quán hơn; `LLM-as-a-Judge` có thể tự động hóa việc đánh giá context ở quy mô lớn, nhưng judge chỉ là evaluator dựa trên evidence được cung cấp, không phải nguồn ground truth được đảm bảo.
 
+Sau khi chọn đúng information, tôi vẫn cần assemble, structure và order nó để model nhận ra role, priority, relationships và current state. Với iterative agent, structured working state giữ goal, known facts, hypothesis, changes và next action qua nhiều invocation; khi context conflict, cần phân biệt instruction authority với factual freshness/source of truth và thu thập thêm evidence thay vì đoán.
+
 ## My Experiment
 
 <ExperimentCard status="not-started">
@@ -549,4 +669,10 @@ Chưa có learning note liên quan trong knowledge base. Khi có canonical note 
   {question: 'LLM-as-a-Judge là gì?', answer: 'Là dùng một LLM trong vai trò evaluator để đánh giá system output, retrieved context hoặc model response theo rubric đã định nghĩa. Trong topic này, judge đánh giá retrieved/assembled context và trả về dimension scores cùng reasons.'},
   {question: 'Khi nào nên ưu tiên deterministic rules thay vì LLM Judge?', answer: 'Khi thuộc tính có thể được tính hoặc kiểm tra chính xác bằng code, như token length, timestamp, duplicate count hoặc schema validity. LLM Judge phù hợp hơn với semantic judgment như relevance hay sufficiency.'},
   {question: 'Vì sao LLM Judge không thể xác minh correctness khi thiếu evidence hoặc ground truth?', answer: 'Judge chỉ reason trên input được cung cấp. Nếu không có authoritative source để đối chiếu, nó có thể đánh giá một claim có vẻ relevant hoặc current nhưng không thể chứng minh claim đó đúng.'},
+  {question: 'Select, Assemble và Order khác nhau như thế nào?', answer: 'Select quyết định giữ thông tin nào; Assemble quyết định kết hợp các phần đã chọn thành model context như thế nào; Order quyết định mỗi phần xuất hiện ở đâu để role và relationship rõ ràng.'},
+  {question: 'Vì sao chọn đúng information vẫn có thể tạo context kém?', answer: 'Nếu các phần bị trộn lẫn, thiếu structure hoặc không thể hiện priority và relationship, model có thể khó nhận ra constraint, evidence và current state dù tất cả đều có mặt.'},
+  {question: 'Có một context ordering universal cho mọi task không?', answer: 'Không. Ordering phụ thuộc current decision và architecture; debugging có thể đặt latest error gần relevant code, còn code generation có thể ưu tiên specifications và interfaces trước implementation context.'},
+  {question: 'Instruction authority khác factual freshness như thế nào?', answer: 'Authority xác định instruction hoặc constraint nào có quyền chi phối; freshness và proximity to source of truth giúp chọn factual claim phản ánh state đáng tin cậy nhất.'},
+  {question: 'Agent nên làm gì khi context conflict chưa thể resolve?', answer: 'Retrieve thêm evidence, chạy tool/test, inspect source of truth hoặc hỏi user thay vì đoán.'},
+  {question: 'Structured working state giúp iterative agent như thế nào?', answer: 'Nó giữ goal, known facts, current hypothesis, changes made và next action qua các invocation mà không phải giữ toàn bộ history, nhờ đó hỗ trợ compression và budgeting.'},
 ]}/>
