@@ -318,6 +318,122 @@ Cùng lỗi `JWT expired` xuất hiện trong tool output, conversation summary,
   Context quality không phải tối đa hóa lượng thông tin. Đó là duy trì đúng evidence, đủ cho next decision, ít noise và redundancy, đồng thời còn current và accurate.
 </Remember>
 
+#### Context Quality Scoring — scorecard thay vì cảm giác
+
+Nhận xét định tính như “context này trông có vẻ tốt” rất khó đo lường và cũng không chỉ ra pipeline hỏng ở đâu. Thay vào đó, nên bắt đầu bằng một **multi-dimensional scorecard**: chấm riêng từng dimension rồi giữ nguyên các điểm thành phần để chẩn đoán.
+
+<Pipeline
+  label="Context quality scorecard"
+  steps={[
+    'Context',
+    'Relevance score',
+    'Sufficiency score',
+    'Low Noise score',
+    'Freshness / Correctness score',
+  ]}
+/>
+
+Một điểm trung bình duy nhất có thể che giấu critical failure. Ví dụ, `Relevance = 3`, `Sufficiency = 0`, `Low Noise = 3`, `Freshness = 3` cho average `2.25/3`, nhưng context vẫn không có đủ evidence để trả lời đáng tin cậy. Điểm theo từng dimension hữu ích hơn vì cho biết cần retrieve thêm evidence, loại noise hay refresh source nào.
+
+<ImportantDistinction title="High average ≠ reliable context">
+  Một dimension thiết yếu bị fail không được bù bởi điểm cao ở các dimension khác. Đặc biệt, context rất relevant nhưng insufficient vẫn không đủ để ra quyết định đáng tin cậy.
+</ImportantDistinction>
+
+#### Evaluation Rubric
+
+`Evaluation Rubric` là **explicit evaluation criteria + clearly defined scoring levels**. Câu hỏi mơ hồ như `Rate relevance from 1 to 10` không định nghĩa semantic difference giữa `7`, `8` và `9`, nên cùng một context có thể nhận điểm thiếu ổn định.
+
+Nên dùng ordinal scale nhỏ và định nghĩa rõ từng level. Mỗi dimension cần rubric riêng vì “đủ evidence” không mang cùng ý nghĩa với “ít noise” hay “còn current”.
+
+| Dimension | 0 | 1 | 2 | 3 |
+| --- | --- | --- | --- | --- |
+| **Relevance** | Irrelevant: không giúp trả lời câu hỏi hiện tại. | Partially relevant: có một ít thông tin hữu ích nhưng phần lớn không liên quan. | Mostly relevant: phần lớn context hữu ích, chỉ có ít thông tin không liên quan. | Fully relevant: gần như toàn bộ context trực tiếp hỗ trợ quyết định hiện tại. |
+| **Sufficiency** | Không có evidence thiết yếu để ra quyết định. | Có một phần evidence nhưng còn thiếu gap lớn. | Gần đủ; còn thiếu một số evidence có thể ảnh hưởng kết luận. | Đủ evidence để ra quyết định hiện tại một cách đáng tin cậy. |
+| **Low Noise** | Noise chiếm ưu thế và che khuất signal. | Có nhiều noise làm việc tìm signal khó khăn. | Phần lớn là signal, chỉ còn ít noise. | Gần như không có thông tin thừa đối với quyết định hiện tại. |
+| **Freshness / Correctness** | Evidence đã stale hoặc mâu thuẫn với source of truth. | Có dấu hiệu stale/sai đáng kể nhưng chưa xác định hết. | Phần lớn current/accurate, còn một số điểm chưa được xác minh. | Evidence được đối chiếu và phản ánh source of truth hiện tại. |
+
+Rubric này là ví dụ khởi đầu, không phải universal scale. Khi triển khai, cần điều chỉnh definition theo task, source of truth và mức rủi ro của hệ thống, nhưng không được dùng cùng một mô tả mơ hồ cho mọi dimension.
+
+<KeyInsight title="Define, then score">
+  Đừng chỉ yêu cầu judge “give a score”. Hãy định nghĩa ý nghĩa của từng score và yêu cầu judge chọn level khớp nhất với evidence.
+</KeyInsight>
+
+#### LLM-as-a-Judge cho context
+
+`LLM-as-a-Judge` là dùng một LLM trong vai trò evaluator để đánh giá output của hệ thống, retrieved context hoặc model response theo một rubric đã định nghĩa. Trong Context Engineering, judge tập trung đánh giá retrieved/assembled context trước hoặc sau khi nó được đưa cho generator.
+
+<Pipeline
+  label="LLM-as-a-Judge for context evaluation"
+  steps={[
+    {label: 'Evaluation input', title: 'User Question + Retrieved Context + Rubric'},
+    'Judge LLM',
+    'Dimension Scores + Reasons',
+  ]}
+/>
+
+Generator và judge không bắt buộc thuộc hai model family khác nhau. Cùng một model có thể được invoke riêng: một lần ở vai trò generator để tạo answer/action, một lần ở vai trò judge để đánh giá evidence hoặc output. Điểm phân biệt là **role và instruction**, không phải tên model.
+
+<Comparison
+  label="Generator and judge roles"
+  items={[
+    {
+      eyebrow: 'Produce',
+      title: 'Generator',
+      description: 'Tạo answer hoặc action từ context được cung cấp.',
+    },
+    {
+      eyebrow: 'Evaluate',
+      title: 'Judge',
+      description: 'Đánh giá evidence hoặc output theo rubric và giải thích lựa chọn.',
+    },
+  ]}
+/>
+
+#### Deterministic checks và semantic evaluation
+
+<Comparison
+  label="Choose the evaluation mechanism"
+  items={[
+    {
+      eyebrow: 'Exact and repeatable',
+      title: 'Rules / Code',
+      description: 'Phù hợp với token length, timestamp, duplicate count và schema validation.',
+    },
+    {
+      eyebrow: 'Meaning and judgment',
+      title: 'LLM Judge',
+      description: 'Phù hợp khi cần hiểu document có thực sự relevant, evidence có sufficient hoặc context có meaningful noise hay không.',
+    },
+    {
+      eyebrow: 'Reference evaluation',
+      title: 'Human Evaluator',
+      description: 'Có giá trị để xử lý judgment phức tạp và validate evaluator, nhưng tốn kém và khó scale trên dataset hoặc production traces lớn.',
+    },
+  ]}
+/>
+
+LLM Judge giúp tự động hóa semantic evaluation ở quy mô lớn hơn human review, nhưng **không tự động trở thành ground truth**. Nên dùng deterministic check cho thuộc tính có thể tính hoặc xác minh chính xác bằng code; chỉ dùng judge khi bài toán thật sự cần semantic reasoning.
+
+#### Giới hạn của Judge
+
+<ImportantDistinction title="Judge evidence ≠ ground truth">
+  Judge chỉ có thể đánh giá đáng tin cậy những thuộc tính mà input cung cấp đủ evidence. Khả năng diễn giải một claim không đồng nghĩa với khả năng chứng minh claim đó đúng.
+</ImportantDistinction>
+
+Nếu context ghi `Annual leave policy 2026: 14 days`, judge có thể đánh giá câu này có relevant với câu hỏi về phép năm hay không và có dấu hiệu current hay không. Nhưng nếu không có authoritative policy hoặc ground truth để đối chiếu, judge không thể chứng minh con số `14 days` là correct.
+
+Judge cũng có thể thiếu nhất quán, mang bias hoặc chưa được calibration phù hợp. Việc đo consistency, calibration và validation kết quả judge với human evaluation là các concern tiếp theo; chưa nên coi một lần chấm của LLM là kết luận hoàn hảo.
+
+#### Nguyên tắc thiết kế rubric tốt
+
+Một evaluation rubric tốt nên:
+
+1. Tách rõ các dimension cần đánh giá.
+2. Dùng ít scoring level khi có thể.
+3. Định nghĩa explicit ý nghĩa của mọi score.
+4. Yêu cầu judge chọn category được định nghĩa phù hợp nhất thay vì tự nghĩ ra một con số chủ quan.
+5. Chỉ yêu cầu judge đánh giá thuộc tính có đủ evidence trong input.
+
 ### Context động và iterative agent loop
 
 AI agent xây dựng context qua một lifecycle lặp, không phải một lần ghép prompt ở đầu task:
@@ -385,6 +501,8 @@ Context Engineering rộng hơn việc viết prompt tốt.
 
 Context construction là một lifecycle lặp: agent `Retrieve` các candidate, `Select` thông tin cần giữ, `Budget` capacity cho thông tin có giá trị nhất, chỉ `Compress` khi có lợi hoặc cần thiết, rồi `Assemble` context cho LLM. Model reason, agent act, preserve result/state quan trọng, release context đã obsolete và dùng evidence mới để retrieve lại. Vì vậy đây không phải thao tác build một prompt duy nhất ở đầu task; khi useful context lớn hơn budget, agent có thể tiến qua nhiều invocation thay vì giữ mọi thứ đồng thời trong Context Window.
 
+Context quality có thể được đánh giá có hệ thống thay vì chỉ dựa vào cảm giác. Tôi cần chẩn đoán riêng `Relevance`, `Sufficiency`, `Low Noise` và `Freshness / Correctness`, vì một overall score có thể che giấu dimension đang fail. Rubric với scoring level được định nghĩa rõ giúp semantic evaluation nhất quán hơn; `LLM-as-a-Judge` có thể tự động hóa việc đánh giá context ở quy mô lớn, nhưng judge chỉ là evaluator dựa trên evidence được cung cấp, không phải nguồn ground truth được đảm bảo.
+
 ## My Experiment
 
 <ExperimentCard status="not-started">
@@ -425,4 +543,10 @@ Chưa có learning note liên quan trong knowledge base. Khi có canonical note 
   {question: 'Noise khác redundancy như thế nào?', answer: 'Noise không hữu ích cho current decision; redundancy là evidence hữu ích hoặc relevant bị lặp mà không thêm thông tin có ý nghĩa.'},
   {question: 'Freshness khác correctness như thế nào?', answer: 'Freshness hỏi thông tin còn đại diện cho current state không; correctness hỏi bản thân thông tin có chính xác không.'},
   {question: 'Vì sao agent phải refresh context sau khi act?', answer: 'Action có thể thay đổi source code, test result hoặc application state, khiến snapshot và tool result trước đó trở nên stale.'},
+  {question: 'Vì sao một overall context-quality score có thể gây hiểu nhầm?', answer: 'Average có thể che giấu một critical dimension đang fail. Context có relevance, low noise và freshness cao nhưng sufficiency bằng 0 vẫn không đủ evidence để ra quyết định đáng tin cậy.'},
+  {question: 'Evaluation rubric là gì?', answer: 'Là explicit evaluation criteria cùng các scoring level được định nghĩa rõ về mặt semantic cho từng dimension.'},
+  {question: 'Vì sao rubric 0–3 có definition rõ có thể tốt hơn thang 1–10 không định nghĩa?', answer: 'Judge có category rõ để đối chiếu với evidence, thay vì tự diễn giải khác biệt mơ hồ giữa các số như 7, 8 và 9; nhờ đó kết quả dễ hiểu và ổn định hơn.'},
+  {question: 'LLM-as-a-Judge là gì?', answer: 'Là dùng một LLM trong vai trò evaluator để đánh giá system output, retrieved context hoặc model response theo rubric đã định nghĩa. Trong topic này, judge đánh giá retrieved/assembled context và trả về dimension scores cùng reasons.'},
+  {question: 'Khi nào nên ưu tiên deterministic rules thay vì LLM Judge?', answer: 'Khi thuộc tính có thể được tính hoặc kiểm tra chính xác bằng code, như token length, timestamp, duplicate count hoặc schema validity. LLM Judge phù hợp hơn với semantic judgment như relevance hay sufficiency.'},
+  {question: 'Vì sao LLM Judge không thể xác minh correctness khi thiếu evidence hoặc ground truth?', answer: 'Judge chỉ reason trên input được cung cấp. Nếu không có authoritative source để đối chiếu, nó có thể đánh giá một claim có vẻ relevant hoặc current nhưng không thể chứng minh claim đó đúng.'},
 ]}/>
