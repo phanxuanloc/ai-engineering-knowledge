@@ -212,6 +212,112 @@ Khi minimum useful context cho toàn bộ task vẫn lớn hơn budget, agent kh
   Không phải mọi thông tin hữu ích đều cần tồn tại đồng thời trong Context Window. Điều cần giữ xuyên vòng lặp là kết quả, constraints và state quan trọng; evidence cũ hoặc ít giá trị có thể được release rồi retrieve lại khi thực sự cần.
 </KeyInsight>
 
+### Context Quality Evaluation
+
+Retrieve, select, budget và compress chỉ tạo ra một tập context có thể dùng; agent vẫn cần đánh giá tập đó có **đủ tốt cho quyết định hiện tại** hay không.
+
+<KeyInsight title="Good Context">
+  Good Context = Relevant + Sufficient + Low Noise + Low Redundancy + Fresh + Correct
+</KeyInsight>
+
+<ConceptGrid>
+  <ConceptCard eyebrow="1 · Đúng?" title="Relevant?">
+    Evidence này có giúp ích cho quyết định hiện tại không?
+  </ConceptCard>
+  <ConceptCard eyebrow="2 · Đủ?" title="Sufficient?">
+    Evidence hiện có đã đủ để đưa ra quyết định tiếp theo một cách đáng tin cậy chưa?
+  </ConceptCard>
+  <ConceptCard eyebrow="3 · Rác?" title="Noise?">
+    Có thông tin nào chiếm capacity nhưng không giúp ích đáng kể không?
+  </ConceptCard>
+  <ConceptCard eyebrow="4 · Lặp?" title="Redundant?">
+    Cùng một evidence có đang được biểu diễn nhiều lần mà không thêm giá trị mới không?
+  </ConceptCard>
+  <ConceptCard eyebrow="5 · Cũ?" title="Fresh?">
+    Evidence còn phản ánh state hiện tại sau các action gần nhất không?
+  </ConceptCard>
+  <ConceptCard eyebrow="6 · Sai?" title="Correct?">
+    Bản thân thông tin có chính xác khi đối chiếu với source of truth không?
+  </ConceptCard>
+</ConceptGrid>
+
+#### Relevance — “Đúng”
+
+`Relevance` hỏi: **Thông tin này có giúp ích cho quyết định hiện tại không?** Liên quan tới repository hoặc chủ đề chung chưa có nghĩa là relevant. Với task sửa login bug, `AuthService` và login stack trace có relevance cao; JWT configuration có thể relevant; `PaymentService` có relevance thấp.
+
+Relevance là động và phải được đánh giá theo **current decision**, không phải toàn bộ task hay project. Một file ít liên quan lúc đầu có thể trở nên quan trọng sau khi evidence mới xuất hiện:
+
+<Pipeline
+  label="Relevance changes with new evidence"
+  steps={['AuthService', 'Run test', 'JwtFilter failure discovered', 'JwtFilter becomes highly relevant']}
+/>
+
+#### Sufficiency — “Đủ”
+
+`Sufficiency` hỏi: **Model đã có đủ thông tin để đưa ra quyết định hiện tại một cách đáng tin cậy chưa?** Context có thể rất relevant nhưng vẫn insufficient. Với lỗi login trả về `500`, chỉ có `AuthService.java` là relevant nhưng có thể chưa đủ; thêm failing request, stack trace, relevant source code và failing test có thể làm context đủ cho bước kế tiếp.
+
+Sufficiency thường nên được đánh giá cho **next decision**, không nhất thiết cho việc giải toàn bộ task trong một invocation. Stack trace có thể đủ để trả lời “bug nằm ở đâu?”, nhưng chưa đủ để trả lời “nên sửa bug như thế nào?”. Cách đánh giá này khớp với [Context Budgeting](#context-budgeting): agent có thể tiến qua nhiều quyết định nhỏ thay vì giữ mọi useful information cùng lúc.
+
+#### Noise và Redundancy — “Rác / Lặp”
+
+`Noise` là thông tin tiêu tốn context capacity nhưng không giúp đáng kể cho quyết định hiện tại. Khi debug authentication, payment code, deployment logs không liên quan, các phần README không liên quan hoặc hàng trăm source files khác có thể trở thành noise. Evidence hữu ích vẫn có thể nằm trong context, nhưng **signal-to-noise ratio** thấp khiến model khó ưu tiên đúng tín hiệu và làm lãng phí budget.
+
+`Redundancy` khác noise:
+
+<Comparison
+  label="Noise and redundancy"
+  items={[
+    {
+      eyebrow: 'Rác',
+      title: 'Noise',
+      description: 'Thông tin không hữu ích cho quyết định hiện tại.',
+    },
+    {
+      eyebrow: 'Lặp',
+      title: 'Redundancy',
+      description: 'Thông tin hữu ích hoặc relevant được lặp lại mà không bổ sung evidence có ý nghĩa.',
+    },
+  ]}
+/>
+
+Cùng lỗi `JWT expired` xuất hiện trong tool output, conversation summary, previous test result và agent notes không tự động mang lại giá trị gấp bốn lần. Deduplication và [Context Compression](#context-compression) có thể giảm redundancy để thu hồi budget. Tuy nhiên, context nhỏ hơn không phải lúc nào cũng tốt hơn: mục tiêu là giữ **smallest practical context** vẫn bảo toàn đủ evidence cho next decision đáng tin cậy.
+
+#### Freshness và Correctness — “Cũ / Sai”
+
+`Freshness` hỏi: **Context còn phản ánh state hiện tại của environment không?** Nếu agent đọc `AuthService`, sửa file rồi chạy tests, source snapshot và failing test result cũ có thể không còn mô tả repository hiện tại. Thông tin có thể đúng khi được quan sát nhưng trở nên stale sau một action.
+
+`Correctness` hỏi: **Bản thân thông tin có chính xác không?** Context ghi `JWT expiration = 30 minutes` trong khi configuration hiện tại là `15 minutes` vẫn có thể rất relevant, nhưng sẽ dẫn reasoning sai hướng.
+
+<ImportantDistinction title="Freshness ≠ Correctness">
+  Freshness kiểm tra thông tin còn đại diện cho current state hay không. Correctness kiểm tra thông tin có chính xác hay không.
+</ImportantDistinction>
+
+Điểm này đặc biệt quan trọng với agent vì action làm environment thay đổi. Old tool results, source snapshots, test results và application state không nên tự động được coi là current truth. Agent cần quay lại source of truth và refresh context trong lifecycle `Observe → Refresh Context → Reason → Act → Observe`.
+
+<Pipeline
+  label="Context engineering lifecycle with continuous quality evaluation"
+  steps={[
+    'Sources',
+    'Retrieve',
+    'Select',
+    'Budget',
+    {label: 'Optional', title: 'Compress when useful', optional: true},
+    'Evaluate Quality',
+    'Assemble',
+    'LLM',
+    'Reason / Act',
+    'Observe',
+    'Retrieve / Refresh',
+  ]}
+  loopLabel="New evidence or changed state starts the next decision cycle"
+/>
+
+Đây là mental model, không phải rigid implementation pipeline. Agent thực tế có thể đánh giá relevance, sufficiency, noise, redundancy, freshness và correctness liên tục trong toàn bộ iterative loop, rồi retrieve hoặc refresh ngay khi phát hiện context chưa đạt quality cần thiết.
+
+<Remember title="Context quality is decision-relative">
+  Context quality không phải tối đa hóa lượng thông tin. Đó là duy trì đúng evidence, đủ cho next decision, ít noise và redundancy, đồng thời còn current và accurate.
+</Remember>
+
 ### Context động và iterative agent loop
 
 AI agent xây dựng context qua một lifecycle lặp, không phải một lần ghép prompt ở đầu task:
@@ -229,7 +335,7 @@ Mỗi action hoặc tool call có thể tạo evidence mới như test failure, 
 Khi thiết kế custom AI agent, có thể tách hai trách nhiệm:
 
 <Architecture
-  managerItems={['Instructions', 'Memory', 'Retrieval / RAG', 'Code retrieval', 'Tool results', 'Current state', 'Budgeting', 'Compression', 'Assembly']}
+  managerItems={['Instructions', 'Memory', 'Retrieval / RAG', 'Code retrieval', 'Tool results', 'Current state', 'Budgeting', 'Compression', 'Quality evaluation', 'Assembly']}
   providers={['OpenAI', 'Anthropic', 'Gemini', 'Other providers']}
 />
 
@@ -313,4 +419,10 @@ Chưa có learning note liên quan trong knowledge base. Khi có canonical note 
   {question: 'Context Window khác Context Budgeting như thế nào?', answer: 'Context Window là capacity tối đa của một model invocation; Context Budgeting là quyết định cách phân bổ capacity sẵn có cho thông tin giá trị nhất. Budgeting không làm Context Window lớn hơn.'},
   {question: 'Select, Budgeting và Compression khác nhau thế nào?', answer: 'Select quyết định giữ thông tin nào; Budgeting xác định capacity có bao nhiêu và thông tin nào xứng đáng chiếm capacity đó; Compression biểu diễn thông tin phải giữ bằng ít token hơn.'},
   {question: 'Agent có thể làm gì khi minimum useful context lớn hơn available budget?', answer: 'Agent xử lý theo nhiều vòng: retrieve/select cho quyết định hiện tại, reason hoặc act, preserve result/state quan trọng, release context obsolete hoặc ít giá trị, retrieve thông tin cho quyết định tiếp theo và tiếp tục lifecycle. Không phải mọi useful information đều phải nằm trong Context Window cùng lúc.'},
+  {question: 'Sáu dimension của good context là gì?', answer: 'Relevant, sufficient, low noise, low redundancy, fresh và correct.'},
+  {question: 'Vì sao relevance phải được đánh giá theo current decision?', answer: 'Evidence mới có thể thay đổi điều agent cần biết; một file ít liên quan lúc đầu có thể trở nên rất relevant ở bước kế tiếp.'},
+  {question: 'Context relevant có đồng nghĩa với sufficient không?', answer: 'Không. AuthService có thể relevant với login bug nhưng agent vẫn cần request, stack trace, relevant code hoặc failing test để quyết định tiếp theo đáng tin cậy.'},
+  {question: 'Noise khác redundancy như thế nào?', answer: 'Noise không hữu ích cho current decision; redundancy là evidence hữu ích hoặc relevant bị lặp mà không thêm thông tin có ý nghĩa.'},
+  {question: 'Freshness khác correctness như thế nào?', answer: 'Freshness hỏi thông tin còn đại diện cho current state không; correctness hỏi bản thân thông tin có chính xác không.'},
+  {question: 'Vì sao agent phải refresh context sau khi act?', answer: 'Action có thể thay đổi source code, test result hoặc application state, khiến snapshot và tool result trước đó trở nên stale.'},
 ]}/>
