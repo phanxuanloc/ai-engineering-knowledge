@@ -9,8 +9,13 @@ import {
   Comparison,
   ConceptCard,
   ConceptGrid,
+  Connection,
+  Diagram,
+  Flow,
+  Group,
   Pipeline,
   Principle,
+  Step,
   TLDR,
 } from '@site/src/components/Learning';
 
@@ -25,10 +30,12 @@ link. Không dịch code, API, class, configuration, command, filename, protocol
 identifier. Giữ nguyên các section
 heading tiếng Anh bên dưới để toàn bộ knowledge base nhất quán.
 
-Markdown first: chỉ dùng shared learning component, Mermaid, Docusaurus admonition
-hoặc table khi chúng thực sự làm concept dễ hiểu và dễ scan hơn. Không bắt buộc
-article phải dùng mọi component. Không dùng text code block thay cho diagram và
-không tạo component mới nếu pattern hiện có đã đáp ứng được.
+Markdown first: dùng shared React/MDX learning và diagram primitives, Docusaurus
+admonition hoặc table khi chúng thực sự làm concept dễ hiểu và dễ scan hơn. Không
+bắt buộc article phải dùng mọi component. Không dùng Mermaid cho normal diagram,
+không dùng text code block thay diagram và không tạo component riêng nếu các
+primitive hiện có đã đáp ứng được. Mermaid chỉ là fallback cho graph thực sự lớn
+và phức tạp, nơi automatic layout tạo ra giá trị đáng kể.
 -->
 
 ## TL;DR
@@ -47,7 +54,7 @@ Viết principle ngắn, cụ thể và có thể recall độc lập.
 
 ## Mental Model
 
-Giải thích mental model đơn giản nhất để concept trở nên trực quan. Kết nối input, behavior và outcome. Dùng `ConceptGrid` + `ConceptCard` cho một nhóm nhỏ các vai trò liên quan; dùng `Pipeline` cho simple flow, pipeline hoặc linear lifecycle; chỉ dùng Mermaid cho branching, graph layout, sequence hoặc relationships phức tạp.
+Giải thích mental model đơn giản nhất để concept trở nên trực quan. Kết nối input, behavior và outcome. Dùng `ConceptGrid` + `ConceptCard` cho một nhóm nhỏ các vai trò liên quan; dùng `Pipeline` cho simple linear flow; compose `Diagram`, `Flow`, `Step`, `Group`, `Connection` và `Loop` cho các diagram khác.
 
 <!-- Optional linear flow; remove when it does not improve understanding.
 <Pipeline
@@ -59,13 +66,20 @@ Giải thích mental model đơn giản nhất để concept trở nên trực q
   ]}
 />
 
-Optional complex graph:
-```mermaid
-flowchart TD
-    A["Input"] --> B{"Decision"}
-    B --> C["Path A"]
-    B --> D["Path B"]
-```
+Optional composed architecture:
+<Diagram label="System architecture" variant="architecture">
+  <Step title="System" />
+  <Connection />
+  <Flow>
+    <Group title="Module A">
+      <Step title="Responsibility 1" compact />
+      <Step title="Responsibility 2" compact />
+    </Group>
+    <Group title="Module B">
+      <Step title="Integration 1" compact />
+    </Group>
+  </Flow>
+</Diagram>
 -->
 
 ## Core Concepts

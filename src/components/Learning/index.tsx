@@ -1,4 +1,4 @@
-import type {ReactNode} from 'react';
+import type {CSSProperties, ReactNode} from 'react';
 import clsx from 'clsx';
 import styles from './styles.module.css';
 
@@ -46,6 +46,93 @@ export function ConceptCard({children, className, eyebrow, title}: ConceptCardPr
 
 export function ConceptGrid({children, className}: ChildrenProps) {
   return <div className={clsx(styles.conceptGrid, className)}>{children}</div>;
+}
+
+type DiagramProps = ChildrenProps & {
+  label: string;
+  variant?: 'default' | 'architecture';
+};
+
+export function Diagram({children, className, label, variant = 'default'}: DiagramProps) {
+  return (
+    <figure
+      className={clsx(styles.diagram, variant === 'architecture' && styles.diagramArchitecture, className)}
+      aria-label={label}>
+      {children}
+    </figure>
+  );
+}
+
+type FlowProps = ChildrenProps & {
+  branches?: number;
+  compact?: boolean;
+};
+
+export function Flow({branches = 2, children, className, compact = false}: FlowProps) {
+  return (
+    <div
+      className={clsx(styles.flow, compact && styles.flowCompact, className)}
+      style={{'--flow-branches': branches} as CSSProperties}>
+      {children}
+    </div>
+  );
+}
+
+type StepProps = {
+  children?: ReactNode;
+  className?: string;
+  title: string;
+  label?: string;
+  compact?: boolean;
+};
+
+export function Step({children, className, compact = false, label, title}: StepProps) {
+  return (
+    <div className={clsx(styles.diagramStep, compact && styles.diagramStepCompact, className)}>
+      {label && <span className={styles.cardEyebrow}>{label}</span>}
+      <strong className={styles.diagramStepTitle}>{title}</strong>
+      {children && <div className={styles.diagramStepContent}>{children}</div>}
+    </div>
+  );
+}
+
+type GroupProps = {
+  children?: ReactNode;
+  className?: string;
+  title: string;
+  label?: string;
+};
+
+export function Group({children, className, label, title}: GroupProps) {
+  return (
+    <section className={clsx(styles.diagramGroup, className)}>
+      {label && <span className={styles.cardEyebrow}>{label}</span>}
+      <h4 className={styles.diagramGroupTitle}>{title}</h4>
+      <div className={styles.diagramGroupContent}>{children}</div>
+    </section>
+  );
+}
+
+type ConnectionProps = {
+  className?: string;
+  label?: string;
+};
+
+export function Connection({className, label}: ConnectionProps) {
+  return (
+    <div className={clsx(styles.connection, className)} aria-hidden={label ? undefined : 'true'}>
+      {label && <span>{label}</span>}
+    </div>
+  );
+}
+
+export function Loop({children, className}: ChildrenProps) {
+  return (
+    <figcaption className={clsx(styles.diagramLoop, className)}>
+      <span aria-hidden="true">↺</span>
+      {children}
+    </figcaption>
+  );
 }
 
 export type ComparisonItem = {

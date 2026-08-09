@@ -118,6 +118,164 @@
   line-height: 1.6;
 }
 
+.diagram {
+  --learning-accent: var(--ifm-color-primary);
+  container-type: inline-size;
+  width: 100%;
+  margin: 1.35rem 0 1.9rem;
+}
+
+.flow {
+  display: flex;
+  gap: 1.15rem;
+  align-items: stretch;
+  width: 100%;
+}
+
+.flow > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.flowCompact {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
+  gap: 0.45rem;
+}
+
+.diagramStep,
+.diagramGroup {
+  color: var(--ifm-heading-color);
+  background: var(--learning-surface);
+  border: 1px solid var(--learning-border);
+  border-radius: 10px;
+  box-shadow: var(--learning-shadow);
+}
+
+.diagramStep {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  justify-content: center;
+  min-height: 4.5rem;
+  padding: 0.75rem 0.9rem;
+  text-align: center;
+}
+
+.diagramStepCompact {
+  min-height: 0;
+  padding: 0.45rem 0.55rem;
+  color: var(--ifm-font-color-secondary);
+  font-size: 0.73rem;
+  line-height: 1.35;
+  background: var(--learning-accent-soft);
+  border-color: var(--learning-accent-border);
+  box-shadow: none;
+}
+
+.diagramStepTitle {
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.diagramStepCompact .diagramStepTitle {
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.diagramStepContent {
+  color: var(--ifm-font-color-secondary);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.diagramGroup {
+  position: relative;
+  padding: 1rem;
+}
+
+.diagramGroupTitle {
+  margin: 0.22rem 0 0.8rem;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.diagramGroupContent:empty {
+  display: none;
+}
+
+.connection {
+  position: relative;
+  width: 1px;
+  height: 1.15rem;
+  margin: 0 auto;
+  background: var(--learning-accent);
+}
+
+.connection span {
+  position: absolute;
+  top: 50%;
+  left: 0.65rem;
+  width: max-content;
+  color: var(--ifm-font-color-secondary);
+  font-size: 0.7rem;
+  transform: translateY(-50%);
+}
+
+.diagramLoop {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  margin: 0.8rem auto 0;
+  padding: 0.35rem 0.7rem;
+  color: var(--ifm-font-color-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  background: var(--learning-accent-soft);
+  border: 1px solid var(--learning-accent-border);
+  border-radius: 999px;
+}
+
+.diagramLoop span {
+  color: var(--learning-accent);
+  font-size: 1rem;
+}
+
+.diagramArchitecture > .diagramStep {
+  width: fit-content;
+  min-width: 8rem;
+  min-height: 0;
+  margin-inline: auto;
+  background: var(--learning-accent-soft);
+  border-color: var(--learning-accent-border);
+}
+
+.diagramArchitecture > .flow {
+  position: relative;
+}
+
+.diagramArchitecture > .flow::before {
+  position: absolute;
+  right: calc(50% / var(--flow-branches));
+  bottom: calc(100% + 1.15rem);
+  left: calc(50% / var(--flow-branches));
+  height: 1px;
+  content: '';
+  background: var(--learning-accent);
+}
+
+.diagramArchitecture > .flow > .diagramGroup::before {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  width: 1px;
+  height: 1.15rem;
+  content: '';
+  background: var(--learning-accent);
+}
+
 .pipelineFigure {
   --learning-accent: var(--ifm-color-primary);
   container-type: inline-size;
@@ -226,6 +384,34 @@
 }
 
 @container (max-width: 38rem) {
+  .flow:not(.flowCompact) {
+    flex-direction: column;
+    gap: 1.15rem;
+  }
+
+  .diagramArchitecture > .flow {
+    gap: 1.35rem;
+    padding-left: 1rem;
+  }
+
+  .diagramArchitecture > .flow::before {
+    top: 0;
+    right: auto;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    height: auto;
+  }
+
+  .diagramArchitecture > .flow > .diagramGroup::before {
+    top: 50%;
+    right: 100%;
+    bottom: auto;
+    left: auto;
+    width: 1rem;
+    height: 1px;
+  }
+
   .pipeline {
     flex-direction: column;
     gap: 1.35rem;

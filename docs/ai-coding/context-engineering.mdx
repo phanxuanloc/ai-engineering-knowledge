@@ -9,8 +9,13 @@ import {
   Comparison,
   ConceptCard,
   ConceptGrid,
+  Connection,
+  Diagram,
+  Flow,
+  Group,
   Pipeline,
   Principle,
+  Step,
   TLDR,
 } from '@site/src/components/Learning';
 
@@ -184,36 +189,32 @@ Mỗi action hoặc tool call có thể tạo evidence mới như test failure, 
 
 Khi thiết kế custom AI agent, có thể tách hai trách nhiệm:
 
-```mermaid
-flowchart LR
-    A["Agent"] --> CM["Context Manager / Builder"]
-    A --> MA["Model Adapter"]
-    A --> T["Tools"]
-
-    subgraph ContextSources["Context responsibilities"]
-        I["Instructions"]
-        M["Memory"]
-        R["Retrieval / RAG"]
-        CR["Code retrieval"]
-        TR["Tool results"]
-        S["Current state"]
-        C["Compression"]
-        AS["Assembly"]
-    end
-
-    CM --> I
-    CM --> M
-    CM --> R
-    CM --> CR
-    CM --> TR
-    CM --> S
-    CM --> C
-    CM --> AS
-
-    MA --> O["OpenAI"]
-    MA --> AN["Anthropic"]
-    MA --> G["Gemini"]
-```
+<Diagram label="Agent architecture responsibilities" variant="architecture">
+  <Step title="Agent" />
+  <Connection />
+  <Flow branches={3}>
+    <Group label="Context responsibilities" title="Context Manager / Builder">
+      <Flow compact>
+        <Step title="Instructions" compact />
+        <Step title="Memory" compact />
+        <Step title="Retrieval / RAG" compact />
+        <Step title="Code retrieval" compact />
+        <Step title="Tool results" compact />
+        <Step title="Current state" compact />
+        <Step title="Compression" compact />
+        <Step title="Assembly" compact />
+      </Flow>
+    </Group>
+    <Group label="Provider integration" title="Model Adapter">
+      <Flow compact>
+        <Step title="OpenAI" compact />
+        <Step title="Anthropic" compact />
+        <Step title="Gemini" compact />
+      </Flow>
+    </Group>
+    <Group title="Tools" />
+  </Flow>
+</Diagram>
 
 `Context Manager` retrieve, select, compress khi cần và assemble thông tin cho task hiện tại. `Model Adapter` là lớp chuyển đổi request và response theo API cụ thể của từng provider. Các model và coding agent như ChatGPT, Claude, Gemini, Codex-style agents, Claude Code hoặc Cursor có thể expose và assemble context khác nhau, nhưng application vẫn là bên xây dựng context được cung cấp cho model.
 
