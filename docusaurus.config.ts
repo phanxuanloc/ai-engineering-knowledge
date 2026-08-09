@@ -94,8 +94,8 @@ const config: Config = {
           title: 'Docs',
           items: [
             {
-              label: 'AI Fundamentals',
-              to: '/docs/ai-fundamentals',
+              label: 'Context Engineering',
+              to: '/docs/ai-coding/context-engineering',
             },
           ],
         },
@@ -105,14 +105,6 @@ const config: Config = {
             {
               label: 'AI Coding',
               to: '/docs/ai-coding',
-            },
-            {
-              label: 'AI Agents',
-              to: '/docs/ai-agents',
-            },
-            {
-              label: 'RAG',
-              to: '/docs/rag',
             },
           ],
         },

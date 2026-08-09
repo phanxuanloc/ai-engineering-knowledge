@@ -6,6 +6,9 @@ These instructions apply to the entire repository.
 
 ## Knowledge must come from learning
 
+- Public `/docs` pages exist to present AI Engineering knowledge that the learner has actually learned and intentionally captured. Repository maintenance procedures, system prompts, agent behavior, authoring instructions, and workflow documentation belong in `AGENTS.md`, repository metadata, configuration, or another appropriate non-public file—not in `/docs`.
+- Never create a public knowledge page or a `learning-progress.yaml` entry merely because an agent needs internal instructions or repository workflow documentation. Operational usefulness is not learning evidence.
+- Do not infer that every file under `/docs` represents learned knowledge. Category landing pages, navigation files, and templates may be structural; learned status comes from actual learning evidence recorded in a canonical note and synchronized in `learning-progress.yaml`.
 - Knowledge articles must only be created or expanded from actual learning, discussion, research, or experiments performed by the learner.
 - Do not pre-populate the knowledge base with generic AI-generated knowledge.
 - Treat a request to explain or brainstorm as discussion, not automatic permission to save a knowledge article. Save or update knowledge only when the learner asks to capture the learning outcome or the active learning workflow explicitly reaches that step.
@@ -15,9 +18,10 @@ These instructions apply to the entire repository.
 ## Guide broad topics as learning journeys
 
 - When recommending a new broad topic, do not only name the topic. First provide a concise `Learning Map` or syllabus of the important subtopics needed to understand it, then recommend the next small subtopic to study.
+- When the learner asks what to learn next, first inspect `learning-progress.yaml` and the relevant existing knowledge notes. Recommend the next logical, manageable subtopic based on actual progress, gaps, prerequisites, and the currently active broad topic—not from a generic curriculum alone.
 - Keep the distinction explicit: **Learning Map = what is planned to learn; Learning Progress = what has actually been learned.** A Learning Map guides future sessions but is not evidence of knowledge.
 - Do not create knowledge notes or `learning-progress.yaml` entries for planned subtopics merely because they appear in a Learning Map. Record a subtopic only after actual learning reaches the save/update checkpoint and has real evidence.
-- Treat “Chốt kiến thức” as a learning checkpoint for the material actually covered, not as automatic completion of the whole broad topic.
+- Treat the learner's explicit command “Chốt kiến thức” as the checkpoint that triggers capturing or updating the current learned knowledge and synchronizing `learning-progress.yaml`. Capture only the material actually covered; preserve gaps and uncertainty, and do not treat the checkpoint as automatic completion of the whole broad topic.
 - After a checkpoint, prefer continuing with the next logical small subtopic in the same active topic.
 - Move to a new broad topic only when the current topic has sufficient learning evidence, or when a prerequisite detour is needed to continue. Make a prerequisite detour explicit and return to the active topic afterward when appropriate.
 
@@ -25,7 +29,7 @@ The default journey for a broad topic is: Broad Topic → Learning Map → Small
 
 ## Keep the learning index synchronized
 
-`learning-progress.yaml` is the machine-readable source of truth for the learner's current learning state. `/docs` contains what was learned; the index records progress and evidence state for each real topic.
+`learning-progress.yaml` is the machine-readable source of truth for the learner's current learning state. Canonical learning notes under `/docs` contain what was learned; the index records progress and evidence state for each real topic. Structural files under `/docs` are not learning evidence.
 
 - Read `learning-progress.yaml` before creating or meaningfully updating a learning note.
 - Add an entry only after an actual learning topic has a real note. An absent topic means “not learned yet.” Never add Learning Map or syllabus items, aspirational topics, suggested curricula, category placeholders, or system documentation.
@@ -53,7 +57,7 @@ The default journey for a broad topic is: Broad Topic → Learning Map → Small
 - Base status and confidence changes on actual evidence from `My Understanding`, experiments, self-test results, reviews, discussion, or demonstrated application. Never fabricate evidence or promote progress automatically.
 - Set `learned_at` to the date of the first real learning session, not the file creation date when those differ. Change `last_reviewed` only after an actual review.
 - Keep arrays empty when there is no actual relationship or experiment to record. Do not pre-populate a curriculum.
-- A structural category `index.mdx`, `docs/_templates/learning-note.mdx`, and `docs/start-here/learning-workflow.mdx` must never receive topic entries.
+- A structural category `index.mdx` and `docs/_templates/learning-note.mdx` must never receive topic entries.
 
 ## Before editing knowledge
 
@@ -91,7 +95,7 @@ Use descriptive kebab-case filenames and Docusaurus front matter. Keep explanati
 
 ## Documentation format and visual conventions
 
-- Use `.mdx` for all files under `docs/`, including learning notes, category landing pages, workflow documentation, and templates. Preserve existing front matter, slugs, sidebar order, public URLs, and internal links when migrating or renaming a source file.
+- Use `.mdx` for all files under `docs/`, including learning notes, category landing pages, and templates. Keep internal repository and agent workflow documentation outside `/docs`. Preserve existing front matter, slugs, sidebar order, public URLs, and internal links when migrating or renaming a source file.
 - Follow this order of preference: standard Markdown → established React/MDX learning and diagram components → native Docusaurus features → Mermaid only as an exceptional fallback → new custom JSX/React only when materially justified. MDX does not by itself justify a new component.
 - React/MDX components are the default and preferred approach for every normal knowledge diagram, including flows, pipelines, lifecycles, loops, architecture diagrams, mental models, comparisons, and conceptual relationships. Do not introduce Mermaid for these cases.
 - Build diagrams from the small, composable system in `src/components/Learning`, such as `Diagram`, `Flow`, `Pipeline`, `Step`, `Group`, `Connection`, and `Loop`. Compose these shared primitives directly in MDX; do not create a dedicated React component for each individual diagram unless it genuinely requires custom behavior. Existing higher-level components may remain when they encode a broadly reusable pattern rather than one article-specific picture.
@@ -158,7 +162,8 @@ Before finishing a knowledge change:
 3. Confirm personal sections were preserved.
 4. Check related links and update reciprocal or inbound links where appropriate.
 5. Confirm `learning-progress.yaml` matches the real notes and available learning evidence.
-6. Run `npm run build` and fix all errors.
-7. Summarize whether the work created a canonical note, updated one, or consolidated duplicates.
+6. Confirm public navigation exposes actual learned knowledge and does not publish internal repository instructions. Add a category to public navigation only when it contains intentionally captured learning or experiments.
+7. Run `npm run build` and fix all errors.
+8. Summarize whether the work created a canonical note, updated one, or consolidated duplicates.
 
 Do not edit generated `build/` or `.docusaurus/` output. Change the source files instead.

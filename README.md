@@ -2,7 +2,7 @@
 
 A personal, practical knowledge base for learning AI engineering. It captures concise mental models, working examples, experiments, mistakes, and self-tests instead of collecting disconnected links.
 
-> **Knowledge learned: 1** — The repository contains knowledge captured from real learning sessions, alongside its infrastructure, category structure, reusable template, and learning workflow.
+> **Knowledge learned: 1** — The repository contains knowledge captured from real learning sessions, alongside its infrastructure, category structure, and reusable template.
 
 The site is built with [Docusaurus](https://docusaurus.io/) and TypeScript and is published to GitHub Pages at `https://phanxuanloc.github.io/ai-engineering-knowledge/`.
 
@@ -28,7 +28,6 @@ npm run build
 ├── learning-progress.yaml        # Machine-readable learning state
 ├── docs/                         # All knowledge notes
 │   ├── _templates/               # Reusable MDX authoring templates
-│   ├── start-here/               # Learning and maintenance workflow
 │   ├── ai-fundamentals/          # Empty until a real learning session
 │   ├── ai-coding/                # AI-assisted software development knowledge
 │   ├── coding-agents/            # Empty until a real learning session
@@ -47,13 +46,9 @@ Each note belongs to one topic directory under `docs/`. Start new notes by copyi
 
 Use a short, descriptive kebab-case `.mdx` filename and complete the front matter at the top. Category landing pages are named `index.mdx`, and each `_category_.json` controls its sidebar label and order. Write standard Markdown first; compose diagrams from the shared React/MDX primitives in `src/components/Learning`. Mermaid is only an exceptional fallback for genuinely large graphs whose automatic layout adds substantial value. The complete visualization policy lives in `AGENTS.md`.
 
-The learning loop is documented in [docs/start-here/learning-workflow.mdx](docs/start-here/learning-workflow.mdx):
-
-**Learn → Discuss → Summarize → Save/update knowledge → Experiment → Review → Master**
-
 ## How AI agents maintain the knowledge base
 
-Repository-wide instructions live in [AGENTS.md](AGENTS.md). Before creating a note, an AI agent must search the existing documentation by topic and synonyms, read likely related notes, and decide whether the new information belongs in a canonical existing article. Updating is preferred when the concept already exists; a new page is appropriate only when it has a distinct mental model or practical purpose.
+Repository-wide instructions and the learning workflow live in [AGENTS.md](AGENTS.md), outside the public documentation. Before creating a note, an AI agent must search the existing documentation by topic and synonyms, read likely related notes, and decide whether the new information belongs in a canonical existing article. Updating is preferred when the concept already exists; a new page is appropriate only when it has a distinct mental model or practical purpose.
 
 Agents must not pre-populate topics with generic generated explanations. A knowledge article is created or expanded only from learning, discussion, research, or experiments actually performed by the learner.
 
@@ -65,7 +60,7 @@ Every knowledge change ends with a duplication review, link check, structure che
 
 ## Learning progress index
 
-`/docs` is the source of truth for knowledge actually learned. [learning-progress.yaml](learning-progress.yaml) is the source of truth for the learner's current state for each real topic, including status, confidence, review dates, experiments, prerequisites, and relationships.
+Canonical learning notes under `/docs` contain knowledge actually learned. Structural files under `/docs` do not count as evidence by their presence alone. [learning-progress.yaml](learning-progress.yaml) is the source of truth for the learner's current state for each real topic, including status, confidence, review dates, experiments, prerequisites, and relationships.
 
 Missing topics are intentionally absent from the index—not queued or pre-populated. Agents update the index in the same change whenever a real learning note is created or meaningfully updated, and advance status or confidence only when the learner's understanding, experiments, self-tests, reviews, or application provide evidence.
 
