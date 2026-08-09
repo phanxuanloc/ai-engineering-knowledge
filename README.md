@@ -46,6 +46,8 @@ Each note belongs to one topic directory under `docs/`. Start new notes by copyi
 
 Use a short, descriptive kebab-case `.mdx` filename and complete the front matter at the top. Category landing pages are named `index.mdx`, and each `_category_.json` controls its sidebar label and order. Write standard Markdown first; compose diagrams from the shared React/MDX primitives in `src/components/Learning`. Mermaid is only an exceptional fallback for genuinely large graphs whose automatic layout adds substantial value. The complete visualization policy lives in `AGENTS.md`.
 
+The concise UI authoring and diagram decision rules live in [DESIGN.md](DESIGN.md).
+
 ## How AI agents maintain the knowledge base
 
 Repository-wide instructions and the learning workflow live in [AGENTS.md](AGENTS.md), outside the public documentation. Before creating a note, an AI agent must search the existing documentation by topic and synonyms, read likely related notes, and decide whether the new information belongs in a canonical existing article. Updating is preferred when the concept already exists; a new page is appropriate only when it has a distinct mental model or practical purpose.

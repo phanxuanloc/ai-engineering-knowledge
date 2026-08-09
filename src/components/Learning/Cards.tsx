@@ -1,0 +1,19 @@
+import type {ReactNode} from 'react';
+import clsx from 'clsx';
+import styles from './styles.module.css';
+
+type ChildrenProps = {children: ReactNode; className?: string};
+
+export function ConceptCard({children, className, eyebrow, title}: ChildrenProps & {title: string; eyebrow?: string}) {
+  return <article className={clsx(styles.conceptCard, className)}>{eyebrow && <div className={styles.eyebrow}>{eyebrow}</div>}<h3 className={styles.cardTitle}>{title}</h3><div className={styles.cardContent}>{children}</div></article>;
+}
+
+export function ConceptGrid({children, className}: ChildrenProps) {
+  return <div className={clsx(styles.conceptGrid, className)}>{children}</div>;
+}
+
+export type ComparisonItem = {title: string; description: ReactNode; eyebrow?: string};
+export function Comparison({items, className, label = 'Concept comparison'}: {items: ComparisonItem[]; className?: string; label?: string}) {
+  return <div className={clsx(styles.comparison, className)} aria-label={label}>{items.map((item) => <div className={styles.comparisonItem} key={item.title}>{item.eyebrow && <div className={styles.eyebrow}>{item.eyebrow}</div>}<div className={styles.comparisonTitle}>{item.title}</div><div className={styles.comparisonDescription}>{item.description}</div></div>)}</div>;
+}
+

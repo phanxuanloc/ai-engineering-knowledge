@@ -6,16 +6,16 @@ sidebar_position: 2
 ---
 
 import {
+  Architecture,
   Comparison,
   ConceptCard,
   ConceptGrid,
-  Connection,
-  Diagram,
-  Flow,
-  Group,
   Pipeline,
-  Principle,
-  Step,
+  ExperimentCard,
+  ImportantDistinction,
+  KeyInsight,
+  Remember,
+  SelfTest,
   TLDR,
 } from '@site/src/components/Learning';
 
@@ -29,11 +29,9 @@ import {
 
 </TLDR>
 
-<Principle label="Quality bar">
-
-Relevant context &gt; More context
-
-</Principle>
+<Remember title="Relevant Context > More Context">
+  Nhiều thông tin hơn không tự động tạo ra quyết định tốt hơn.
+</Remember>
 
 ## Mental Model
 
@@ -110,11 +108,9 @@ Nhiều context hơn không tự động tốt hơn. Thông tin không liên qua
 
 ### Context Lifecycle — Retrieve vs Select
 
-<Principle label="Important distinction">
-
-Retrieve ≠ Select
-
-</Principle>
+<ImportantDistinction title="Retrieve ≠ Select">
+  Retrieve mở rộng tập candidate. Select thu hẹp tập đó thành relevant context.
+</ImportantDistinction>
 
 **Retrieve** là tìm các candidate information có thể hữu ích cho task hiện tại. Một coding agent có thể retrieve bằng:
 
@@ -163,11 +159,9 @@ Có hai mức đánh đổi chính:
 
 Mỗi loại context cần compression policy khác nhau. Current user request, critical constraints và source code cần độ chính xác cao thường nên được giữ nguyên. Old conversation history, obsolete tool outputs, repeated information và long logs thường là candidate tốt hơn để compress.
 
-<Principle label="Compression target">
-
-The goal is not the smallest context. The goal is the smallest context that still contains enough information for the next decision to be reliable.
-
-</Principle>
+<KeyInsight title="Compression target">
+  The goal is not the smallest context. The goal is the smallest context that still contains enough information for the next decision to be reliable.
+</KeyInsight>
 
 Compression thường là trách nhiệm của application hoặc agent, được `Context Manager` thực hiện khi assemble context cung cấp cho model. LLM không tự kiểm soát độc lập context của nó, và user không cần yêu cầu compression thủ công ở mỗi turn.
 
@@ -189,32 +183,10 @@ Mỗi action hoặc tool call có thể tạo evidence mới như test failure, 
 
 Khi thiết kế custom AI agent, có thể tách hai trách nhiệm:
 
-<Diagram label="Agent architecture responsibilities" variant="architecture">
-  <Step title="Agent" />
-  <Connection />
-  <Flow branches={3}>
-    <Group label="Context responsibilities" title="Context Manager / Builder">
-      <Flow compact>
-        <Step title="Instructions" compact />
-        <Step title="Memory" compact />
-        <Step title="Retrieval / RAG" compact />
-        <Step title="Code retrieval" compact />
-        <Step title="Tool results" compact />
-        <Step title="Current state" compact />
-        <Step title="Compression" compact />
-        <Step title="Assembly" compact />
-      </Flow>
-    </Group>
-    <Group label="Provider integration" title="Model Adapter">
-      <Flow compact>
-        <Step title="OpenAI" compact />
-        <Step title="Anthropic" compact />
-        <Step title="Gemini" compact />
-      </Flow>
-    </Group>
-    <Group title="Tools" />
-  </Flow>
-</Diagram>
+<Architecture
+  managerItems={['Instructions', 'Memory', 'Retrieval / RAG', 'Code retrieval', 'Tool results', 'Current state', 'Compression', 'Assembly']}
+  providers={['OpenAI', 'Anthropic', 'Gemini', 'Other providers']}
+/>
 
 `Context Manager` retrieve, select, compress khi cần và assemble thông tin cho task hiện tại. `Model Adapter` là lớp chuyển đổi request và response theo API cụ thể của từng provider. Các model và coding agent như ChatGPT, Claude, Gemini, Codex-style agents, Claude Code hoặc Cursor có thể expose và assemble context khác nhau, nhưng application vẫn là bên xây dựng context được cung cấp cho model.
 
@@ -262,7 +234,9 @@ Context construction là một lifecycle lặp: agent `Retrieve` các candidate,
 
 ## My Experiment
 
-Chưa thực hiện experiment trong learning session này.
+<ExperimentCard status="not-started">
+  Chưa thực hiện experiment trong learning session này.
+</ExperimentCard>
 
 ## Related Knowledge
 
@@ -270,45 +244,23 @@ Chưa có learning note liên quan trong knowledge base. Khi có canonical note 
 
 ## Self-test
 
-1. Context Engineering là gì?
-2. Context khác Context Window như thế nào?
-3. Prompt Engineering khác Context Engineering như thế nào?
-4. Vì sao Context Window lớn hơn không thay thế Context Engineering?
-5. Vì sao quá nhiều context có thể làm giảm hiệu quả của model?
-6. Coding agent xây dựng context động như thế nào?
-7. Vì sao custom agent nên tách Context Manager khỏi Model Adapter?
-8. `Retrieve` khác `Select` như thế nào?
-9. Vì sao agent không nên đưa mọi candidate đã retrieve vào Context Window?
-10. Vì sao retrieval trong agent là iterative?
-11. Coding agent có thể dùng những retrieval mechanism nào?
-12. Context Compression là gì?
-13. Compression khác Selection như thế nào?
-14. Vì sao Summarization không đồng nghĩa với Compression?
-15. Thông tin nào thường nên được compress và thông tin nào nên được giữ nguyên?
-16. Rủi ro chính của lossy compression là gì?
-17. Ai thường kiểm soát compression trong kiến trúc AI agent?
-18. Vì sao agent không nên chờ Context Window đầy hoàn toàn mới compress?
-
-<details>
-<summary>Answers</summary>
-
-1. Là việc thiết kế và quản lý thông tin mà LLM hoặc AI agent cần tại thời điểm ra quyết định hay thực hiện task.
-2. Context là thông tin thực tế được cung cấp; Context Window là capacity tối đa cho thông tin đó trong một model invocation.
-3. Prompt Engineering tập trung vào cách hỏi hoặc chỉ dẫn; Context Engineering tập trung vào toàn bộ những gì model cần biết, trong đó prompt chỉ là một phần.
-4. Capacity lớn hơn không tự chọn được thông tin liên quan và không loại bỏ noise.
-5. Thông tin không liên quan tiêu tốn token, tạo noise và làm model khó tập trung vào tín hiệu quan trọng.
-6. Agent search, retrieve, đọc relevant files, chạy tools/tests, rồi filter và kết hợp kết quả cho lần quyết định tiếp theo.
-7. Việc tách trách nhiệm giúp logic chọn context độc lập với khác biệt API và có thể tái sử dụng khi đổi model provider.
-8. `Retrieve` tìm candidate information có thể hữu ích; `Select` đánh giá và chọn candidate thực sự phù hợp với quyết định hiện tại.
-9. Candidate có thể không liên quan, đã cũ, trùng lặp hoặc tốn quá nhiều token so với giá trị; đưa tất cả vào sẽ tạo noise và chiếm Context Window.
-10. Mỗi lần reason, act và observe có thể tạo evidence mới, làm thay đổi điều agent cần tìm cho bước tiếp theo.
-11. Ví dụ gồm keyword/lexical search, Semantic Search, lần theo code structure và references, cùng evidence do tools tạo ra như tests, logs và previous tool results.
-12. Là việc giảm token size của relevant context trong khi cố giữ đủ thông tin để quyết định tiếp theo vẫn đáng tin cậy.
-13. Selection quyết định thông tin nào sống sót; Compression biểu diễn thông tin sống sót bằng ít token hơn.
-14. Summarization chỉ là một kỹ thuật; compression còn gồm deduplication, fact/error extraction, truncation và chuyển history thành structured working state.
-15. Old history, obsolete tool outputs, nội dung lặp và long logs thường nên compress; current request, critical constraints và precision-sensitive source code thường nên giữ nguyên.
-16. Nó có thể làm mất chi tiết hoặc evidence trở nên quan trọng ở bước sau.
-17. Application hoặc agent, thường qua `Context Manager`, xây dựng và quản lý context đưa vào model.
-18. Compression theo context/token budget giúp agent chủ động giữ đủ capacity và tránh phải xử lý khẩn cấp khi window đã đầy.
-
-</details>
+<SelfTest items={[
+  {question: 'Context Engineering là gì?', answer: 'Là việc thiết kế và quản lý thông tin mà LLM hoặc AI agent cần tại thời điểm ra quyết định hay thực hiện task.'},
+  {question: 'Context khác Context Window như thế nào?', answer: 'Context là thông tin thực tế được cung cấp; Context Window là capacity tối đa cho thông tin đó trong một model invocation.'},
+  {question: 'Prompt Engineering khác Context Engineering như thế nào?', answer: 'Prompt Engineering tập trung vào cách hỏi hoặc chỉ dẫn; Context Engineering tập trung vào toàn bộ những gì model cần biết, trong đó prompt chỉ là một phần.'},
+  {question: 'Vì sao Context Window lớn hơn không thay thế Context Engineering?', answer: 'Capacity lớn hơn không tự chọn được thông tin liên quan và không loại bỏ noise.'},
+  {question: 'Vì sao quá nhiều context có thể làm giảm hiệu quả của model?', answer: 'Thông tin không liên quan tiêu tốn token, tạo noise và làm model khó tập trung vào tín hiệu quan trọng.'},
+  {question: 'Coding agent xây dựng context động như thế nào?', answer: 'Agent search, retrieve, đọc relevant files, chạy tools/tests, rồi filter và kết hợp kết quả cho lần quyết định tiếp theo.'},
+  {question: 'Vì sao custom agent nên tách Context Manager khỏi Model Adapter?', answer: 'Việc tách trách nhiệm giúp logic chọn context độc lập với khác biệt API và có thể tái sử dụng khi đổi model provider.'},
+  {question: 'Retrieve khác Select như thế nào?', answer: 'Retrieve tìm candidate information có thể hữu ích; Select đánh giá và chọn candidate thực sự phù hợp với quyết định hiện tại.'},
+  {question: 'Vì sao agent không nên đưa mọi candidate đã retrieve vào Context Window?', answer: 'Candidate có thể không liên quan, đã cũ, trùng lặp hoặc tốn quá nhiều token so với giá trị; đưa tất cả vào sẽ tạo noise và chiếm Context Window.'},
+  {question: 'Vì sao retrieval trong agent là iterative?', answer: 'Mỗi lần reason, act và observe có thể tạo evidence mới, làm thay đổi điều agent cần tìm cho bước tiếp theo.'},
+  {question: 'Coding agent có thể dùng những retrieval mechanism nào?', answer: 'Ví dụ gồm keyword/lexical search, Semantic Search, lần theo code structure và references, cùng evidence do tools tạo ra như tests, logs và previous tool results.'},
+  {question: 'Context Compression là gì?', answer: 'Là việc giảm token size của relevant context trong khi cố giữ đủ thông tin để quyết định tiếp theo vẫn đáng tin cậy.'},
+  {question: 'Compression khác Selection như thế nào?', answer: 'Selection quyết định thông tin nào sống sót; Compression biểu diễn thông tin sống sót bằng ít token hơn.'},
+  {question: 'Vì sao Summarization không đồng nghĩa với Compression?', answer: 'Summarization chỉ là một kỹ thuật; compression còn gồm deduplication, fact/error extraction, truncation và chuyển history thành structured working state.'},
+  {question: 'Thông tin nào thường nên được compress và thông tin nào nên được giữ nguyên?', answer: 'Old history, obsolete tool outputs, nội dung lặp và long logs thường nên compress; current request, critical constraints và precision-sensitive source code thường nên giữ nguyên.'},
+  {question: 'Rủi ro chính của lossy compression là gì?', answer: 'Nó có thể làm mất chi tiết hoặc evidence trở nên quan trọng ở bước sau.'},
+  {question: 'Ai thường kiểm soát compression trong kiến trúc AI agent?', answer: 'Application hoặc agent, thường qua Context Manager, xây dựng và quản lý context đưa vào model.'},
+  {question: 'Vì sao agent không nên chờ Context Window đầy hoàn toàn mới compress?', answer: 'Compression theo context/token budget giúp agent chủ động giữ đủ capacity và tránh phải xử lý khẩn cấp khi window đã đầy.'},
+]}/>
