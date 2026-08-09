@@ -13,7 +13,8 @@ topics:
       - retrieve-vs-select
       - iterative-context-lifecycle
       - context-compression
-    next_checkpoint: context-budgeting
+      - context-budgeting
+    next_checkpoint: context-quality-evaluation
     experiments: []
     prerequisites: []
     related: []

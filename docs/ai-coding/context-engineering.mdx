@@ -165,7 +165,52 @@ Mỗi loại context cần compression policy khác nhau. Current user request, 
 
 Compression thường là trách nhiệm của application hoặc agent, được `Context Manager` thực hiện khi assemble context cung cấp cho model. LLM không tự kiểm soát độc lập context của nó, và user không cần yêu cầu compression thủ công ở mỗi turn.
 
-Agent thường kích hoạt compression theo context/token budget trước khi Context Window đầy hoàn toàn. `Context Budgeting` — cách phân bổ token capacity giữa các loại context và quyết định ngưỡng xử lý — là subtopic logic tiếp theo, chưa đi sâu tại checkpoint này.
+Agent thường kích hoạt compression theo context/token budget trước khi Context Window đầy hoàn toàn.
+
+### Context Budgeting
+
+`Context Window` là capacity tối đa model có thể xử lý trong **một invocation**. `Context Budgeting` là quá trình quyết định capacity đang có nên được phân bổ cho thông tin nào có giá trị nhất đối với task hoặc quyết định hiện tại.
+
+<Comparison
+  label="Select, Budget, and Compress"
+  items={[
+    {
+      eyebrow: 'Keep',
+      title: 'Select',
+      description: 'Thông tin nào nên được giữ lại?',
+    },
+    {
+      eyebrow: 'Allocate',
+      title: 'Budget',
+      description: 'Có bao nhiêu capacity, và thông tin nào xứng đáng chiếm capacity đó?',
+    },
+    {
+      eyebrow: 'Represent',
+      title: 'Compress',
+      description: 'Thông tin phải giữ có thể dùng ít token hơn bằng cách nào?',
+    },
+  ]}
+/>
+
+Context Window lớn hơn làm constraint bớt chặt, nhưng không xóa nhu cầu budgeting: irrelevant context vẫn tiêu tốn token và thêm noise. Context Window nhỏ hơn khiến budgeting bị giới hạn hơn, nên selection và compression tốt càng quan trọng. Budgeting **không tăng Context Window**; nó chỉ giúp dùng capacity sẵn có hiệu quả hơn.
+
+Khi minimum useful context cho toàn bộ task vẫn lớn hơn budget, agent không cần ép mọi thứ vào một model invocation. Nó có thể chia task thành các quyết định và duy trì working state qua nhiều vòng:
+
+<Pipeline
+  label="Iterative context lifecycle when useful information exceeds the available budget"
+  steps={[
+    {label: 'Current decision', title: 'Retrieve / Select'},
+    'Reason / Act',
+    {label: 'Keep across invocations', title: 'Preserve result / state'},
+    {label: 'Free capacity', title: 'Release obsolete context'},
+    {label: 'Next decision', title: 'Retrieve next information'},
+  ]}
+  loopLabel="Continue with a refreshed Context Window for the next decision"
+/>
+
+<KeyInsight title="Useful does not mean simultaneous">
+  Không phải mọi thông tin hữu ích đều cần tồn tại đồng thời trong Context Window. Điều cần giữ xuyên vòng lặp là kết quả, constraints và state quan trọng; evidence cũ hoặc ít giá trị có thể được release rồi retrieve lại khi thực sự cần.
+</KeyInsight>
 
 ### Context động và iterative agent loop
 
@@ -184,7 +229,7 @@ Mỗi action hoặc tool call có thể tạo evidence mới như test failure, 
 Khi thiết kế custom AI agent, có thể tách hai trách nhiệm:
 
 <Architecture
-  managerItems={['Instructions', 'Memory', 'Retrieval / RAG', 'Code retrieval', 'Tool results', 'Current state', 'Compression', 'Assembly']}
+  managerItems={['Instructions', 'Memory', 'Retrieval / RAG', 'Code retrieval', 'Tool results', 'Current state', 'Budgeting', 'Compression', 'Assembly']}
   providers={['OpenAI', 'Anthropic', 'Gemini', 'Other providers']}
 />
 
@@ -203,7 +248,7 @@ Với task `Fix authentication bug`, một coding agent có thể:
 7. Kết hợp instructions, relevant code và test evidence thành context.
 8. Đưa context này cho LLM để quyết định hành động tiếp theo.
 
-Agent đang liên tục retrieve, select và cập nhật context. Chất lượng quyết định phụ thuộc vào việc agent tìm được rồi chọn đúng tín hiệu, không chỉ vào kích thước Context Window.
+Agent đang liên tục retrieve, select, budget và cập nhật context. Nếu toàn bộ useful context không vừa một invocation, agent có thể giữ lại result/state quan trọng, release context cũ và retrieve thông tin cần cho quyết định kế tiếp. Chất lượng quyết định phụ thuộc vào việc agent tìm được rồi phân bổ capacity cho đúng tín hiệu, không chỉ vào kích thước Context Window.
 
 ## When to Use
 
@@ -218,6 +263,8 @@ Agent đang liên tục retrieve, select và cập nhật context. Chất lượ
 
 - **Đồng nhất Context với Context Window:** Một bên là thông tin thực tế, bên kia là capacity tối đa.
 - **Cho rằng nhiều context luôn tốt hơn:** Context không liên quan có thể làm loãng tín hiệu quan trọng và tiêu tốn token.
+- **Cho rằng Context Window lớn thì không cần budgeting:** Capacity lớn vẫn có thể bị lấp bởi context ít giá trị và noise.
+- **Cố giải toàn bộ task trong một invocation:** Agent có thể preserve state và refresh context qua iterative lifecycle thay vì giữ mọi useful information cùng lúc.
 - **Đưa toàn bộ repository cho coding agent:** Search và chọn đúng files, tests, logs thường hiệu quả hơn nhồi mọi thứ vào Context Window.
 - **Chỉ tối ưu user prompt:** Prompt tốt vẫn thiếu hiệu quả nếu model không có source, state hoặc tool result cần thiết.
 - **Trộn context construction với provider integration:** Thiết kế này làm logic retrieval và filtering khó tái sử dụng khi đổi model provider.
@@ -230,7 +277,7 @@ Context Engineering rộng hơn việc viết prompt tốt.
 
 Đây là bài toán engineering về chọn, truy xuất, tổ chức và duy trì thông tin mà LLM cần đúng tại thời điểm thực hiện một task. Model có Context Window rất lớn không có nghĩa application nên đưa mọi thứ vào; một AI system hoặc agent tốt cần xây dựng context chất lượng cao, liên quan với task một cách linh hoạt.
 
-Context construction là một lifecycle lặp: agent `Retrieve` các candidate, `Select` thông tin cần giữ, chỉ `Compress` khi có lợi hoặc cần thiết, rồi `Assemble` context cho LLM. Model reason, agent act, observe và dùng evidence mới để retrieve lại. Vì vậy đây không phải thao tác build một prompt duy nhất ở đầu task, và cũng không phải mọi context item đều luôn cần compression.
+Context construction là một lifecycle lặp: agent `Retrieve` các candidate, `Select` thông tin cần giữ, `Budget` capacity cho thông tin có giá trị nhất, chỉ `Compress` khi có lợi hoặc cần thiết, rồi `Assemble` context cho LLM. Model reason, agent act, preserve result/state quan trọng, release context đã obsolete và dùng evidence mới để retrieve lại. Vì vậy đây không phải thao tác build một prompt duy nhất ở đầu task; khi useful context lớn hơn budget, agent có thể tiến qua nhiều invocation thay vì giữ mọi thứ đồng thời trong Context Window.
 
 ## My Experiment
 
@@ -263,4 +310,7 @@ Chưa có learning note liên quan trong knowledge base. Khi có canonical note 
   {question: 'Rủi ro chính của lossy compression là gì?', answer: 'Nó có thể làm mất chi tiết hoặc evidence trở nên quan trọng ở bước sau.'},
   {question: 'Ai thường kiểm soát compression trong kiến trúc AI agent?', answer: 'Application hoặc agent, thường qua Context Manager, xây dựng và quản lý context đưa vào model.'},
   {question: 'Vì sao agent không nên chờ Context Window đầy hoàn toàn mới compress?', answer: 'Compression theo context/token budget giúp agent chủ động giữ đủ capacity và tránh phải xử lý khẩn cấp khi window đã đầy.'},
+  {question: 'Context Window khác Context Budgeting như thế nào?', answer: 'Context Window là capacity tối đa của một model invocation; Context Budgeting là quyết định cách phân bổ capacity sẵn có cho thông tin giá trị nhất. Budgeting không làm Context Window lớn hơn.'},
+  {question: 'Select, Budgeting và Compression khác nhau thế nào?', answer: 'Select quyết định giữ thông tin nào; Budgeting xác định capacity có bao nhiêu và thông tin nào xứng đáng chiếm capacity đó; Compression biểu diễn thông tin phải giữ bằng ít token hơn.'},
+  {question: 'Agent có thể làm gì khi minimum useful context lớn hơn available budget?', answer: 'Agent xử lý theo nhiều vòng: retrieve/select cho quyết định hiện tại, reason hoặc act, preserve result/state quan trọng, release context obsolete hoặc ít giá trị, retrieve thông tin cho quyết định tiếp theo và tiếp tục lifecycle. Không phải mọi useful information đều phải nằm trong Context Window cùng lúc.'},
 ]}/>
