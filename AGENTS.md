@@ -95,14 +95,14 @@ Use descriptive kebab-case filenames and Docusaurus front matter. Keep explanati
 
 ## Documentation format and visual conventions
 
-- When creating, modifying, or reviewing React Flow documentation diagrams, read and follow `.agents/skills/docs-react-flow/SKILL.md`. Do not manually position non-trivial graphs unless spatial position itself carries meaning.
+- When creating, modifying, or reviewing documentation diagrams, choose by teaching intent and read the matching project skill: `.agents/skills/docs-excalidraw/SKILL.md` for mental models, analogies, and conceptual comparisons; `.agents/skills/docs-react-flow/SKILL.md` for structured graphs, pipelines, and architecture. Do not make the skills compete or manually position non-trivial graphs unless spatial position itself carries meaning.
 
 - Use `.mdx` for all files under `docs/`, including learning notes, category landing pages, and templates. Keep internal repository and agent workflow documentation outside `/docs`. Preserve existing front matter, slugs, sidebar order, public URLs, and internal links when migrating or renaming a source file.
 - Prefer a visual when it communicates the idea more clearly than a large text block. Keep normal MDX when the idea is already clear in two to four short lines or a diagram would only add noise.
 - Use **Excalidraw diagrams** to explain mental models, conceptual relationships, high-level architecture sketches, comparisons, and learning-oriented ideas. They must look intentionally hand-drawn, like an engineer or teacher explaining on a whiteboard—not like polished UI cards with a rough border. Use genuine Excalidraw scene elements, handwritten typography, rough shapes, sketch fills, natural arrows, asymmetry, annotations, and simple visual metaphors when they improve learning.
 - Use **React Flow** for pipelines, node-edge workflows, retrieval/agent/context flows, system-component relationships, dependency graphs, data movement, and multi-step technical processes where structured positioning is useful.
 - Treat the choice as guidance rather than an absolute rule: **Excalidraw explains the idea; React Flow explains how the system or flow is structured.** Choose the simplest clear representation.
-- Do not use Mermaid for new diagrams. When relevant work encounters an existing Mermaid, ASCII-art, fenced `text` pseudo-diagram, or awkward custom diagram, review it and migrate only when Excalidraw or React Flow communicates the same knowledge better. Preserve text and code examples when text is genuinely clearer.
+- Mermaid is a rare exception for a tiny relationship whose topology is the entire lesson; it is never the default. When relevant work encounters an existing Mermaid, ASCII-art, fenced `text` pseudo-diagram, or awkward custom diagram, classify it first and migrate only when another medium meaningfully improves comprehension. Preserve text and code examples when text is genuinely clearer.
 - Use `ExcalidrawDiagram` from `src/components/Diagrams` to render optimized SVG exports. Keep reading pages light by not shipping the Excalidraw editor. Treat the `.excalidraw` JSON as canonical source, use shared presets from `scripts/excalidraw-presets.mjs`, keep scene and export together under `static/img/diagrams/excalidraw/`, and run `npm run diagrams:build` after source changes. The build must export through Excalidraw's renderer. Never hand-code or hand-edit SVG to imitate Excalidraw. SVG is only a generated artifact from genuine scene data.
 - Prefer `roughness: 1–2`, `hachure` or `cross-hatch` pastel fills, Virgil/Excalidraw handwriting, slightly curved or bent arrows, natural whitespace, offsets, and shapes sized by conceptual importance. Avoid strict grids, identical cards, perfectly symmetric alignment, flat opaque fills, and regular UI typography.
 - If an Excalidraw diagram starts resembling a Figma UI, architecture-card layout, or React Flow diagram, simplify it and increase its whiteboard/sketch character. Ask whether it plausibly looks drawn while teaching; if removing the rough border would leave a Figma diagram, revise it.
@@ -152,6 +152,8 @@ Does the concept need a visual?
              +-- Mainly a mental model / conceptual explanation? --> Excalidraw
              |
              +-- Mainly nodes, relationships, pipeline, or data flow? --> React Flow
+             |
+             +-- Only a tiny trivial relationship? --> Mermaid (rare exception)
 ```
 
 ## Language policy

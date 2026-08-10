@@ -14,8 +14,11 @@ Use the current `@xyflow/react` v12 API. Treat [React Flow documentation](https:
 State the visual's teaching job before implementation: five-second takeaway, entities/states, direction, main emphasis, and why the medium fits.
 
 - Use normal MDX when two to four short lines are clearer.
-- Use Excalidraw for analogy, informal conceptual relationships, and hand-drawn mental models.
+- Use `docs-excalidraw` for analogy, informal conceptual relationships, conceptual comparisons, and hand-drawn mental models.
 - Use React Flow for directed structured entities: pipelines, architecture, lifecycle, retrieval, RAG, agent execution, orchestration, and multi-component relationships.
+- Use Mermaid only for an exceptionally tiny relationship whose topology is the entire lesson. It is not a default.
+
+Do not make the specialized skills compete: Excalidraw explains how to think about an idea; React Flow explains how a structured system moves or connects. If a proposed Excalidraw scene needs graph layout, switch here. If a React Flow proposal is a static analogy or decorative boxes, switch to `docs-excalidraw`.
 
 Choose one React Flow mode:
 

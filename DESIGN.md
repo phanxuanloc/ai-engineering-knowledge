@@ -11,9 +11,9 @@ Use `.mdx` for every knowledge article and start from `docs/_templates/learning-
 - Conceptual mental model or analogy → Excalidraw when a visual materially helps.
 - Structured flow, pipeline, architecture, or directed graph → shared React Flow infrastructure.
 - Two to four short lines already explain it → ordinary MDX.
-- New Mermaid diagrams are not used.
+- Tiny relationships whose topology is the entire lesson → Mermaid as a rare exception, never the default.
 
-Important diagrams must remain understandable without animation and work cleanly on narrow screens. When creating or modifying React Flow diagrams, follow `.agents/skills/docs-react-flow/SKILL.md`; keep geometry and interaction in shared infrastructure rather than article-level boilerplate.
+Important diagrams must remain understandable without animation and work cleanly on narrow screens. Follow `.agents/skills/docs-excalidraw/SKILL.md` for mental models and `.agents/skills/docs-react-flow/SKILL.md` for structured graphs; keep rendering, geometry, and interaction in shared infrastructure rather than article-level boilerplate.
 
 ## Learning state
 
