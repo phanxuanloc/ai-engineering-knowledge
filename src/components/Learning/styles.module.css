@@ -39,7 +39,7 @@
 .pipeline { display:flex; gap:1.35rem; width:100%; margin:0; padding:0; list-style:none; }
 .pipelineStep { position:relative; display:flex; box-sizing:border-box; flex:1 1 0; flex-direction:column; gap:.35rem; justify-content:center; min-width:0; min-height:5.2rem; padding:.85rem .9rem; overflow-wrap:anywhere; color:var(--ifm-heading-color); line-height:1.3; background:var(--learning-surface); border:1px solid var(--learning-border); border-radius:10px; box-shadow:var(--learning-shadow); }
 .pipelineStepOptional { background:var(--learning-active-soft); border-color:var(--learning-active-border); }
-.pipelineStep:not(:last-child)::after { position:absolute; top:50%; right:-1.08rem; color:var(--learning-active); content:'→'; transform:translateY(-50%); }
+.pipelineStep:not(:last-child)::after { position:absolute; top:50%; right:-1.17rem; width:1rem; color:var(--learning-active); line-height:1rem; text-align:center; content:'→'; pointer-events:none; transform:translateY(-50%); }
 .pipelineMeta { display:flex; max-width:100%; flex-direction:column; gap:.2rem; align-items:flex-start; }
 .pipelineIndex { color:var(--learning-active); font-family:var(--ifm-font-family-monospace); font-size:.68rem; font-weight:750; letter-spacing:.08em; }
 .pipelineLabel { color:var(--learning-active); font-size:.61rem; font-weight:750; letter-spacing:.07em; text-transform:uppercase; }
@@ -85,7 +85,7 @@
 .selfTestItem[open] .reveal { font-size:0; }
 .selfTestItem[open] .reveal::after { font-size:.68rem; content:'Hide answer'; }
 .answer { padding:.1rem 1.2rem 1rem 3.75rem; color:var(--ifm-font-color-secondary); font-size:.9rem; line-height:1.65; }
-@container (max-width:55rem) { .pipeline { flex-direction:column; gap:1.15rem; }.pipelineStep { min-height:4.75rem; }.pipelineStep:not(:last-child)::after { top:auto; right:50%; bottom:-1.05rem; content:'↓'; transform:translateX(50%); } }
+@container (max-width:55rem) { .pipeline { flex-direction:column; gap:1.6rem; }.pipelineStep { min-height:4.75rem; }.pipelineStep:not(:last-child)::after { top:auto; right:50%; bottom:-1.3rem; height:1rem; content:'↓'; transform:translateX(50%); } }
 @container (max-width:38rem) { .flow:not(.flowCompact){flex-direction:column;} }
 @media (max-width:700px) { .comparisonItem + .comparisonItem { border-top:1px solid var(--learning-border); border-left:0; }.selfTestItem summary { grid-template-columns:1.7rem 1fr; }.reveal { grid-column:2; }.answer { padding-left:3.45rem; }.experimentHeader { flex-direction:column; }.connection span { display:none; } }
 @media (max-width:700px) { .knowledgeMap { padding:1rem; }.mapLevel { flex-direction:column; align-items:stretch; gap:.55rem; }.mapNode { flex:0 0 auto; max-width:none; min-height:3.8rem; text-align:left; }.mapConnection { height:1.35rem; line-height:1.35rem; } }

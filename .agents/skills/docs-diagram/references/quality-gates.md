@@ -25,6 +25,7 @@
 - No edge crosses an unrelated opaque node or runs along a boundary.
 - Crossings, bends, long detours, and ambiguous shared corridors are minimized.
 - Endpoints and arrow direction match semantic flow.
+- Connector glyphs and routes sit within the inter-node gap with visible clearance from both adjacent boundaries at desktop and mobile widths; they never appear attached to one card.
 - Parallel edges do not pile onto one anchor when separation is needed.
 - Edge labels clear nodes, routes, and other labels; omit an obvious label before forcing geometry.
 
