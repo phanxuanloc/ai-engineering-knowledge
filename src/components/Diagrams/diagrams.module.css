@@ -46,7 +46,37 @@
   --xy-controls-button-border-color: var(--learning-border);
   --xy-minimap-background-color: color-mix(in srgb, var(--diagram-surface) 92%, transparent);
   min-height: 280px;
+  position: relative;
 }
+
+.reactFlowCanvas:fullscreen {
+  width: 100vw;
+  height: 100vh !important;
+  border: 0;
+  border-radius: 0;
+}
+
+.fullscreenButton {
+  position: absolute;
+  z-index: 5;
+  top: .65rem;
+  right: .65rem;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  color: var(--ifm-font-color-base);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--diagram-surface) 94%, transparent);
+  border: 1px solid var(--learning-border);
+  border-radius: 6px;
+}
+
+.fullscreenButton:hover { background: var(--learning-subtle-surface); }
+.fullscreenButton:focus-visible { outline: 2px solid var(--learning-active); outline-offset: 2px; }
 
 .reactFlowCanvas:focus-within {
   outline: 2px solid var(--learning-active);

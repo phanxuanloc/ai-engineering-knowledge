@@ -14,7 +14,7 @@ Use `.mdx` for every knowledge article and start from `docs/_templates/learning-
 - Two to four short lines already explain it → ordinary MDX.
 - Tiny relationships whose topology is the entire lesson → Mermaid as a rare exception, never the default.
 
-Important diagrams must remain understandable without animation and work cleanly on narrow screens. Follow `.agents/skills/docs-excalidraw/SKILL.md` for mental models and `.agents/skills/docs-react-flow/SKILL.md` for structured graphs; keep rendering, geometry, and interaction in shared infrastructure rather than article-level boilerplate. Prefer one primary view with progressive disclosure, deterministic layout from stable semantic input, layered quality gates, actual visual review, and targeted repair over whole-diagram regeneration.
+Important diagrams must remain understandable from their initial view and work cleanly on narrow screens. React Flow diagrams are read-only but navigable: topology editing stays locked while pan, zoom, fit view, and fullscreen support inspection. Follow `.agents/skills/docs-excalidraw/SKILL.md` for mental models and `.agents/skills/docs-react-flow/SKILL.md` for structured graphs; keep rendering, geometry, and interaction in shared infrastructure rather than article-level boilerplate. Prefer one primary view with progressive disclosure, deterministic layout from stable semantic input, layered quality gates, actual visual review, and targeted repair over whole-diagram regeneration.
 
 ## Learning state
 

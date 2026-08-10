@@ -28,7 +28,7 @@ Choose one React Flow mode:
 2. **Architecture/process flow:** automatic layout; pan/zoom; Controls; optional dragging; MiniMap only if navigation benefits.
 3. **Large interactive map:** automatic layout; draggable nodes; pan/zoom; Controls; MiniMap; consider groups, subflows, expansion, or toolbars.
 
-Interactivity must improve comprehension. These are learning diagrams, not workflow editors.
+Use a **read-only but navigable** interaction model. Pan, zoom, fit view, and fullscreen are viewing tools and should remain available by default. Node dragging, selection, connection creation, deletion, and other topology editing stay disabled unless spatial exploration itself teaches the concept. These are learning diagrams, not workflow editors.
 
 ## Inspect before changing
 
@@ -77,7 +77,7 @@ For `TB`, targets enter from top and sources leave from bottom. For `LR`, target
 ## Configure the viewport
 
 - Default to `fitView` with modest padding so the important graph is initially visible without clipping or giant margins.
-- Show Controls whenever pan/zoom is enabled.
+- Keep pan, zoom, fit view, and fullscreen available for inspecting the graph; show Controls whenever pan/zoom is enabled.
 - Use `minimap="auto"`; show it for large canvases or roughly 15+ nodes, not tiny flows.
 - Use a subtle Background only when it aids orientation.
 - Allow dragging for exploratory architecture/maps; keep the initial automatic layout canonical. Disable it for small teaching flows when it adds no value.

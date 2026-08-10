@@ -1,5 +1,5 @@
 import type {CSSProperties, ReactNode} from 'react';
-import {useEffect, useMemo} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -12,6 +12,7 @@ import {
   type Edge,
   type Node,
   type NodeProps,
+  type ReactFlowInstance,
   useNodesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -54,6 +55,7 @@ export type ReactFlowDiagramProps = {
   controls?: boolean;
   direction?: FlowDirection;
   edges: DiagramEdge[];
+  fullscreen?: boolean;
   height?: number;
   interactive?: boolean;
   kind?: DiagramKind;
@@ -97,8 +99,9 @@ export function ReactFlowDiagram({
   controls,
   direction = 'TB',
   edges,
+  fullscreen = true,
   height,
-  interactive = false,
+  interactive = true,
   kind = 'workflow',
   layout: layoutMode = 'dagre',
   minimap = 'auto',
@@ -108,6 +111,20 @@ export function ReactFlowDiagram({
   primaryPath,
   rankSpacing,
 }: ReactFlowDiagramProps) {
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const flowRef = useRef<ReactFlowInstance<DocsNode, Edge>>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    const updateFullscreen = () => setIsFullscreen(document.fullscreenElement === canvasRef.current);
+    document.addEventListener('fullscreenchange', updateFullscreen);
+    return () => document.removeEventListener('fullscreenchange', updateFullscreen);
+  }, []);
+  const toggleFullscreen = useCallback(async () => {
+    if (!canvasRef.current) return;
+    if (document.fullscreenElement === canvasRef.current) await document.exitFullscreen();
+    else await canvasRef.current.requestFullscreen();
+    requestAnimationFrame(() => flowRef.current?.fitView({padding: 0.1, maxZoom: 1}));
+  }, []);
   const flowEdges = useMemo<Edge[]>(() => edges.map((edge, index) => ({
     id: `${edge.source}-${edge.target}-${index}`,
     source: edge.source,
@@ -140,12 +157,12 @@ export function ReactFlowDiagram({
   const graphIsLarge = nodes.length >= 15 || layout.bounds.width > 1600 || layout.bounds.height > 1400;
   const showMiniMap = minimap === true || (minimap === 'auto' && graphIsLarge);
   const showControls = controls ?? interactive;
-  const draggable = nodesDraggable ?? (interactive && nodes.length >= 7);
+  const draggable = nodesDraggable ?? false;
   const canvasHeight = height ?? Math.min(760, Math.max(300, layout.bounds.height + 80));
 
   return (
     <figure className={clsx(styles.reactFlowFigure, className)} aria-label={ariaLabel}>
-      <div className={styles.reactFlowCanvas} style={{height: canvasHeight}}>
+      <div className={styles.reactFlowCanvas} ref={canvasRef} style={{height: canvasHeight}}>
         <ReactFlow
           aria-label={ariaLabel}
           colorMode="system"
@@ -159,6 +176,7 @@ export function ReactFlowDiagram({
           nodesConnectable={false}
           nodesDraggable={draggable}
           nodeTypes={nodeTypes}
+          onInit={(instance) => { flowRef.current = instance; }}
           onNodesChange={onNodesChange}
           panOnDrag={interactive}
           preventScrolling={!interactive}
@@ -171,6 +189,17 @@ export function ReactFlowDiagram({
           {showControls && <Controls position="bottom-right" showInteractive={draggable} />}
           {showMiniMap && <MiniMap pannable zoomable position="top-right" />}
         </ReactFlow>
+        {fullscreen && (
+          <button
+            aria-label={isFullscreen ? 'Exit fullscreen diagram' : 'View diagram fullscreen'}
+            className={styles.fullscreenButton}
+            onClick={toggleFullscreen}
+            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            type="button"
+          >
+            {isFullscreen ? '↙' : '↗'}
+          </button>
+        )}
       </div>
       {caption && <figcaption>{caption}</figcaption>}
     </figure>
