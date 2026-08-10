@@ -23,3 +23,5 @@ Important diagrams must remain understandable from their initial view and work c
 ## Visual hierarchy
 
 Use `TLDR`, `KeyInsight`, `Remember`, and `ImportantDistinction` for high-value recall cues; `Comparison` for genuine comparisons; `ExperimentCard` for explicit experiment state; `TopicPath` for reader-oriented article structure; and `SelfTest` for question-by-question recall. Do not turn ordinary prose into cards.
+
+Dense prose-heavy rubrics use `ResponsiveRubric`: semantic tables remain available on desktop/tablet, while narrow screens group the same score progression into one stacked card per dimension. Keep one data source for both presentations; do not shrink multi-column text or make readers horizontally scroll away from row labels.

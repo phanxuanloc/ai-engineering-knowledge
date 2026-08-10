@@ -14,6 +14,7 @@ import {
   ImportantDistinction,
   KeyInsight,
   Remember,
+  ResponsiveRubric,
   SelfTest,
   TLDR,
 } from '@site/src/components/Learning';
@@ -355,12 +356,35 @@ Một điểm trung bình duy nhất có thể che giấu critical failure. Ví 
 
 Nên dùng ordinal scale nhỏ và định nghĩa rõ từng level. Mỗi dimension cần rubric riêng vì “đủ evidence” không mang cùng ý nghĩa với “ít noise” hay “còn current”.
 
-| Dimension | 0 | 1 | 2 | 3 |
-| --- | --- | --- | --- | --- |
-| **Relevance** | Irrelevant: không giúp trả lời câu hỏi hiện tại. | Partially relevant: có một ít thông tin hữu ích nhưng phần lớn không liên quan. | Mostly relevant: phần lớn context hữu ích, chỉ có ít thông tin không liên quan. | Fully relevant: gần như toàn bộ context trực tiếp hỗ trợ quyết định hiện tại. |
-| **Sufficiency** | Không có evidence thiết yếu để ra quyết định. | Có một phần evidence nhưng còn thiếu gap lớn. | Gần đủ; còn thiếu một số evidence có thể ảnh hưởng kết luận. | Đủ evidence để ra quyết định hiện tại một cách đáng tin cậy. |
-| **Low Noise** | Noise chiếm ưu thế và che khuất signal. | Có nhiều noise làm việc tìm signal khó khăn. | Phần lớn là signal, chỉ còn ít noise. | Gần như không có thông tin thừa đối với quyết định hiện tại. |
-| **Freshness / Correctness** | Evidence đã stale hoặc mâu thuẫn với source of truth. | Có dấu hiệu stale/sai đáng kể nhưng chưa xác định hết. | Phần lớn current/accurate, còn một số điểm chưa được xác minh. | Evidence được đối chiếu và phản ánh source of truth hiện tại. |
+<ResponsiveRubric
+  label="Context quality evaluation rubric"
+  rows={[
+    {dimension: 'Relevance', levels: [
+      {score: 0, description: 'Irrelevant: không giúp trả lời câu hỏi hiện tại.'},
+      {score: 1, description: 'Partially relevant: có một ít thông tin hữu ích nhưng phần lớn không liên quan.'},
+      {score: 2, description: 'Mostly relevant: phần lớn context hữu ích, chỉ có ít thông tin không liên quan.'},
+      {score: 3, description: 'Fully relevant: gần như toàn bộ context trực tiếp hỗ trợ quyết định hiện tại.'},
+    ]},
+    {dimension: 'Sufficiency', levels: [
+      {score: 0, description: 'Không có evidence thiết yếu để ra quyết định.'},
+      {score: 1, description: 'Có một phần evidence nhưng còn thiếu gap lớn.'},
+      {score: 2, description: 'Gần đủ; còn thiếu một số evidence có thể ảnh hưởng kết luận.'},
+      {score: 3, description: 'Đủ evidence để ra quyết định hiện tại một cách đáng tin cậy.'},
+    ]},
+    {dimension: 'Low Noise', levels: [
+      {score: 0, description: 'Noise chiếm ưu thế và che khuất signal.'},
+      {score: 1, description: 'Có nhiều noise làm việc tìm signal khó khăn.'},
+      {score: 2, description: 'Phần lớn là signal, chỉ còn ít noise.'},
+      {score: 3, description: 'Gần như không có thông tin thừa đối với quyết định hiện tại.'},
+    ]},
+    {dimension: 'Freshness / Correctness', levels: [
+      {score: 0, description: 'Evidence đã stale hoặc mâu thuẫn với source of truth.'},
+      {score: 1, description: 'Có dấu hiệu stale/sai đáng kể nhưng chưa xác định hết.'},
+      {score: 2, description: 'Phần lớn current/accurate, còn một số điểm chưa được xác minh.'},
+      {score: 3, description: 'Evidence được đối chiếu và phản ánh source of truth hiện tại.'},
+    ]},
+  ]}
+/>
 
 Rubric này là ví dụ khởi đầu, không phải universal scale. Khi triển khai, cần điều chỉnh definition theo task, source of truth và mức rủi ro của hệ thống, nhưng không được dùng cùng một mô tả mơ hồ cho mọi dimension.
 
