@@ -1,5 +1,5 @@
 import type {ReactNode} from 'react';
-import {useEffect, useMemo, useRef, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -57,17 +57,14 @@ function LearningNode({data}: NodeProps<Node<LearningNodeData>>) {
 const nodeTypes = {learning: LearningNode};
 
 export function ReactFlowDiagram({ariaLabel, caption, className, edges, height = 300, nodes}: ReactFlowDiagramProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [vertical, setVertical] = useState(false);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const updateLayout = () => setVertical(container.clientWidth < 560);
-    updateLayout();
-    const observer = new ResizeObserver(updateLayout);
-    observer.observe(container);
-    return () => observer.disconnect();
+    const mediaQuery = window.matchMedia('(max-width: 700px)');
+    const updateLayout = (event: MediaQueryListEvent | MediaQueryList) => setVertical(event.matches);
+    updateLayout(mediaQuery);
+    mediaQuery.addEventListener('change', updateLayout);
+    return () => mediaQuery.removeEventListener('change', updateLayout);
   }, []);
 
   const flowNodes = useMemo<Node<LearningNodeData>[]>(
@@ -96,7 +93,6 @@ export function ReactFlowDiagram({ariaLabel, caption, className, edges, height =
     <figure className={clsx(styles.reactFlowFigure, className)} aria-label={ariaLabel}>
       <div
         className={clsx(styles.reactFlowCanvas, vertical && styles.reactFlowCanvasVertical)}
-        ref={containerRef}
         style={{height: vertical ? nodes.length * 112 + 48 : height}}
       >
         <ReactFlow
