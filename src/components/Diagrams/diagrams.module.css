@@ -1,0 +1,78 @@
+.excalidrawFigure,
+.reactFlowFigure {
+  width: 100%;
+  margin: 1.5rem 0 2rem;
+}
+
+.excalidrawFigure picture,
+.reactFlowCanvas {
+  display: block;
+  overflow: hidden;
+  background: var(--diagram-surface);
+  border: 1px solid var(--learning-border);
+  border-radius: var(--learning-radius);
+  box-shadow: var(--learning-shadow);
+}
+
+.excalidrawFigure img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.excalidrawFigure figcaption,
+.reactFlowFigure figcaption {
+  max-width: 72ch;
+  margin: .65rem auto 0;
+  color: var(--ifm-font-color-secondary);
+  font-size: .78rem;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.reactFlowCanvas {
+  --xy-edge-stroke: var(--learning-active);
+  --xy-edge-stroke-width: 1.5;
+  --xy-edge-label-color: var(--ifm-font-color-secondary);
+  --xy-edge-label-background-color: var(--diagram-surface);
+}
+
+.flowNode {
+  position: relative;
+  display: flex;
+  width: 156px;
+  min-height: 76px;
+  padding: .72rem .8rem;
+  flex-direction: column;
+  gap: .24rem;
+  justify-content: center;
+  color: var(--ifm-heading-color);
+  text-align: center;
+  background: var(--learning-surface);
+  border: 1px solid var(--learning-border);
+  border-radius: 10px;
+  box-shadow: var(--learning-shadow);
+}
+
+.flowNodeEmphasis {
+  background: var(--learning-active-soft);
+  border-color: var(--learning-active-border);
+}
+
+.flowNode > span {
+  color: var(--learning-active);
+  font-size: .61rem;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.flowNode strong { font-size: .84rem; line-height: 1.3; }
+.flowNode small { color: var(--ifm-font-color-secondary); font-size: .68rem; line-height: 1.35; }
+.handle { width: 7px; height: 7px; background: var(--learning-active); border: 1px solid var(--diagram-surface); }
+.flowEdgeDashed path { stroke-dasharray: 5 4; }
+
+@media (max-width: 700px) {
+  .reactFlowCanvas { min-height: 340px; }
+  .flowNode { width: 138px; min-height: 68px; padding: .58rem .65rem; }
+}

@@ -5,19 +5,9 @@ tags: [primary-topic, related-topic]
 draft: true
 ---
 
-import {
-  Comparison,
-  ConceptCard,
-  ConceptGrid,
-  Connection,
-  Diagram,
-  Flow,
-  Group,
-  Pipeline,
-  Principle,
-  Step,
-  TLDR,
-} from '@site/src/components/Learning';
+import {Comparison, ConceptCard, ConceptGrid, Principle, TLDR} from '@site/src/components/Learning';
+// Import only when used:
+// import {ExcalidrawDiagram, ReactFlowDiagram} from '@site/src/components/Diagrams';
 
 # Tên technical concept
 
@@ -30,12 +20,11 @@ link. Không dịch code, API, class, configuration, command, filename, protocol
 identifier. Giữ nguyên các section
 heading tiếng Anh bên dưới để toàn bộ knowledge base nhất quán.
 
-Markdown first: dùng shared React/MDX learning và diagram primitives, Docusaurus
-admonition hoặc table khi chúng thực sự làm concept dễ hiểu và dễ scan hơn. Không
-bắt buộc article phải dùng mọi component. Không dùng Mermaid cho normal diagram,
-không dùng text code block thay diagram và không tạo component riêng nếu các
-primitive hiện có đã đáp ứng được. Mermaid chỉ là fallback cho graph thực sự lớn
-và phức tạp, nơi automatic layout tạo ra giá trị đáng kể.
+Markdown first. Dùng Excalidraw-style SVG cho mental model/conceptual explanation;
+dùng shared ReactFlowDiagram cho node-edge flow, pipeline hoặc data movement.
+Không dùng Mermaid cho diagram mới, không dùng text code block thay diagram và
+không tạo component riêng nếu shared abstraction đã đáp ứng được. Mỗi diagram cần
+alt text và explanation/caption ngắn; giữ normal MDX nếu 2–4 dòng đã đủ rõ.
 -->
 
 ## TL;DR
@@ -54,33 +43,10 @@ Viết principle ngắn, cụ thể và có thể recall độc lập.
 
 ## Mental Model
 
-Giải thích mental model đơn giản nhất để concept trở nên trực quan. Kết nối input, behavior và outcome. Dùng `ConceptGrid` + `ConceptCard` cho một nhóm nhỏ các vai trò liên quan; dùng `Pipeline` cho simple linear flow; compose `Diagram`, `Flow`, `Step`, `Group`, `Connection` và `Loop` cho các diagram khác.
+Giải thích mental model đơn giản nhất để concept trở nên trực quan. Kết nối input, behavior và outcome. Dùng `ConceptGrid` + `ConceptCard` cho một nhóm nhỏ các vai trò; dùng `ExcalidrawDiagram` khi hand-drawn mental model giúp hiểu nhanh hơn; dùng `ReactFlowDiagram` khi cần thể hiện structured flow.
 
-<!-- Optional linear flow; remove when it does not improve understanding.
-<Pipeline
-  label="Concept pipeline"
-  steps={[
-    'Input',
-    {label: 'Optional', title: 'Transform when useful', optional: true},
-    {title: 'Outcome', description: 'Optional concise description.'},
-  ]}
-/>
-
-Optional composed architecture:
-<Diagram label="System architecture" variant="architecture">
-  <Step title="System" />
-  <Connection />
-  <Flow>
-    <Group title="Module A">
-      <Step title="Responsibility 1" compact />
-      <Step title="Responsibility 2" compact />
-    </Group>
-    <Group title="Module B">
-      <Step title="Integration 1" compact />
-    </Group>
-  </Flow>
-</Diagram>
--->
+<!-- Optional diagram; remove when it does not improve understanding. Keep only
+node/edge data in the article and keep implementation in src/components/Diagrams. -->
 
 ## Core Concepts
 

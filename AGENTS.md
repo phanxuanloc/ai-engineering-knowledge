@@ -96,18 +96,34 @@ Use descriptive kebab-case filenames and Docusaurus front matter. Keep explanati
 ## Documentation format and visual conventions
 
 - Use `.mdx` for all files under `docs/`, including learning notes, category landing pages, and templates. Keep internal repository and agent workflow documentation outside `/docs`. Preserve existing front matter, slugs, sidebar order, public URLs, and internal links when migrating or renaming a source file.
-- Follow this order of preference: standard Markdown → established React/MDX learning and diagram components → native Docusaurus features → Mermaid only as an exceptional fallback → new custom JSX/React only when materially justified. MDX does not by itself justify a new component.
-- React/MDX components are the default and preferred approach for every normal knowledge diagram, including flows, pipelines, lifecycles, loops, architecture diagrams, mental models, comparisons, and conceptual relationships. Do not introduce Mermaid for these cases.
-- Build diagrams from the small, composable system in `src/components/Learning`, such as `Diagram`, `Flow`, `Pipeline`, `Step`, `Group`, `Connection`, and `Loop`. Compose these shared primitives directly in MDX; do not create a dedicated React component for each individual diagram unless it genuinely requires custom behavior. Existing higher-level components may remain when they encode a broadly reusable pattern rather than one article-specific picture.
+- Prefer a visual when it communicates the idea more clearly than a large text block. Keep normal MDX when the idea is already clear in two to four short lines or a diagram would only add noise.
+- Use **Excalidraw-style diagrams** to explain mental models, conceptual relationships, high-level architecture sketches, comparisons, and learning-oriented ideas where a deliberate hand-drawn/whiteboard style improves intuition.
+- Use **React Flow** for pipelines, node-edge workflows, retrieval/agent/context flows, system-component relationships, dependency graphs, data movement, and multi-step technical processes where structured positioning is useful.
+- Treat the choice as guidance rather than an absolute rule: **Excalidraw explains the idea; React Flow explains how the system or flow is structured.** Choose the simplest clear representation.
+- Do not use Mermaid for new diagrams. When relevant work encounters an existing Mermaid, ASCII-art, fenced `text` pseudo-diagram, or awkward custom diagram, review it and migrate only when Excalidraw or React Flow communicates the same knowledge better. Preserve text and code examples when text is genuinely clearer.
+- Use `ExcalidrawDiagram` from `src/components/Diagrams` to render optimized SVG exports. Keep reading pages light by not shipping the Excalidraw editor. Store exports under `static/img/diagrams/excalidraw/`; keep the editable `.excalidraw` source beside the export when one exists. Supply meaningful `alt` text and a concise caption.
+- Use `ReactFlowDiagram` from `src/components/Diagrams` for read-only technical graphs. Define only node/edge data in MDX; keep layout behavior, theme integration, and controls in the shared component. Do not embed hundreds of lines of React Flow implementation in an article or add one-off components when the shared abstraction is sufficient.
 - Reuse the other learning components where appropriate: `TLDR` for the required summary, `Principle` for memorable invariants or decision rules, `ConceptCard` with `ConceptGrid` for small related mental-model groups, and `Comparison` when comparison is the primary teaching structure. Import only the components a note uses.
-- Diagram markup should be semantic and accessible where practical, responsive, and able to use the available article width. Prefer horizontal layouts on sufficiently wide screens and switch gracefully to vertical or stacked layouts on narrow screens. Use shared CSS primitives, support light and dark mode, and visually match the documentation design system.
-- Keep diagrams minimal, technical, and readable. Use the repository's existing accent color instead of arbitrary colors. CSS-only animation or interaction is acceptable when it improves understanding, but the static diagram must remain understandable; avoid JavaScript when CSS and normal React markup are sufficient, and do not add Remotion or another heavy visualization dependency.
-- Mermaid is allowed only when automatic graph layout provides substantial value for a genuinely large graph, such as many nodes, extensive branching or cross-dependencies, a large state machine, or complex sequence relationships. Before using it, confirm the diagram cannot reasonably be composed from existing React diagram primitives. Authoring speed alone is not justification.
-- When a relevant documentation edit encounters a simple existing Mermaid diagram, migrate it to the shared React/MDX diagram system while preserving its knowledge semantics. Do not perform unrelated mass migrations unless explicitly requested.
+- Every important diagram needs a concise explanation before or after it; a diagram supports the surrounding explanation rather than replacing it. Keep node count low, emphasize the main path, avoid unnecessary branches, use meaningful labels, and keep terminology consistent with the article.
+- Diagram markup must be accessible where practical, responsive, usable on mobile, readable without interaction, compatible with light/dark themes, and visually restrained. Use animation only when it genuinely explains progression; explanatory React Flow diagrams should omit editing UI and unnecessary controls.
 - Reserve fenced code blocks for source code, commands, configuration, prompts, literal input/output, and raw data representations.
 - Use Docusaurus `info`, `tip`, and `warning` admonitions selectively for important distinctions, practical guidance, and risks. Use tables when comparison is the primary purpose.
 - Keep visual styling restrained, technical, semantic, and legible in light and dark themes. Visuals must reduce the effort needed to understand or remember a concept.
 - Keep paragraphs focused and scannable, use emphasis sparingly, and avoid creating new abstractions unless a repeated pattern is not covered by the established components. Do not turn ordinary prose into cards. The primary goal is learning clarity.
+
+### Diagram decision model
+
+```text
+Does the concept need a visual?
+        |
+        +-- No --> normal MDX
+        |
+        +-- Yes
+             |
+             +-- Mainly a mental model / conceptual explanation? --> Excalidraw
+             |
+             +-- Mainly nodes, relationships, pipeline, or data flow? --> React Flow
+```
 
 ## Language policy
 

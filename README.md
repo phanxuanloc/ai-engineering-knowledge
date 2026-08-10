@@ -44,7 +44,7 @@ npm run build
 
 Each note belongs to one topic directory under `docs/`. Start new notes by copying `docs/_templates/learning-note.mdx`; the template separates the takeaway, mental model, concepts, examples, practical guidance, personal understanding, experiments, related ideas, and a self-test.
 
-Use a short, descriptive kebab-case `.mdx` filename and complete the front matter at the top. Category landing pages are named `index.mdx`, and each `_category_.json` controls its sidebar label and order. Write standard Markdown first; compose diagrams from the shared React/MDX primitives in `src/components/Learning`. Mermaid is only an exceptional fallback for genuinely large graphs whose automatic layout adds substantial value. The complete visualization policy lives in `AGENTS.md`.
+Use a short, descriptive kebab-case `.mdx` filename and complete the front matter at the top. Category landing pages are named `index.mdx`, and each `_category_.json` controls its sidebar label and order. Write standard Markdown first; use optimized Excalidraw-style SVGs for conceptual explanations and the shared read-only React Flow component for structured technical flows. New Mermaid diagrams are not used. The complete visualization policy lives in `AGENTS.md`.
 
 The concise UI authoring and diagram decision rules live in [DESIGN.md](DESIGN.md).
 

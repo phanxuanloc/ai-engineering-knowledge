@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" role="img" aria-labelledby="title desc">
+  <title id="title">Context Window as a worktable</title>
+  <desc id="desc">Many information sources surround a finite worktable. Context Engineering selects only relevant information to place inside the Context Window for the current decision.</desc>
+  <defs>
+    <filter id="rough"><feTurbulence baseFrequency=".012" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.5"/></filter>
+    <style>.ink{fill:none;stroke:#343946;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}.accent{fill:#eef0ff;stroke:#5966d0}.paper{fill:#fffdfa}.label{font:600 18px ui-rounded,system-ui,sans-serif;fill:#343946}.small{font:15px ui-rounded,system-ui,sans-serif;fill:#5b6170}.note{font:600 16px ui-rounded,system-ui,sans-serif;fill:#4654c7}</style>
+  </defs>
+  <rect width="960" height="440" rx="18" class="paper"/>
+  <g filter="url(#rough)">
+    <path class="ink accent" d="M270 95 Q480 72 692 96 L716 340 Q482 363 246 338 Z"/>
+    <text x="480" y="126" text-anchor="middle" class="label">CONTEXT WINDOW</text>
+    <text x="480" y="151" text-anchor="middle" class="small">capacity hữu hạn cho một invocation</text>
+    <rect x="312" y="185" width="146" height="62" rx="9" class="ink paper"/><text x="385" y="212" text-anchor="middle" class="label">Task hiện tại</text><text x="385" y="233" text-anchor="middle" class="small">mục tiêu + constraints</text>
+    <rect x="500" y="185" width="158" height="62" rx="9" class="ink paper"/><text x="579" y="212" text-anchor="middle" class="label">Relevant code</text><text x="579" y="233" text-anchor="middle" class="small">source + interfaces</text>
+    <rect x="405" y="270" width="158" height="55" rx="9" class="ink paper"/><text x="484" y="294" text-anchor="middle" class="label">Fresh evidence</text><text x="484" y="315" text-anchor="middle" class="small">tests + tool results</text>
+    <path class="ink" d="M136 118 C205 119 214 170 266 181"/><path class="ink" d="M144 235 C202 235 215 237 250 242"/><path class="ink" d="M827 120 C758 121 742 171 696 184"/><path class="ink" d="M822 256 C757 255 738 266 708 278"/>
+    <rect x="35" y="83" width="104" height="55" rx="8" class="ink paper"/><text x="87" y="116" text-anchor="middle" class="small">Repository</text>
+    <rect x="41" y="208" width="104" height="55" rx="8" class="ink paper"/><text x="93" y="241" text-anchor="middle" class="small">Memory</text>
+    <rect x="824" y="83" width="102" height="55" rx="8" class="ink paper"/><text x="875" y="116" text-anchor="middle" class="small">Knowledge</text>
+    <rect x="817" y="228" width="108" height="55" rx="8" class="ink paper"/><text x="871" y="261" text-anchor="middle" class="small">Tools / state</text>
+    <path class="ink" d="M165 385 Q482 414 795 383"/><path class="ink" d="M789 374 l12 9 -13 8"/>
+    <text x="480" y="407" text-anchor="middle" class="note">Context Engineering = chọn đúng thứ cần đặt lên bàn</text>
+  </g>
+</svg>

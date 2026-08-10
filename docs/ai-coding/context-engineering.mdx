@@ -6,7 +6,6 @@ sidebar_position: 2
 ---
 
 import {
-  Architecture,
   Comparison,
   ConceptCard,
   ConceptGrid,
@@ -18,6 +17,7 @@ import {
   SelfTest,
   TLDR,
 } from '@site/src/components/Learning';
+import {ExcalidrawDiagram, ReactFlowDiagram} from '@site/src/components/Diagrams';
 
 # Context Engineering
 
@@ -35,31 +35,31 @@ import {
 
 ## Mental Model
 
-<ConceptGrid>
-  <ConceptCard eyebrow="Capacity" title="Context Window">
-    Cái bàn — sức chứa tối đa của một lần gọi model.
-  </ConceptCard>
-  <ConceptCard eyebrow="Information" title="Context">
-    Những thông tin thực tế đang được đặt trên bàn.
-  </ConceptCard>
-  <ConceptCard eyebrow="Decision" title="Context Engineering">
-    Quyết định nên đặt thông tin nào lên bàn cho task hiện tại.
-  </ConceptCard>
-</ConceptGrid>
+<ExcalidrawDiagram
+  src="/img/diagrams/excalidraw/context-window-mental-model.svg"
+  alt="Context Window như một chiếc bàn có sức chứa hữu hạn; Context Engineering chọn task, relevant code và fresh evidence từ nhiều nguồn để đặt lên bàn."
+  caption="Excalidraw-style mental model: Context Window là sức chứa; Context Engineering là quyết định thông tin nào xứng đáng chiếm sức chứa đó."
+/>
 
 Một chiếc bàn lớn hơn không tự quyết định được tài liệu nào cần thiết. Tương tự, Context Window lớn không loại bỏ nhu cầu chọn lọc context.
 
-<Pipeline
-  label="Context construction pipeline"
-  steps={[
-    {label: 'Sources', title: 'Knowledge · Repository · Memory · Tools'},
-    'Retrieve',
-    'Candidates',
-    'Select',
-    'Relevant Context',
-    'Context Window',
-    'LLM',
+<ReactFlowDiagram
+  ariaLabel="Context construction pipeline"
+  height={260}
+  nodes={[
+    {id: 'sources', eyebrow: 'Sources', label: 'Knowledge · Repository · Memory · Tools', x: 0, y: 70},
+    {id: 'retrieve', label: 'Retrieve', detail: 'Mở rộng candidates', x: 220, y: 70},
+    {id: 'select', label: 'Select', detail: 'Giữ relevant context', x: 440, y: 70},
+    {id: 'window', label: 'Context Window', detail: 'Capacity hữu hạn', emphasis: true, x: 660, y: 70},
+    {id: 'llm', label: 'LLM', x: 880, y: 70},
   ]}
+  edges={[
+    {source: 'sources', target: 'retrieve'},
+    {source: 'retrieve', target: 'select', label: 'candidates'},
+    {source: 'select', target: 'window'},
+    {source: 'window', target: 'llm'},
+  ]}
+  caption="React Flow biểu diễn data path thực tế: retrieval tạo candidates, selection thu hẹp chúng trước khi context đi vào model."
 />
 
 `Retrieve` mở rộng tập thông tin có thể dùng; `Select` thu hẹp tập đó thành context phù hợp với quyết định hiện tại. Hai bước này bảo vệ nguyên tắc **Relevant context > More context**.
@@ -220,26 +220,11 @@ Retrieve, select, budget và compress chỉ tạo ra một tập context có th�
   Good Context = Relevant + Sufficient + Low Noise + Low Redundancy + Fresh + Correct
 </KeyInsight>
 
-<ConceptGrid>
-  <ConceptCard eyebrow="1 · Đúng?" title="Relevant?">
-    Evidence này có giúp ích cho quyết định hiện tại không?
-  </ConceptCard>
-  <ConceptCard eyebrow="2 · Đủ?" title="Sufficient?">
-    Evidence hiện có đã đủ để đưa ra quyết định tiếp theo một cách đáng tin cậy chưa?
-  </ConceptCard>
-  <ConceptCard eyebrow="3 · Rác?" title="Noise?">
-    Có thông tin nào chiếm capacity nhưng không giúp ích đáng kể không?
-  </ConceptCard>
-  <ConceptCard eyebrow="4 · Lặp?" title="Redundant?">
-    Cùng một evidence có đang được biểu diễn nhiều lần mà không thêm giá trị mới không?
-  </ConceptCard>
-  <ConceptCard eyebrow="5 · Cũ?" title="Fresh?">
-    Evidence còn phản ánh state hiện tại sau các action gần nhất không?
-  </ConceptCard>
-  <ConceptCard eyebrow="6 · Sai?" title="Correct?">
-    Bản thân thông tin có chính xác khi đối chiếu với source of truth không?
-  </ConceptCard>
-</ConceptGrid>
+<ExcalidrawDiagram
+  src="/img/diagrams/excalidraw/context-quality.svg"
+  alt="Candidate context đi qua các kiểm tra relevance, sufficiency, noise, redundancy, freshness và correctness để trở thành good context."
+  caption="Quality là một bộ tiêu chí, không phải một cảm giác hay một average score duy nhất. Context phải đủ tốt cho next decision cụ thể."
+/>
 
 #### Relevance — “Đúng”
 
@@ -294,22 +279,28 @@ Cùng lỗi `JWT expired` xuất hiện trong tool output, conversation summary,
 
 Điểm này đặc biệt quan trọng với agent vì action làm environment thay đổi. Old tool results, source snapshots, test results và application state không nên tự động được coi là current truth. Agent cần quay lại source of truth và refresh context trong lifecycle `Observe → Refresh Context → Reason → Act → Observe`.
 
-<Pipeline
-  label="Context engineering lifecycle with continuous quality evaluation"
-  steps={[
-    'Sources',
-    'Retrieve',
-    'Select',
-    'Budget',
-    {label: 'Optional', title: 'Compress when useful', optional: true},
-    'Evaluate Quality',
-    'Assemble',
-    'LLM',
-    'Reason / Act',
-    'Observe',
-    'Retrieve / Refresh',
+<ReactFlowDiagram
+  ariaLabel="Context engineering lifecycle with continuous quality evaluation"
+  height={390}
+  nodes={[
+    {id: 'sources', label: 'Sources', x: 0, y: 25},
+    {id: 'retrieve', label: 'Retrieve', x: 205, y: 25},
+    {id: 'shape', label: 'Select · Budget · Compress', detail: 'Compress only when useful', x: 410, y: 25},
+    {id: 'quality', label: 'Evaluate Quality', emphasis: true, x: 615, y: 25},
+    {id: 'assemble', label: 'Assemble', x: 820, y: 25},
+    {id: 'llm', label: 'LLM', x: 820, y: 220},
+    {id: 'act', label: 'Reason / Act', x: 615, y: 220},
+    {id: 'observe', label: 'Observe', detail: 'New evidence / changed state', x: 410, y: 220},
+    {id: 'refresh', label: 'Retrieve / Refresh', emphasis: true, x: 205, y: 220},
   ]}
-  loopLabel="New evidence or changed state starts the next decision cycle"
+  edges={[
+    {source: 'sources', target: 'retrieve'}, {source: 'retrieve', target: 'shape'},
+    {source: 'shape', target: 'quality'}, {source: 'quality', target: 'assemble'},
+    {source: 'assemble', target: 'llm'}, {source: 'llm', target: 'act'},
+    {source: 'act', target: 'observe'}, {source: 'observe', target: 'refresh'},
+    {source: 'refresh', target: 'retrieve', label: 'next decision', dashed: true},
+  ]}
+  caption="Quality evaluation nằm trong vòng lặp. Action thay đổi environment, observation tạo evidence mới, rồi agent refresh context cho quyết định tiếp theo."
 />
 
 Đây là mental model, không phải rigid implementation pipeline. Agent thực tế có thể đánh giá relevance, sufficiency, noise, redundancy, freshness và correctness liên tục trong toàn bộ iterative loop, rồi retrieve hoặc refresh ngay khi phát hiện context chưa đạt quality cần thiết.
@@ -568,9 +559,25 @@ Mỗi action hoặc tool call có thể tạo evidence mới như test failure, 
 
 Khi thiết kế custom AI agent, có thể tách hai trách nhiệm:
 
-<Architecture
-  managerItems={['Instructions', 'Memory', 'Retrieval / RAG', 'Code retrieval', 'Tool results', 'Current state', 'Budgeting', 'Compression', 'Quality evaluation', 'Assembly']}
-  providers={['OpenAI', 'Anthropic', 'Gemini', 'Other providers']}
+<ReactFlowDiagram
+  ariaLabel="Context Manager and Model Adapter architecture"
+  height={360}
+  nodes={[
+    {id: 'agent', label: 'Agent', x: 0, y: 120},
+    {id: 'manager', eyebrow: 'What the model receives', label: 'Context Manager', detail: 'Retrieve · Select · Budget · Compress · Evaluate · Assemble', emphasis: true, x: 255, y: 120},
+    {id: 'adapter', eyebrow: 'How the request is sent', label: 'Model Adapter', detail: 'Provider-specific request / response', x: 510, y: 120},
+    {id: 'openai', label: 'OpenAI', x: 765, y: 0},
+    {id: 'anthropic', label: 'Anthropic', x: 765, y: 100},
+    {id: 'gemini', label: 'Gemini', x: 765, y: 200},
+    {id: 'other', label: 'Other providers', x: 765, y: 300},
+  ]}
+  edges={[
+    {source: 'agent', target: 'manager'},
+    {source: 'manager', target: 'adapter', label: 'model request'},
+    {source: 'adapter', target: 'openai'}, {source: 'adapter', target: 'anthropic'},
+    {source: 'adapter', target: 'gemini'}, {source: 'adapter', target: 'other'},
+  ]}
+  caption="Context Manager sở hữu logic xây context; Model Adapter chỉ chuyển request/response sang contract của provider."
 />
 
 `Context Manager` retrieve, select, compress khi cần và assemble thông tin cho task hiện tại. `Model Adapter` là lớp chuyển đổi request và response theo API cụ thể của từng provider. Các model và coding agent như ChatGPT, Claude, Gemini, Codex-style agents, Claude Code hoặc Cursor có thể expose và assemble context khác nhau, nhưng application vẫn là bên xây dựng context được cung cấp cho model.

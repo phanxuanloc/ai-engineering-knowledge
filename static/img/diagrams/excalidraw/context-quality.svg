@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" role="img" aria-labelledby="title desc">
+  <title id="title">Context quality as a set of filters</title>
+  <desc id="desc">Candidate context passes through relevance, sufficiency, noise, redundancy, freshness, and correctness checks before becoming good context for the current decision.</desc>
+  <defs><filter id="rough"><feTurbulence baseFrequency=".014" numOctaves="2" seed="11" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.4"/></filter><style>.ink{fill:none;stroke:#343946;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}.accent{fill:#eef0ff;stroke:#5966d0}.paper{fill:#fffdfa}.label{font:600 17px ui-rounded,system-ui,sans-serif;fill:#343946}.small{font:14px ui-rounded,system-ui,sans-serif;fill:#5b6170}.note{font:600 16px ui-rounded,system-ui,sans-serif;fill:#4654c7}</style></defs>
+  <rect width="960" height="430" rx="18" class="paper"/>
+  <g filter="url(#rough)">
+    <text x="480" y="48" text-anchor="middle" class="note">Good Context phụ thuộc vào quyết định hiện tại</text>
+    <rect x="42" y="162" width="136" height="78" rx="12" class="ink paper"/><text x="110" y="194" text-anchor="middle" class="label">Candidates</text><text x="110" y="218" text-anchor="middle" class="small">retrieved context</text>
+    <path class="ink" d="M179 201 L236 201"/><path class="ink" d="M228 193 l10 8 -10 8"/>
+    <path class="ink accent" d="M238 91 L703 91 L654 310 L286 310 Z"/>
+    <text x="330" y="132" text-anchor="middle" class="label">Relevant?</text><text x="470" y="132" text-anchor="middle" class="label">Sufficient?</text><text x="610" y="132" text-anchor="middle" class="label">Fresh?</text>
+    <path class="ink" d="M378 105 L352 285"/><path class="ink" d="M518 105 L516 294"/>
+    <text x="354" y="205" text-anchor="middle" class="small">đúng tín hiệu</text><text x="482" y="205" text-anchor="middle" class="small">đủ evidence</text><text x="606" y="205" text-anchor="middle" class="small">current state</text>
+    <text x="355" y="275" text-anchor="middle" class="small">low noise</text><text x="485" y="275" text-anchor="middle" class="small">low redundancy</text><text x="610" y="275" text-anchor="middle" class="small">correct</text>
+    <path class="ink" d="M655 201 L760 201"/><path class="ink" d="M752 193 l10 8 -10 8"/>
+    <rect x="762" y="151" width="156" height="98" rx="12" class="ink accent"/><text x="840" y="188" text-anchor="middle" class="label">Good Context</text><text x="840" y="214" text-anchor="middle" class="small">đủ tin cậy cho</text><text x="840" y="234" text-anchor="middle" class="small">next decision</text>
+    <path class="ink" d="M311 338 Q470 382 635 338"/><text x="474" y="378" text-anchor="middle" class="note">Không dimension nào được che bởi average score</text>
+  </g>
+</svg>
