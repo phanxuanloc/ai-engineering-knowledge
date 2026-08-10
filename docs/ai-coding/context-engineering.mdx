@@ -37,6 +37,7 @@ import {ExcalidrawDiagram, ReactFlowDiagram} from '@site/src/components/Diagrams
 
 <ExcalidrawDiagram
   src="/img/diagrams/excalidraw/context-window-mental-model.svg"
+  mobileSrc="/img/diagrams/excalidraw/context-window-mental-model-mobile.svg"
   alt="Context Window như một chiếc bàn có sức chứa hữu hạn; Context Engineering chọn task, relevant code và fresh evidence từ nhiều nguồn để đặt lên bàn."
   caption="Excalidraw-style mental model: Context Window là sức chứa; Context Engineering là quyết định thông tin nào xứng đáng chiếm sức chứa đó."
 />
@@ -48,10 +49,10 @@ Một chiếc bàn lớn hơn không tự quyết định được tài liệu n
   height={260}
   nodes={[
     {id: 'sources', eyebrow: 'Sources', label: 'Knowledge · Repository · Memory · Tools', x: 0, y: 70},
-    {id: 'retrieve', label: 'Retrieve', detail: 'Mở rộng candidates', x: 220, y: 70},
-    {id: 'select', label: 'Select', detail: 'Giữ relevant context', x: 440, y: 70},
-    {id: 'window', label: 'Context Window', detail: 'Capacity hữu hạn', emphasis: true, x: 660, y: 70},
-    {id: 'llm', label: 'LLM', x: 880, y: 70},
+    {id: 'retrieve', label: 'Retrieve', detail: 'Mở rộng candidates', x: 175, y: 70},
+    {id: 'select', label: 'Select', detail: 'Giữ relevant context', x: 350, y: 70},
+    {id: 'window', label: 'Context Window', detail: 'Capacity hữu hạn', emphasis: true, x: 525, y: 70},
+    {id: 'llm', label: 'LLM', x: 700, y: 70},
   ]}
   edges={[
     {source: 'sources', target: 'retrieve'},
@@ -222,6 +223,7 @@ Retrieve, select, budget và compress chỉ tạo ra một tập context có th�
 
 <ExcalidrawDiagram
   src="/img/diagrams/excalidraw/context-quality.svg"
+  mobileSrc="/img/diagrams/excalidraw/context-quality-mobile.svg"
   alt="Candidate context đi qua các kiểm tra relevance, sufficiency, noise, redundancy, freshness và correctness để trở thành good context."
   caption="Quality là một bộ tiêu chí, không phải một cảm giác hay một average score duy nhất. Context phải đủ tốt cho next decision cụ thể."
 />
@@ -284,14 +286,14 @@ Cùng lỗi `JWT expired` xuất hiện trong tool output, conversation summary,
   height={390}
   nodes={[
     {id: 'sources', label: 'Sources', x: 0, y: 25},
-    {id: 'retrieve', label: 'Retrieve', x: 205, y: 25},
-    {id: 'shape', label: 'Select · Budget · Compress', detail: 'Compress only when useful', x: 410, y: 25},
-    {id: 'quality', label: 'Evaluate Quality', emphasis: true, x: 615, y: 25},
-    {id: 'assemble', label: 'Assemble', x: 820, y: 25},
-    {id: 'llm', label: 'LLM', x: 820, y: 220},
-    {id: 'act', label: 'Reason / Act', x: 615, y: 220},
-    {id: 'observe', label: 'Observe', detail: 'New evidence / changed state', x: 410, y: 220},
-    {id: 'refresh', label: 'Retrieve / Refresh', emphasis: true, x: 205, y: 220},
+    {id: 'retrieve', label: 'Retrieve', x: 175, y: 25},
+    {id: 'shape', label: 'Select · Budget · Compress', detail: 'Compress only when useful', x: 350, y: 25},
+    {id: 'quality', label: 'Evaluate Quality', emphasis: true, x: 525, y: 25},
+    {id: 'assemble', label: 'Assemble', x: 700, y: 25},
+    {id: 'llm', label: 'LLM', x: 700, y: 220},
+    {id: 'act', label: 'Reason / Act', x: 525, y: 220},
+    {id: 'observe', label: 'Observe', detail: 'New evidence / changed state', x: 350, y: 220},
+    {id: 'refresh', label: 'Retrieve / Refresh', emphasis: true, x: 175, y: 220},
   ]}
   edges={[
     {source: 'sources', target: 'retrieve'}, {source: 'retrieve', target: 'shape'},
@@ -564,12 +566,12 @@ Khi thiết kế custom AI agent, có thể tách hai trách nhiệm:
   height={360}
   nodes={[
     {id: 'agent', label: 'Agent', x: 0, y: 120},
-    {id: 'manager', eyebrow: 'What the model receives', label: 'Context Manager', detail: 'Retrieve · Select · Budget · Compress · Evaluate · Assemble', emphasis: true, x: 255, y: 120},
-    {id: 'adapter', eyebrow: 'How the request is sent', label: 'Model Adapter', detail: 'Provider-specific request / response', x: 510, y: 120},
-    {id: 'openai', label: 'OpenAI', x: 765, y: 0},
-    {id: 'anthropic', label: 'Anthropic', x: 765, y: 100},
-    {id: 'gemini', label: 'Gemini', x: 765, y: 200},
-    {id: 'other', label: 'Other providers', x: 765, y: 300},
+    {id: 'manager', eyebrow: 'What the model receives', label: 'Context Manager', detail: 'Retrieve · Select · Budget · Compress · Evaluate · Assemble', emphasis: true, x: 190, y: 120},
+    {id: 'adapter', eyebrow: 'How the request is sent', label: 'Model Adapter', detail: 'Provider-specific request / response', x: 380, y: 120},
+    {id: 'openai', label: 'OpenAI', x: 570, y: 0},
+    {id: 'anthropic', label: 'Anthropic', x: 570, y: 100},
+    {id: 'gemini', label: 'Gemini', x: 570, y: 200},
+    {id: 'other', label: 'Other providers', x: 570, y: 300},
   ]}
   edges={[
     {source: 'agent', target: 'manager'},

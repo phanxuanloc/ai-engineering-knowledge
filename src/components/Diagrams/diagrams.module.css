@@ -14,10 +14,16 @@
   box-shadow: var(--learning-shadow);
 }
 
+.excalidrawFigure picture {
+  aspect-ratio: 24 / 11;
+}
+
 .excalidrawFigure img {
   display: block;
   width: 100%;
   height: auto;
+  aspect-ratio: 24 / 11;
+  object-fit: contain;
 }
 
 .excalidrawFigure figcaption,
@@ -73,6 +79,10 @@
 .flowEdgeDashed path { stroke-dasharray: 5 4; }
 
 @media (max-width: 700px) {
-  .reactFlowCanvas { min-height: 340px; }
-  .flowNode { width: 138px; min-height: 68px; padding: .58rem .65rem; }
+  .flowNode { width: 220px; min-height: 72px; padding: .62rem .72rem; }
+  .reactFlowCanvasVertical .react-flow__edge-text { font-size: 11px; }
+  .excalidrawFigure figcaption,
+  .reactFlowFigure figcaption { text-align: left; }
+  .excalidrawFigure picture,
+  .excalidrawFigure img { aspect-ratio: 3 / 4; }
 }

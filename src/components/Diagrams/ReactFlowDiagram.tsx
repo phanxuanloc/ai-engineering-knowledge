@@ -1,5 +1,5 @@
 import type {ReactNode} from 'react';
-import {useMemo} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -40,16 +40,16 @@ export type ReactFlowDiagramProps = {
   nodes: DiagramNode[];
 };
 
-type LearningNodeData = {label: string; detail?: string; eyebrow?: string; emphasis?: boolean};
+type LearningNodeData = {label: string; detail?: string; eyebrow?: string; emphasis?: boolean; vertical?: boolean};
 
 function LearningNode({data}: NodeProps<Node<LearningNodeData>>) {
   return (
     <div className={clsx(styles.flowNode, data.emphasis && styles.flowNodeEmphasis)}>
-      <Handle className={styles.handle} position={Position.Left} type="target" />
+      <Handle className={styles.handle} position={data.vertical ? Position.Top : Position.Left} type="target" />
       {data.eyebrow && <span>{data.eyebrow}</span>}
       <strong>{data.label}</strong>
       {data.detail && <small>{data.detail}</small>}
-      <Handle className={styles.handle} position={Position.Right} type="source" />
+      <Handle className={styles.handle} position={data.vertical ? Position.Bottom : Position.Right} type="source" />
     </div>
   );
 }
@@ -57,9 +57,27 @@ function LearningNode({data}: NodeProps<Node<LearningNodeData>>) {
 const nodeTypes = {learning: LearningNode};
 
 export function ReactFlowDiagram({ariaLabel, caption, className, edges, height = 300, nodes}: ReactFlowDiagramProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [vertical, setVertical] = useState(false);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const updateLayout = () => setVertical(container.clientWidth < 560);
+    updateLayout();
+    const observer = new ResizeObserver(updateLayout);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
   const flowNodes = useMemo<Node<LearningNodeData>[]>(
-    () => nodes.map(({id, x, y, ...data}) => ({id, type: 'learning', position: {x, y}, data})),
-    [nodes],
+    () => nodes.map(({id, x, y, ...data}, index) => ({
+      id,
+      type: 'learning',
+      position: vertical ? {x: 0, y: index * 112} : {x, y},
+      data: {...data, vertical},
+    })),
+    [nodes, vertical],
   );
   const flowEdges = useMemo<Edge[]>(
     () => edges.map((edge, index) => ({
@@ -76,14 +94,19 @@ export function ReactFlowDiagram({ariaLabel, caption, className, edges, height =
 
   return (
     <figure className={clsx(styles.reactFlowFigure, className)} aria-label={ariaLabel}>
-      <div className={styles.reactFlowCanvas} style={{height}}>
+      <div
+        className={clsx(styles.reactFlowCanvas, vertical && styles.reactFlowCanvasVertical)}
+        ref={containerRef}
+        style={{height: vertical ? nodes.length * 112 + 48 : height}}
+      >
         <ReactFlow
+          key={vertical ? 'vertical' : 'horizontal'}
           edges={flowEdges}
           elementsSelectable={false}
           fitView
-          fitViewOptions={{padding: 0.18}}
-          maxZoom={1.25}
-          minZoom={0.35}
+          fitViewOptions={{padding: vertical ? 0.12 : 0.06}}
+          maxZoom={1.15}
+          minZoom={0.6}
           nodes={flowNodes}
           nodesConnectable={false}
           nodesDraggable={false}
