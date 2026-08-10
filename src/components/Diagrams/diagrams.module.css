@@ -86,9 +86,11 @@
 .flowNode {
   position: relative;
   display: flex;
+  box-sizing: border-box;
   width: var(--flow-node-width, 144px);
-  min-height: 76px;
-  padding: .72rem .8rem;
+  height: 100%;
+  min-height: 100%;
+  padding: .8rem .9rem;
   flex-direction: column;
   gap: .24rem;
   justify-content: center;
@@ -98,6 +100,7 @@
   border: 1px solid var(--learning-border);
   border-radius: 8px;
   box-shadow: none;
+  overflow-wrap: anywhere;
 }
 
 .flowNode_process,
@@ -116,6 +119,7 @@
 }
 
 .flowNode > span {
+  max-width: 100%;
   color: var(--learning-active);
   font-size: .61rem;
   font-weight: 750;
@@ -123,8 +127,8 @@
   text-transform: uppercase;
 }
 
-.flowNode strong { font-size: .84rem; line-height: 1.3; }
-.flowNode small { color: var(--ifm-font-color-secondary); font-size: .68rem; line-height: 1.35; }
+.flowNode strong { max-width: 100%; font-size: .84rem; line-height: 1.3; }
+.flowNode small { max-width: 100%; color: var(--ifm-font-color-secondary); font-size: .68rem; line-height: 1.35; }
 .flowNodeItems {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -155,7 +159,6 @@
 .reactFlowCanvas :global(.react-flow__node:focus-visible) { outline: 2px solid var(--learning-active); outline-offset: 3px; }
 
 @media (max-width: 700px) {
-  .flowNode { min-height: 72px; }
   .reactFlowCanvas { min-height: 340px; touch-action: none; }
   .excalidrawFigure figcaption,
   .reactFlowFigure figcaption { text-align: left; }

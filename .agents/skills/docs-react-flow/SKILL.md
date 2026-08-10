@@ -59,6 +59,8 @@ MDX supplies `nodes`, `edges`, node role, and only meaningful sizing hints. It m
 
 Use shared node roles: `source`, `process`, `decision`, `storage`, `model`, `tool`, `state`, `constraint`, `output`, and `group`. Keep copy to a title and optional short subtitle. Split distinct transformations instead of packing a sentence into one node. Use one emphasis accent.
 
+All visible node content is contained by default. Lay out step number/eyebrow, a small gap, title, description, badges, and metadata inside the node with sufficient padding and a content-aware allocated height. Never use negative positioning or `overflow: visible` to make ordinary content escape the boundary. Wrap long text within the available width. Only explicit external annotations and routing handles/arrows may extend outside. Treat any border crossing, floating step number, metadata/title overlap, or fixed-height clipping as a layout failure.
+
 ## Layout deliberately
 
 - Use Dagre for simple DAGs, trees, pipelines, and lifecycle flows through `layoutGraph()` / `layoutWithDagre()`.
@@ -97,6 +99,7 @@ Run the shared structural and layout validation built into `ReactFlowDiagram`, t
 Before finishing, confirm:
 
 - no node overlap, clipping, or edge through unrelated nodes;
+- no node content crossing its border, floating step metadata, metadata/title overlap, or long-text overflow at desktop or mobile width;
 - crossings are minimized and the main direction/branching/output are obvious;
 - sibling and rank spacing are consistent; node sizes fit readable content;
 - fitView has balanced padding without excessive empty canvas;

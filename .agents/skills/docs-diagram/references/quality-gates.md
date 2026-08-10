@@ -18,6 +18,7 @@
 - Whitespace is approximately balanced; no secondary branch controls the canvas.
 - The graph does not degenerate into a long row or column rescued by `fitView`.
 - Primary entities remain readable without tiny text or nodes.
+- Visible node content remains inside the node boundary with sufficient internal padding; wrapped copy receives content-aware height, and step numbers or badges never float outside unless explicitly modeled as external annotations.
 
 ## 3. Routing validation
 

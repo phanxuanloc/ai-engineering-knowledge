@@ -580,10 +580,11 @@ Khi thiết kế custom AI agent, có thể tách hai trách nhiệm:
 
 <ReactFlowDiagram
   ariaLabel="Context Manager and Model Adapter architecture"
-  direction="LR"
-  height={360}
+  direction="TB"
+  height={570}
   kind="architecture"
   primaryPath={['agent', 'manager', 'adapter', 'providers']}
+  rankSpacing={44}
   nodes={[
     {id: 'agent', label: 'Agent', role: 'source', width: 90},
     {id: 'manager', eyebrow: 'What the model receives', label: 'Context Manager', detail: 'Retrieve · Select · Budget · Compress · Evaluate · Assemble', role: 'constraint', emphasis: true, width: 190},
@@ -593,7 +594,7 @@ Khi thiết kế custom AI agent, có thể tách hai trách nhiệm:
   edges={[
     {source: 'agent', target: 'manager'},
     {source: 'manager', target: 'adapter', label: 'model request'},
-    {source: 'adapter', target: 'providers', type: 'straight'},
+    {source: 'adapter', target: 'providers'},
   ]}
   caption="Context Manager sở hữu logic xây context; Model Adapter chỉ chuyển request/response sang contract của provider."
 />

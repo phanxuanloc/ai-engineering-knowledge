@@ -91,6 +91,19 @@ function DocsFlowNode({data, sourcePosition = Position.Bottom, targetPosition = 
 
 const nodeTypes = {docs: DocsFlowNode};
 
+function estimateNodeHeight(node: DiagramNode) {
+  const width = node.width ?? 168;
+  const usableTextWidth = Math.max(72, width - 26);
+  const estimatedCharactersPerLine = Math.max(12, Math.floor(usableTextWidth / 6.4));
+  const detailLines = node.detail ? Math.max(1, Math.ceil(node.detail.length / estimatedCharactersPerLine)) : 0;
+  const itemRows = node.items ? Math.ceil(node.items.length / 2) : 0;
+  const contentHeight = 70
+    + (node.eyebrow ? 18 : 0)
+    + detailLines * 17
+    + (itemRows ? itemRows * 34 + 8 : 0);
+  return Math.max(node.height ?? 0, contentHeight);
+}
+
 export function ReactFlowDiagram({
   ariaLabel,
   background = false,
@@ -139,16 +152,16 @@ export function ReactFlowDiagram({
       edge.dashed && styles.flowEdgeDashed,
     ),
     type: edge.type === 'bezier' ? 'default' : edge.type ?? 'smoothstep',
-    pathOptions: edge.type === 'bezier' ? {curvature: edge.route === 'feedback' ? 0.22 : 0.25} : undefined,
+    pathOptions: edge.type === 'bezier' ? {curvature: edge.route === 'feedback' ? 0.16 : 0.25} : undefined,
   })), [direction, edges]);
 
-  const layout = useMemo(() => layoutGraph<DocsNode>(nodes.map(({id, height: nodeHeight = 76, width = 168, ...data}) => ({
+  const layout = useMemo(() => layoutGraph<DocsNode>(nodes.map(({id, height: authoredHeight, width = 168, ...data}) => ({
     id,
     type: 'docs',
     data: {...data, width},
     position: {x: 0, y: 0},
     width,
-    height: nodeHeight,
+    height: estimateNodeHeight({id, height: authoredHeight, width, ...data}),
   })), flowEdges, {direction, layout: layoutMode, nodeSpacing, primaryPath, rankSpacing}), [direction, flowEdges, layoutMode, nodeSpacing, nodes, primaryPath, rankSpacing]);
   useMemo(() => assertDiagramQuality({edges, kind, nodes, primaryPath}, layout.nodes, layout.bounds), [edges, kind, layout.bounds, layout.nodes, nodes, primaryPath]);
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<DocsNode>(layout.nodes);
@@ -167,7 +180,7 @@ export function ReactFlowDiagram({
           aria-label={ariaLabel}
           colorMode="system"
           edges={flowEdges}
-          elementsSelectable={interactive}
+          elementsSelectable={false}
           fitView
           fitViewOptions={{padding: 0.1, maxZoom: 1}}
           maxZoom={1.6}
