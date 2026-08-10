@@ -49,37 +49,52 @@ function sketchArrow(points, label, preset = sketchPresets.sketchArrow) {
   return [arrow, note(middle[0] + 8, middle[1] - 28, label, 17, '#5f3dc4')];
 }
 
+function sketchLine(points, preset = sketchPresets.rejectedNoise) {
+  const [origin, ...rest] = points;
+  const relative = [[0, 0], ...rest.map(([x, y]) => [x - origin[0], y - origin[1]])];
+  const xs = relative.map(([x]) => x); const ys = relative.map(([, y]) => y);
+  return {...base('line', origin[0], origin[1], Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), preset), points: relative, startBinding: null, endBinding: null, startArrowhead: null, endArrowhead: null};
+}
+
 function contextWindow(vertical) {
-  if (vertical) return {width: 390, height: 650, elements: [
+  if (vertical) return {width: 390, height: 720, elements: [
     note(28, 20, 'lots of available information', 22, '#5f3dc4'),
     note(40, 70, '▣ repository', 21), note(205, 64, '◯ memory', 21),
     note(58, 112, '⌁ tools', 21), note(220, 118, '≡ docs + history', 19),
-    ...sketchArrow([[250, 155], [225, 185], [196, 214]], 'select useful only'),
-    shape('rectangle', 38, 225, 316, 310, sketchPresets.container, {angle: -.015}),
-    note(195, 252, 'CONTEXT WINDOW', 27, '#343a40', 'center'),
-    note(195, 292, 'limited capacity', 19, '#5f3dc4', 'center'),
-    shape('ellipse', 78, 340, 118, 58, sketchPresets.conceptBox), note(137, 359, 'task', 21, '#343a40', 'center'),
-    shape('rectangle', 205, 332, 120, 68, sketchPresets.conceptBox, {angle: .018}), note(265, 353, 'constraints', 18, '#343a40', 'center'),
-    shape('rectangle', 82, 425, 220, 68, sketchPresets.importantConcept, {angle: -.012}), note(192, 446, 'relevant information', 18, '#343a40', 'center'),
-    note(52, 510, 'not everything fits!', 18, '#c92a2a'),
-    ...sketchArrow([[195, 545], [204, 574], [191, 604]], null), note(195, 612, 'LLM', 25, '#343a40', 'center'),
+    note(25, 162, 'old logs', 17, '#868e96'),
+    sketchLine([[20, 158], [105, 188]]), sketchLine([[100, 156], [24, 190]]),
+    ...sketchArrow([[108, 176], [145, 190], [168, 208]], null, sketchPresets.secondaryArrow),
+    sketchLine([[171, 194], [171, 222]]),
+    ...sketchArrow([[275, 157], [248, 198], [205, 235]], 'select useful only'),
+    shape('rectangle', 38, 245, 316, 310, sketchPresets.conceptContainer, {angle: -.015}),
+    note(195, 272, 'CONTEXT WINDOW', 27, '#343a40', 'center'),
+    note(195, 312, 'limited capacity', 19, '#5f3dc4', 'center'),
+    shape('ellipse', 78, 360, 118, 58, sketchPresets.conceptBox), note(137, 379, 'task', 21, '#343a40', 'center'),
+    shape('rectangle', 205, 352, 120, 68, sketchPresets.sketchNote, {angle: .018}), note(265, 373, 'constraints', 18, '#343a40', 'center'),
+    shape('rectangle', 82, 445, 220, 68, sketchPresets.conceptHighlight, {angle: -.012}), note(192, 466, 'relevant information', 18, '#343a40', 'center'),
+    ...sketchArrow([[195, 565], [204, 592], [195, 620]], null),
+    shape('ellipse', 140, 628, 110, 60, sketchPresets.llmNode, {angle: .012}), note(195, 647, 'LLM', 24, '#343a40', 'center'),
   ]};
   return {width: 920, height: 500, elements: [
     note(28, 22, 'lots of available information', 25, '#5f3dc4'),
     note(45, 85, '▣ repository', 23), note(54, 133, '◯ memory', 23),
     note(40, 181, '⌁ tools', 23), note(58, 229, '≡ docs', 23), note(45, 277, '↶ history', 23),
     ...sketchArrow([[210, 118], [285, 148], [330, 195]], null, sketchPresets.secondaryArrow),
-    note(205, 166, 'select useful only', 17, '#5f3dc4'),
+    note(150, 166, 'select useful only', 17, '#5f3dc4'),
     ...sketchArrow([[190, 215], [276, 224], [337, 242]], null),
     ...sketchArrow([[215, 302], [290, 292], [340, 275]], null, sketchPresets.secondaryArrow),
-    shape('rectangle', 345, 55, 535, 355, sketchPresets.container, {angle: -.012}),
+    note(72, 352, 'unrelated logs', 18, '#868e96'),
+    sketchLine([[62, 347], [205, 382]]), sketchLine([[198, 345], [68, 384]]),
+    ...sketchArrow([[210, 365], [270, 350], [322, 329]], null, sketchPresets.secondaryArrow),
+    sketchLine([[326, 311], [329, 348]]),
+    shape('rectangle', 345, 55, 535, 355, sketchPresets.conceptContainer, {angle: -.012}),
     note(605, 80, 'CONTEXT WINDOW', 31, '#343a40', 'center'),
     note(604, 124, 'limited capacity', 20, '#5f3dc4', 'center'),
     shape('ellipse', 405, 185, 145, 70, sketchPresets.conceptBox, {angle: .025}), note(477, 207, 'task', 24, '#343a40', 'center'),
-    shape('rectangle', 610, 174, 195, 78, sketchPresets.conceptBox, {angle: -.018}), note(707, 199, 'constraints', 22, '#343a40', 'center'),
-    shape('rectangle', 470, 292, 255, 74, sketchPresets.importantConcept, {angle: .012}), note(597, 314, 'relevant information', 21, '#343a40', 'center'),
-    note(370, 380, 'cross out noise  ✕', 19, '#c92a2a'),
-    ...sketchArrow([[610, 416], [630, 446], [614, 478]], null), note(675, 447, 'LLM', 25),
+    shape('rectangle', 610, 174, 195, 78, sketchPresets.sketchNote, {angle: -.018}), note(707, 199, 'constraints', 22, '#343a40', 'center'),
+    shape('rectangle', 470, 292, 255, 74, sketchPresets.conceptHighlight, {angle: .012}), note(597, 314, 'relevant information', 21, '#343a40', 'center'),
+    ...sketchArrow([[610, 416], [630, 440], [655, 452]], null),
+    shape('ellipse', 650, 430, 118, 62, sketchPresets.llmNode, {angle: .015}), note(709, 450, 'LLM', 25, '#343a40', 'center'),
   ]};
 }
 
