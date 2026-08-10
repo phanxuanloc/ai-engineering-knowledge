@@ -7,6 +7,8 @@ description: Create or review educational Excalidraw diagrams for this repositor
 
 Create whiteboard explanations that make an argument visually. A diagram is not formatted prose and Excalidraw is not React Flow with rough borders.
 
+Use this skill only after `docs-diagram` classifies the communication intent and selects Excalidraw. Preserve the orchestration skill's grounded entities, relationships, teaching message, and complexity boundary while translating them into a hand-drawn visual argument.
+
 Canonical educational diagrams optimize for these priorities, in order:
 
 1. Semantic correctness

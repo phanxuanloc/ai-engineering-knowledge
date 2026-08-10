@@ -17,9 +17,11 @@ import {
 import '@xyflow/react/dist/style.css';
 import clsx from 'clsx';
 import {layoutGraph, type FlowDirection} from './layoutGraph';
+import {assertDiagramQuality} from './diagramSpec';
 import styles from './diagrams.module.css';
 
 export type DiagramNodeRole = 'source' | 'process' | 'decision' | 'storage' | 'model' | 'tool' | 'state' | 'constraint' | 'output' | 'group';
+export type DiagramKind = 'architecture' | 'workflow' | 'sequence' | 'data-flow' | 'lifecycle' | 'relationship';
 
 export type DiagramNode = {
   id: string;
@@ -38,7 +40,10 @@ export type DiagramEdge = {
   target: string;
   label?: string;
   dashed?: boolean;
-  type?: 'straight' | 'step' | 'smoothstep';
+  route?: 'primary' | 'secondary' | 'feedback';
+  sourceHandle?: 'top' | 'right' | 'bottom' | 'left';
+  targetHandle?: 'top' | 'right' | 'bottom' | 'left';
+  type?: 'straight' | 'step' | 'smoothstep' | 'bezier';
 };
 
 export type ReactFlowDiagramProps = {
@@ -51,10 +56,13 @@ export type ReactFlowDiagramProps = {
   edges: DiagramEdge[];
   height?: number;
   interactive?: boolean;
+  kind?: DiagramKind;
+  layout?: 'dagre' | 'primary-path';
   minimap?: boolean | 'auto';
   nodeSpacing?: number;
   nodes: DiagramNode[];
   nodesDraggable?: boolean;
+  primaryPath?: string[];
   rankSpacing?: number;
 };
 
@@ -67,12 +75,14 @@ function DocsFlowNode({data, sourcePosition = Position.Bottom, targetPosition = 
       className={clsx(styles.flowNode, styles[`flowNode_${data.role ?? 'state'}`], data.emphasis && styles.flowNodeEmphasis)}
       style={data.width ? ({'--flow-node-width': `${data.width}px`} as CSSProperties) : undefined}
     >
-      <Handle className={styles.handle} position={targetPosition} type="target" />
+      {[Position.Top, Position.Right, Position.Bottom, Position.Left].map((position) =>
+        <Handle className={styles.handle} id={`target-${position}`} key={`target-${position}`} position={position} type="target" />)}
       {data.eyebrow && <span>{data.eyebrow}</span>}
       <strong>{data.label}</strong>
       {data.detail && <small>{data.detail}</small>}
       {data.items && <ul className={styles.flowNodeItems}>{data.items.map((item) => <li key={item}>{item}</li>)}</ul>}
-      <Handle className={styles.handle} position={sourcePosition} type="source" />
+      {[Position.Top, Position.Right, Position.Bottom, Position.Left].map((position) =>
+        <Handle className={styles.handle} id={`source-${position}`} key={`source-${position}`} position={position} type="source" />)}
     </div>
   );
 }
@@ -81,18 +91,21 @@ const nodeTypes = {docs: DocsFlowNode};
 
 export function ReactFlowDiagram({
   ariaLabel,
-  background = true,
+  background = false,
   caption,
   className,
   controls,
   direction = 'TB',
   edges,
   height,
-  interactive = true,
+  interactive = false,
+  kind = 'workflow',
+  layout: layoutMode = 'dagre',
   minimap = 'auto',
   nodeSpacing,
   nodes,
   nodesDraggable,
+  primaryPath,
   rankSpacing,
 }: ReactFlowDiagramProps) {
   const flowEdges = useMemo<Edge[]>(() => edges.map((edge, index) => ({
@@ -101,9 +114,16 @@ export function ReactFlowDiagram({
     target: edge.target,
     label: edge.label,
     markerEnd: {type: MarkerType.ArrowClosed, width: 18, height: 18},
-    className: edge.dashed ? styles.flowEdgeDashed : undefined,
-    type: edge.type ?? 'smoothstep',
-  })), [edges]);
+    sourceHandle: `source-${edge.sourceHandle ?? (direction === 'TB' ? 'bottom' : 'right')}`,
+    targetHandle: `target-${edge.targetHandle ?? (direction === 'TB' ? 'top' : 'left')}`,
+    className: clsx(
+      edge.route === 'feedback' && styles.flowEdgeFeedback,
+      edge.route === 'secondary' && styles.flowEdgeSecondary,
+      edge.dashed && styles.flowEdgeDashed,
+    ),
+    type: edge.type === 'bezier' ? 'default' : edge.type ?? 'smoothstep',
+    pathOptions: edge.type === 'bezier' ? {curvature: edge.route === 'feedback' ? 0.22 : 0.25} : undefined,
+  })), [direction, edges]);
 
   const layout = useMemo(() => layoutGraph<DocsNode>(nodes.map(({id, height: nodeHeight = 76, width = 168, ...data}) => ({
     id,
@@ -112,7 +132,8 @@ export function ReactFlowDiagram({
     position: {x: 0, y: 0},
     width,
     height: nodeHeight,
-  })), flowEdges, {direction, nodeSpacing, rankSpacing}), [direction, flowEdges, nodeSpacing, nodes, rankSpacing]);
+  })), flowEdges, {direction, layout: layoutMode, nodeSpacing, primaryPath, rankSpacing}), [direction, flowEdges, layoutMode, nodeSpacing, nodes, primaryPath, rankSpacing]);
+  useMemo(() => assertDiagramQuality({edges, kind, nodes, primaryPath}, layout.nodes, layout.bounds), [edges, kind, layout.bounds, layout.nodes, nodes, primaryPath]);
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<DocsNode>(layout.nodes);
   useEffect(() => setFlowNodes(layout.nodes), [layout.nodes, setFlowNodes]);
 

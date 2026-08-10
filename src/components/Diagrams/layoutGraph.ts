@@ -5,7 +5,9 @@ export type FlowDirection = 'TB' | 'LR';
 
 export type LayoutOptions = {
   direction?: FlowDirection;
+  layout?: 'dagre' | 'primary-path';
   nodeSpacing?: number;
+  primaryPath?: string[];
   rankSpacing?: number;
 };
 
@@ -53,5 +55,48 @@ export function layoutGraph<NodeType extends Node>(
   edges: Edge[],
   options: LayoutOptions = {},
 ): LayoutResult<NodeType> {
+  if (options.layout === 'primary-path' && options.primaryPath?.length) {
+    const {direction = 'TB', nodeSpacing = 48, primaryPath, rankSpacing = 52} = options;
+    const byId = new Map(nodes.map((node) => [node.id, node]));
+    const positions = new Map<string, {x: number; y: number}>();
+    let cursor = 0;
+
+    for (const id of primaryPath) {
+      const node = byId.get(id);
+      if (!node) continue;
+      positions.set(id, direction === 'TB' ? {x: 0, y: cursor} : {x: cursor, y: 0});
+      cursor += (direction === 'TB' ? node.height ?? 76 : node.width ?? 168) + rankSpacing;
+    }
+
+    const sideNodes = nodes.filter((node) => !positions.has(node.id));
+    sideNodes.forEach((node, index) => {
+      const connectedPrimary = edges
+        .flatMap((edge) => edge.source === node.id ? [edge.target] : edge.target === node.id ? [edge.source] : [])
+        .find((id) => positions.has(id));
+      const anchor = connectedPrimary ? byId.get(connectedPrimary) : byId.get(primaryPath.at(-1) ?? '');
+      const anchorPosition = anchor ? positions.get(anchor.id) : undefined;
+      const offset = index * ((direction === 'TB' ? node.height ?? 76 : node.width ?? 168) + nodeSpacing);
+      positions.set(node.id, direction === 'TB'
+        ? {x: 220 + nodeSpacing, y: (anchorPosition?.y ?? cursor) + 40 + offset}
+        : {x: (anchorPosition?.x ?? cursor) + offset, y: 140 + nodeSpacing});
+    });
+
+    const laidOutNodes = nodes.map((node) => ({
+      ...node,
+      position: positions.get(node.id) ?? {x: 0, y: 0},
+      sourcePosition: direction === 'TB' ? Position.Bottom : Position.Right,
+      targetPosition: direction === 'TB' ? Position.Top : Position.Left,
+    }));
+    const minX = Math.min(...laidOutNodes.map((node) => node.position.x));
+    const minY = Math.min(...laidOutNodes.map((node) => node.position.y));
+    const normalized = laidOutNodes.map((node) => ({...node, position: {x: node.position.x - minX, y: node.position.y - minY}}));
+    return {
+      nodes: normalized,
+      bounds: {
+        width: Math.max(...normalized.map((node) => node.position.x + (node.width ?? 168))),
+        height: Math.max(...normalized.map((node) => node.position.y + (node.height ?? 76))),
+      },
+    };
+  }
   return layoutWithDagre(nodes, edges, options);
 }

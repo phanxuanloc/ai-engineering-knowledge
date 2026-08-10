@@ -1,0 +1,4 @@
+interface:
+  display_name: "Documentation Diagrams"
+  short_description: "Choose and validate educational diagrams"
+  default_prompt: "Use $docs-diagram to choose, design, validate, and review a documentation diagram."

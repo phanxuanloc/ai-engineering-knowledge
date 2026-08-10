@@ -7,6 +7,8 @@ description: Design, implement, or review polished React Flow diagrams for this 
 
 Build learning diagrams whose structure is understandable within five seconds. Authors define entities, relationships, and semantic roles; shared infrastructure owns geometry, viewport behavior, interaction, theme, and responsive presentation.
 
+Use this skill only after `docs-diagram` classifies the communication intent and selects React Flow. Treat MDX `nodes`, `edges`, `kind`, and `primaryPath` as the renderer-facing Diagram Spec. Keep stable IDs and authored facts unchanged during layout repair.
+
 Use the current `@xyflow/react` v12 API. Treat [React Flow documentation](https://reactflow.dev/) as the API source of truth, especially its [layouting guide](https://reactflow.dev/learn/layouting/layouting), [custom nodes guide](https://reactflow.dev/learn/customization/custom-nodes), and [built-in components guide](https://reactflow.dev/learn/concepts/built-in-components).
 
 ## Choose the medium and mode
@@ -66,7 +68,9 @@ Use shared node roles: `source`, `process`, `decision`, `storage`, `model`, `too
 - Do not default five or more meaningful stages to one horizontal row. Use a vertical spine, semantic ranks, or balanced branches.
 - Centralize `nodeSpacing`, `rankSpacing`, and viewport padding. Do not scatter coordinate patches or magic offsets.
 
-Fix routing in this order: graph model/ranks → layout engine → spacing → handle placement → edge type. Reposition or change engine before patching many coordinates. Prefer short straight, step, or smooth-step edges. Every directional edge needs a clear arrowhead. Animate only when motion teaches behavior.
+Fix routing in this order: graph model/ranks → layout engine → spacing → handle placement → edge type. Reposition or change engine before patching many coordinates. Prefer gentle `smoothstep` or Bezier relationships; reserve straight edges for short, direct connections and sharp step edges for intentional branching. Every directional edge needs a clear arrowhead. Animate only when motion teaches behavior.
+
+Keep the primary flow short, quiet, and consistent. Route feedback, retry, refresh, and other long-distance cycles through a dedicated outer lane with clear space from nodes, labels, and other edges; never represent a long return path as a straight line beside the graph. Use top/bottom handles for the main `TB` spine and left/right handles for side branches and loops. Feedback edges should normally be subtler or dashed, with labels placed on an unambiguous open segment. Avoid unnecessary S-curves, awkward diagonal entry, and 90-degree turns that do not express a real branch. Design node placement and routing together so edges never have to cross node content.
 
 For `TB`, targets enter from top and sources leave from bottom. For `LR`, targets enter from left and sources leave from right. Multiple semantic connections may use stable handle IDs; hidden handles must retain measurable dimensions (`opacity` or `visibility`, never `display: none`).
 
@@ -88,6 +92,8 @@ Add a new abstraction only for a recurring need. Avoid giant APIs that expose ge
 
 ## Quality gate
 
+Run the shared structural and layout validation built into `ReactFlowDiagram`, then apply the routing, readability, and visual gates from `docs-diagram/references/quality-gates.md`. A deterministic pass is necessary but not sufficient.
+
 Before finishing, confirm:
 
 - no node overlap, clipping, or edge through unrelated nodes;
@@ -99,5 +105,7 @@ Before finishing, confirm:
 - light and dark themes preserve contrast;
 - keyboard focus and `ariaLabel` are present; meaning does not depend on color;
 - the diagram teaches more clearly than prose or Excalidraw would.
+
+On failure, repair locally in this order: semantic spec/ranks → affected node spacing/size → handle placement → edge type → label. Change one diagnosed control at a time; preserve unrelated nodes, edges, IDs, and copy. Split the view when density or topology is the real defect.
 
 Run the configured formatter/linter when present, `npm run typecheck`, and `npm run build`. Then inspect representative diagrams at desktop and mobile widths in light and dark themes; test fit, pan, zoom, Controls, dragging when enabled, and MiniMap when present. Compilation alone is not acceptance.

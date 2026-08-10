@@ -8,12 +8,13 @@ Use `.mdx` for every knowledge article and start from `docs/_templates/learning-
 
 ## Diagram decisions
 
+- Start with `.agents/skills/docs-diagram/SKILL.md`: decide whether visualization adds value, classify the communication intent, define grounded semantic content and a primary path, then validate the result.
 - Conceptual mental model or analogy → Excalidraw when a visual materially helps.
 - Structured flow, pipeline, architecture, or directed graph → shared React Flow infrastructure.
 - Two to four short lines already explain it → ordinary MDX.
 - Tiny relationships whose topology is the entire lesson → Mermaid as a rare exception, never the default.
 
-Important diagrams must remain understandable without animation and work cleanly on narrow screens. Follow `.agents/skills/docs-excalidraw/SKILL.md` for mental models and `.agents/skills/docs-react-flow/SKILL.md` for structured graphs; keep rendering, geometry, and interaction in shared infrastructure rather than article-level boilerplate.
+Important diagrams must remain understandable without animation and work cleanly on narrow screens. Follow `.agents/skills/docs-excalidraw/SKILL.md` for mental models and `.agents/skills/docs-react-flow/SKILL.md` for structured graphs; keep rendering, geometry, and interaction in shared infrastructure rather than article-level boilerplate. Prefer one primary view with progressive disclosure, deterministic layout from stable semantic input, layered quality gates, actual visual review, and targeted repair over whole-diagram regeneration.
 
 ## Learning state
 

@@ -115,6 +115,8 @@
 }
 .handle { width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .flowEdgeDashed path { stroke-dasharray: 5 4; }
+.flowEdgeSecondary path { opacity: .72; }
+.flowEdgeFeedback path { opacity: .72; stroke-dasharray: 7 5; }
 
 .reactFlowCanvas :global(.react-flow__edge-text) { font-size: 11px; }
 .reactFlowCanvas :global(.react-flow__controls) { overflow: hidden; border: 1px solid var(--learning-border); border-radius: 7px; box-shadow: var(--learning-shadow); }
