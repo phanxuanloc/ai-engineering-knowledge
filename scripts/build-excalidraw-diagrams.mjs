@@ -1,116 +1,146 @@
-import {mkdir, writeFile} from 'node:fs/promises';
+import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
+import {build} from 'esbuild';
+import {JSDOM} from 'jsdom';
+import {sketchPalette, sketchPresets} from './excalidraw-presets.mjs';
 
 const outputDir = path.resolve('static/img/diagrams/excalidraw');
-const now = 1;
 let sequence = 0;
 
-function base(type, x, y, width, height, options = {}) {
+function base(type, x, y, width, height, preset = {}, options = {}) {
   sequence += 1;
+  const style = {...sketchPresets.sketchDefaults, ...preset, ...options};
   return {
-    id: `element-${sequence}`,
-    type, x, y, width, height, angle: 0,
-    strokeColor: options.strokeColor ?? '#343a46',
-    backgroundColor: options.backgroundColor ?? 'transparent',
-    fillStyle: 'solid', strokeWidth: options.strokeWidth ?? 2,
-    strokeStyle: 'solid', roughness: 1, opacity: 100,
+    id: `element-${sequence}`, type, x, y, width, height, angle: options.angle ?? 0,
+    strokeColor: style.strokeColor, backgroundColor: style.backgroundColor,
+    fillStyle: style.fillStyle, strokeWidth: style.strokeWidth,
+    strokeStyle: style.strokeStyle, roughness: style.roughness, opacity: 100,
     groupIds: [], frameId: null, index: `a${sequence}`,
     roundness: type === 'rectangle' ? {type: 3} : null,
-    seed: 1000 + sequence, version: 1, versionNonce: 2000 + sequence,
-    isDeleted: false, boundElements: [], updated: now, link: null, locked: false,
+    seed: 3100 + sequence * 37, version: 1, versionNonce: 7100 + sequence * 53,
+    isDeleted: false, boundElements: [], updated: 1, link: null, locked: false,
   };
 }
 
-function box(x, y, width, height, label, detail, options = {}) {
-  const rect = base('rectangle', x, y, width, height, options);
-  const labelText = text(x + width / 2, y + (detail ? height / 2 - 10 : height / 2), label, options.fontSize ?? 20, true);
-  const elements = [rect, labelText];
-  if (detail) elements.push(text(x + width / 2, y + height / 2 + 18, detail, 15, false, '#59606f'));
-  return elements;
+function shape(type, x, y, width, height, preset, options) {
+  return base(type, x, y, width, height, preset, options);
 }
 
-function panel(x, y, width, height, label, detail) {
-  return [
-    base('rectangle', x, y, width, height, {backgroundColor: '#eef0ff', strokeColor: '#5966d0'}),
-    text(x + width / 2, y + 36, label, 24, true),
-    text(x + width / 2, y + 66, detail, 15, false, '#59606f'),
-  ];
+function note(x, y, value, fontSize = 20, color = '#343a40', align = 'left') {
+  const width = Math.max(24, value.length * fontSize * .62);
+  return {
+    ...base('text', align === 'center' ? x - width / 2 : x, y, width, fontSize * 1.25, sketchPresets.annotation, {strokeColor: color, strokeWidth: 1}),
+    text: value, fontSize, fontFamily: 1, textAlign: align, verticalAlign: 'top',
+    baseline: fontSize, containerId: null, originalText: value, lineHeight: 1.25,
+  };
 }
 
-function text(x, y, value, fontSize = 18, bold = false, color = '#343a46') {
-  const width = Math.max(20, value.length * fontSize * .57);
-  return {...base('text', x - width / 2, y - fontSize / 2, width, fontSize * 1.25, {strokeColor: color, strokeWidth: 1}), text: value, fontSize, fontFamily: 2, textAlign: 'center', verticalAlign: 'middle', baseline: fontSize, containerId: null, originalText: value, lineHeight: 1.25, bold};
-}
-
-function arrow(x1, y1, x2, y2, label) {
-  const element = {...base('arrow', x1, y1, x2 - x1, y2 - y1), points: [[0, 0], [x2 - x1, y2 - y1]], startBinding: null, endBinding: null, startArrowhead: null, endArrowhead: 'arrow', elbowed: false};
-  return label ? [element, text((x1 + x2) / 2, (y1 + y2) / 2 - 14, label, 13, false, '#4654c7')] : [element];
+function sketchArrow(points, label, preset = sketchPresets.sketchArrow) {
+  const [origin, ...rest] = points;
+  const relative = [[0, 0], ...rest.map(([x, y]) => [x - origin[0], y - origin[1]])];
+  const xs = relative.map(([x]) => x); const ys = relative.map(([, y]) => y);
+  const arrow = {
+    ...base('arrow', origin[0], origin[1], Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), preset),
+    points: relative, startBinding: null, endBinding: null,
+    startArrowhead: null, endArrowhead: 'arrow', elbowed: false,
+  };
+  if (!label) return [arrow];
+  const middle = points[Math.floor(points.length / 2)];
+  return [arrow, note(middle[0] + 8, middle[1] - 28, label, 17, '#5f3dc4')];
 }
 
 function contextWindow(vertical) {
-  if (vertical) return {
-    width: 390, height: 540, elements: [
-      text(195, 32, 'Nhiều nguồn thông tin', 18, true, '#4654c7'),
-      ...box(28, 58, 150, 58, 'Repository · Memory', null, {fontSize: 15}),
-      ...box(212, 58, 150, 58, 'Knowledge · Tools', null, {fontSize: 15}),
-      ...arrow(195, 120, 195, 158, 'select'),
-      ...panel(45, 165, 300, 245, 'CONTEXT WINDOW', 'capacity hữu hạn'),
-      ...box(78, 260, 234, 58, 'Task + constraints'),
-      ...box(78, 334, 234, 58, 'Relevant code + evidence'),
-      ...arrow(195, 415, 195, 452),
-      ...box(62, 458, 266, 58, 'Context Engineering', 'chọn đúng thứ cần giữ', {backgroundColor: '#f7f7f9', strokeColor: '#5966d0'}),
-    ],
-  };
-  return {
-    width: 920, height: 390, elements: [
-      ...box(20, 70, 220, 82, 'Information Sources', 'repository · memory · tools'),
-      ...arrow(245, 111, 295, 111, 'select'),
-      ...panel(300, 35, 600, 300, 'CONTEXT WINDOW', 'capacity hữu hạn cho một invocation'),
-      ...box(350, 170, 220, 78, 'Task + constraints', 'mục tiêu hiện tại'),
-      ...box(620, 170, 230, 78, 'Relevant context', 'code + fresh evidence'),
-      text(600, 302, 'Context Engineering chọn đúng thông tin cho current decision', 17, true, '#4654c7'),
-    ],
-  };
+  if (vertical) return {width: 390, height: 650, elements: [
+    note(28, 20, 'lots of available information', 22, '#5f3dc4'),
+    note(40, 70, '▣ repository', 21), note(205, 64, '◯ memory', 21),
+    note(58, 112, '⌁ tools', 21), note(220, 118, '≡ docs + history', 19),
+    ...sketchArrow([[250, 155], [225, 185], [196, 214]], 'select useful only'),
+    shape('rectangle', 38, 225, 316, 310, sketchPresets.container, {angle: -.015}),
+    note(195, 252, 'CONTEXT WINDOW', 27, '#343a40', 'center'),
+    note(195, 292, 'limited capacity', 19, '#5f3dc4', 'center'),
+    shape('ellipse', 78, 340, 118, 58, sketchPresets.conceptBox), note(137, 359, 'task', 21, '#343a40', 'center'),
+    shape('rectangle', 205, 332, 120, 68, sketchPresets.conceptBox, {angle: .018}), note(265, 353, 'constraints', 18, '#343a40', 'center'),
+    shape('rectangle', 82, 425, 220, 68, sketchPresets.importantConcept, {angle: -.012}), note(192, 446, 'relevant information', 18, '#343a40', 'center'),
+    note(52, 510, 'not everything fits!', 18, '#c92a2a'),
+    ...sketchArrow([[195, 545], [204, 574], [191, 604]], null), note(195, 612, 'LLM', 25, '#343a40', 'center'),
+  ]};
+  return {width: 920, height: 500, elements: [
+    note(28, 22, 'lots of available information', 25, '#5f3dc4'),
+    note(45, 85, '▣ repository', 23), note(54, 133, '◯ memory', 23),
+    note(40, 181, '⌁ tools', 23), note(58, 229, '≡ docs', 23), note(45, 277, '↶ history', 23),
+    ...sketchArrow([[210, 118], [285, 148], [330, 195]], null, sketchPresets.secondaryArrow),
+    note(205, 166, 'select useful only', 17, '#5f3dc4'),
+    ...sketchArrow([[190, 215], [276, 224], [337, 242]], null),
+    ...sketchArrow([[215, 302], [290, 292], [340, 275]], null, sketchPresets.secondaryArrow),
+    shape('rectangle', 345, 55, 535, 355, sketchPresets.container, {angle: -.012}),
+    note(605, 80, 'CONTEXT WINDOW', 31, '#343a40', 'center'),
+    note(604, 124, 'limited capacity', 20, '#5f3dc4', 'center'),
+    shape('ellipse', 405, 185, 145, 70, sketchPresets.conceptBox, {angle: .025}), note(477, 207, 'task', 24, '#343a40', 'center'),
+    shape('rectangle', 610, 174, 195, 78, sketchPresets.conceptBox, {angle: -.018}), note(707, 199, 'constraints', 22, '#343a40', 'center'),
+    shape('rectangle', 470, 292, 255, 74, sketchPresets.importantConcept, {angle: .012}), note(597, 314, 'relevant information', 21, '#343a40', 'center'),
+    note(370, 380, 'cross out noise  ✕', 19, '#c92a2a'),
+    ...sketchArrow([[610, 416], [630, 446], [614, 478]], null), note(675, 447, 'LLM', 25),
+  ]};
 }
 
 function contextQuality(vertical) {
-  const checks = [['Relevant?', 'đúng tín hiệu'], ['Sufficient?', 'đủ evidence'], ['Low noise?', 'ít thông tin rác'], ['Low redundancy?', 'ít lặp'], ['Fresh?', 'current state'], ['Correct?', 'source of truth']];
-  if (vertical) return {width: 390, height: 610, elements: [
-    ...box(75, 25, 240, 62, 'Candidate Context'), ...arrow(195, 92, 195, 128),
-    ...checks.flatMap(([label, detail], index) => box(index % 2 ? 207 : 37, 140 + Math.floor(index / 2) * 105, 146, 76, label, detail, {backgroundColor: '#eef0ff', strokeColor: '#5966d0', fontSize: 17})),
-    ...arrow(195, 462, 195, 498), ...box(75, 505, 240, 70, 'Good Context', 'đủ tin cậy cho next decision', {backgroundColor: '#eef0ff', strokeColor: '#5966d0'}),
+  const checks = [
+    ['Relevant?', 'right signal', sketchPalette.yellow], ['Sufficient?', 'enough evidence', sketchPalette.blue],
+    ['Low noise?', 'remove clutter', sketchPalette.orange], ['Low repeat?', 'deduplicate', sketchPalette.green],
+    ['Fresh?', 'current state', sketchPalette.purple], ['Correct?', 'source of truth', sketchPalette.blue],
+  ];
+  if (vertical) return {width: 390, height: 680, elements: [
+    note(195, 22, 'Is this context good enough?', 24, '#5f3dc4', 'center'),
+    shape('ellipse', 90, 70, 210, 70, sketchPresets.conceptBox), note(195, 92, 'candidate context', 21, '#343a40', 'center'),
+    ...sketchArrow([[195, 145], [181, 170], [195, 196]], null),
+    ...checks.flatMap(([label, detail, color], index) => {
+      const x = index % 2 ? 207 : 28; const y = 205 + Math.floor(index / 2) * 112;
+      return [shape(index % 3 === 0 ? 'ellipse' : 'rectangle', x, y, 155, 78, {...sketchPresets.conceptBox, backgroundColor: color}, {angle: index % 2 ? .018 : -.018}), note(x + 77, y + 17, label, 19, '#343a40', 'center'), note(x + 77, y + 47, detail, 15, '#59606f', 'center')];
+    }),
+    note(35, 548, 'all dimensions matter', 18, '#c92a2a'), ...sketchArrow([[195, 575], [210, 598], [195, 620]], null),
+    shape('ellipse', 92, 618, 206, 58, sketchPresets.importantConcept), note(195, 636, 'good for next decision', 18, '#343a40', 'center'),
   ]};
-  return {width: 920, height: 390, elements: [
-    ...box(25, 145, 170, 82, 'Candidates', 'retrieved context'), ...arrow(200, 186, 255, 186),
-    ...checks.flatMap(([label, detail], index) => box(270 + (index % 3) * 175, 65 + Math.floor(index / 3) * 150, 150, 82, label, detail, {backgroundColor: '#eef0ff', strokeColor: '#5966d0', fontSize: 17})),
-    ...arrow(770, 186, 800, 186), ...box(805, 140, 95, 92, 'Good Context', 'next decision', {backgroundColor: '#eef0ff', strokeColor: '#5966d0', fontSize: 16}),
+  return {width: 920, height: 500, elements: [
+    note(460, 20, 'Is this context good enough?', 28, '#5f3dc4', 'center'),
+    shape('ellipse', 40, 178, 180, 88, sketchPresets.conceptBox, {angle: -.02}), note(130, 204, 'candidate context', 21, '#343a40', 'center'),
+    ...sketchArrow([[225, 220], [268, 190], [300, 150]], null),
+    ...checks.flatMap(([label, detail, color], index) => {
+      const positions = [[300, 83], [490, 66], [676, 108], [326, 255], [520, 280], [700, 250]];
+      const [x, y] = positions[index];
+      return [shape(index % 2 ? 'ellipse' : 'rectangle', x, y, 165, 82, {...sketchPresets.conceptBox, backgroundColor: color}, {angle: (index % 3 - 1) * .018}), note(x + 82, y + 18, label, 20, '#343a40', 'center'), note(x + 82, y + 50, detail, 16, '#59606f', 'center')];
+    }),
+    ...sketchArrow([[828, 350], [850, 387], [820, 420]], 'all checks'),
+    shape('ellipse', 610, 410, 250, 70, sketchPresets.importantConcept, {angle: .015}), note(735, 432, 'good for next decision', 20, '#343a40', 'center'),
+    note(280, 430, 'one weak dimension can break it', 18, '#c92a2a'),
   ]};
 }
 
 function scene(name, data) {
-  return {type: 'excalidraw', version: 2, source: 'https://github.com/phanxuanloc/ai-engineering-knowledge', elements: data.elements, appState: {gridSize: null, viewBackgroundColor: '#fffdfa'}, files: {}, name, width: data.width, height: data.height};
+  return {type: 'excalidraw', version: 2, source: 'https://github.com/phanxuanloc/ai-engineering-knowledge', elements: data.elements, appState: {gridSize: null, viewBackgroundColor: '#fffdfa'}, files: {}, name};
 }
 
-function escapeXml(value) { return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
-
-function render(sceneData) {
-  const shapes = sceneData.elements.map((element) => {
-    if (element.type === 'rectangle') return `<rect x="${element.x}" y="${element.y}" width="${element.width}" height="${element.height}" rx="12" fill="${element.backgroundColor === 'transparent' ? '#fffdfa' : element.backgroundColor}" stroke="${element.strokeColor}" stroke-width="${element.strokeWidth}"/>`;
-    if (element.type === 'text') return `<text x="${element.x + element.width / 2}" y="${element.y + element.height * .72}" text-anchor="middle" fill="${element.strokeColor}" font-family="Inter,ui-sans-serif,system-ui,sans-serif" font-size="${element.fontSize}" font-weight="${element.bold ? 700 : 450}">${escapeXml(element.text)}</text>`;
-    if (element.type === 'arrow') return `<path d="M${element.x} ${element.y} L${element.x + element.width} ${element.y + element.height}" fill="none" stroke="${element.strokeColor}" stroke-width="2" stroke-linecap="round" marker-end="url(#arrow)"/>`;
-    return '';
-  }).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${sceneData.width} ${sceneData.height}" role="img"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#343a46"/></marker></defs><rect width="100%" height="100%" rx="16" fill="#fffdfa"/>${shapes}</svg>\n`;
+async function createExporter() {
+  const bundle = await build({entryPoints: [path.resolve('scripts/excalidraw-export-entry.js')], bundle: true, platform: 'browser', format: 'iife', write: false, loader: {'.woff2': 'dataurl', '.woff': 'dataurl', '.ttf': 'dataurl', '.css': 'text'}, logLevel: 'silent'});
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {runScripts: 'dangerously', pretendToBeVisual: true});
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({filter: '', font: '20px Virgil', measureText: (value) => ({width: String(value).length * 10, actualBoundingBoxLeft: 0, actualBoundingBoxRight: String(value).length * 10, actualBoundingBoxAscent: 16, actualBoundingBoxDescent: 4})});
+  dom.window.FontFace = class {load() { return Promise.resolve(this); }};
+  Object.defineProperty(dom.window.document, 'fonts', {value: {add() {}, load: async () => [], ready: Promise.resolve()}});
+  dom.window.eval(bundle.outputFiles[0].text);
+  const virgil = await readFile(path.resolve('node_modules/@excalidraw/excalidraw/dist/prod/fonts/Virgil/Virgil-Regular.woff2'));
+  const embeddedFont = `@font-face{font-family:Virgil;src:url(data:font/woff2;base64,${virgil.toString('base64')}) format('woff2');font-weight:normal;font-style:normal}`;
+  return async (sceneData) => {
+    const svg = await dom.window.exportExcalidrawScene(sceneData);
+    return svg.replace('<style class="style-fonts">', `<style class="style-fonts">${embeddedFont}`);
+  };
 }
 
 await mkdir(outputDir, {recursive: true});
+const exportScene = await createExporter();
 for (const [name, data] of [
-  ['context-window-mental-model', contextWindow(false)],
-  ['context-window-mental-model-mobile', contextWindow(true)],
-  ['context-quality', contextQuality(false)],
-  ['context-quality-mobile', contextQuality(true)],
+  ['context-window-mental-model', contextWindow(false)], ['context-window-mental-model-mobile', contextWindow(true)],
+  ['context-quality', contextQuality(false)], ['context-quality-mobile', contextQuality(true)],
 ]) {
   const sceneData = scene(name, data);
   await writeFile(path.join(outputDir, `${name}.excalidraw`), `${JSON.stringify(sceneData, null, 2)}\n`);
-  await writeFile(path.join(outputDir, `${name}.svg`), render(sceneData));
+  await writeFile(path.join(outputDir, `${name}.svg`), `${await exportScene(sceneData)}\n`);
 }

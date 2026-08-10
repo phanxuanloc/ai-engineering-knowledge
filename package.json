@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "diagrams:build": "node scripts/build-excalidraw-diagrams.mjs",
+    "prebuild": "npm run diagrams:build",
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
     "build": "docusaurus build",
@@ -30,7 +31,10 @@
     "@docusaurus/module-type-aliases": "3.10.2",
     "@docusaurus/tsconfig": "3.10.2",
     "@docusaurus/types": "3.10.2",
+    "@excalidraw/excalidraw": "^0.18.1",
     "@types/react": "^19.0.0",
+    "esbuild": "^0.28.2",
+    "jsdom": "^26.1.0",
     "typescript": "~6.0.2"
   },
   "browserslist": {
