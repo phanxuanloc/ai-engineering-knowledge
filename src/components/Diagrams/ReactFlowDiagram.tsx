@@ -1,27 +1,36 @@
-import type {ReactNode} from 'react';
-import {useEffect, useMemo, useState} from 'react';
+import type {CSSProperties, ReactNode} from 'react';
+import {useEffect, useMemo} from 'react';
 import {
   Background,
   BackgroundVariant,
+  Controls,
   Handle,
+  MarkerType,
+  MiniMap,
   Position,
   ReactFlow,
   type Edge,
   type Node,
   type NodeProps,
+  useNodesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import clsx from 'clsx';
+import {layoutGraph, type FlowDirection} from './layoutGraph';
 import styles from './diagrams.module.css';
+
+export type DiagramNodeRole = 'source' | 'process' | 'decision' | 'storage' | 'model' | 'tool' | 'state' | 'constraint' | 'output' | 'group';
 
 export type DiagramNode = {
   id: string;
+  items?: string[];
   label: string;
   detail?: string;
   eyebrow?: string;
-  x: number;
-  y: number;
   emphasis?: boolean;
+  role?: DiagramNodeRole;
+  width?: number;
+  height?: number;
 };
 
 export type DiagramEdge = {
@@ -29,92 +38,117 @@ export type DiagramEdge = {
   target: string;
   label?: string;
   dashed?: boolean;
+  type?: 'straight' | 'step' | 'smoothstep';
 };
 
 export type ReactFlowDiagramProps = {
   ariaLabel: string;
+  background?: boolean;
   caption?: ReactNode;
   className?: string;
+  controls?: boolean;
+  direction?: FlowDirection;
   edges: DiagramEdge[];
   height?: number;
+  interactive?: boolean;
+  minimap?: boolean | 'auto';
+  nodeSpacing?: number;
   nodes: DiagramNode[];
+  nodesDraggable?: boolean;
+  rankSpacing?: number;
 };
 
-type LearningNodeData = {label: string; detail?: string; eyebrow?: string; emphasis?: boolean; vertical?: boolean};
+type DocsNodeData = Omit<DiagramNode, 'id' | 'height'>;
+type DocsNode = Node<DocsNodeData, 'docs'>;
 
-function LearningNode({data}: NodeProps<Node<LearningNodeData>>) {
+function DocsFlowNode({data, sourcePosition = Position.Bottom, targetPosition = Position.Top}: NodeProps<DocsNode>) {
   return (
-    <div className={clsx(styles.flowNode, data.emphasis && styles.flowNodeEmphasis)}>
-      <Handle className={styles.handle} position={data.vertical ? Position.Top : Position.Left} type="target" />
+    <div
+      className={clsx(styles.flowNode, styles[`flowNode_${data.role ?? 'state'}`], data.emphasis && styles.flowNodeEmphasis)}
+      style={data.width ? ({'--flow-node-width': `${data.width}px`} as CSSProperties) : undefined}
+    >
+      <Handle className={styles.handle} position={targetPosition} type="target" />
       {data.eyebrow && <span>{data.eyebrow}</span>}
       <strong>{data.label}</strong>
       {data.detail && <small>{data.detail}</small>}
-      <Handle className={styles.handle} position={data.vertical ? Position.Bottom : Position.Right} type="source" />
+      {data.items && <ul className={styles.flowNodeItems}>{data.items.map((item) => <li key={item}>{item}</li>)}</ul>}
+      <Handle className={styles.handle} position={sourcePosition} type="source" />
     </div>
   );
 }
 
-const nodeTypes = {learning: LearningNode};
+const nodeTypes = {docs: DocsFlowNode};
 
-export function ReactFlowDiagram({ariaLabel, caption, className, edges, height = 300, nodes}: ReactFlowDiagramProps) {
-  const [vertical, setVertical] = useState(false);
+export function ReactFlowDiagram({
+  ariaLabel,
+  background = true,
+  caption,
+  className,
+  controls,
+  direction = 'TB',
+  edges,
+  height,
+  interactive = true,
+  minimap = 'auto',
+  nodeSpacing,
+  nodes,
+  nodesDraggable,
+  rankSpacing,
+}: ReactFlowDiagramProps) {
+  const flowEdges = useMemo<Edge[]>(() => edges.map((edge, index) => ({
+    id: `${edge.source}-${edge.target}-${index}`,
+    source: edge.source,
+    target: edge.target,
+    label: edge.label,
+    markerEnd: {type: MarkerType.ArrowClosed, width: 18, height: 18},
+    className: edge.dashed ? styles.flowEdgeDashed : undefined,
+    type: edge.type ?? 'smoothstep',
+  })), [edges]);
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 700px)');
-    const updateLayout = (event: MediaQueryListEvent | MediaQueryList) => setVertical(event.matches);
-    updateLayout(mediaQuery);
-    mediaQuery.addEventListener('change', updateLayout);
-    return () => mediaQuery.removeEventListener('change', updateLayout);
-  }, []);
+  const layout = useMemo(() => layoutGraph<DocsNode>(nodes.map(({id, height: nodeHeight = 76, width = 168, ...data}) => ({
+    id,
+    type: 'docs',
+    data: {...data, width},
+    position: {x: 0, y: 0},
+    width,
+    height: nodeHeight,
+  })), flowEdges, {direction, nodeSpacing, rankSpacing}), [direction, flowEdges, nodeSpacing, nodes, rankSpacing]);
+  const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<DocsNode>(layout.nodes);
+  useEffect(() => setFlowNodes(layout.nodes), [layout.nodes, setFlowNodes]);
 
-  const flowNodes = useMemo<Node<LearningNodeData>[]>(
-    () => nodes.map(({id, x, y, ...data}, index) => ({
-      id,
-      type: 'learning',
-      position: vertical ? {x: 0, y: index * 112} : {x, y},
-      data: {...data, vertical},
-    })),
-    [nodes, vertical],
-  );
-  const flowEdges = useMemo<Edge[]>(
-    () => edges.map((edge, index) => ({
-      id: `${edge.source}-${edge.target}-${index}`,
-      source: edge.source,
-      target: edge.target,
-      label: edge.label,
-      animated: false,
-      className: edge.dashed ? styles.flowEdgeDashed : undefined,
-      type: 'smoothstep',
-    })),
-    [edges],
-  );
+  const graphIsLarge = nodes.length >= 15 || layout.bounds.width > 1600 || layout.bounds.height > 1400;
+  const showMiniMap = minimap === true || (minimap === 'auto' && graphIsLarge);
+  const showControls = controls ?? interactive;
+  const draggable = nodesDraggable ?? (interactive && nodes.length >= 7);
+  const canvasHeight = height ?? Math.min(760, Math.max(300, layout.bounds.height + 80));
 
   return (
     <figure className={clsx(styles.reactFlowFigure, className)} aria-label={ariaLabel}>
-      <div
-        className={clsx(styles.reactFlowCanvas, vertical && styles.reactFlowCanvasVertical)}
-        style={{height: vertical ? nodes.length * 112 + 48 : height}}
-      >
+      <div className={styles.reactFlowCanvas} style={{height: canvasHeight}}>
         <ReactFlow
-          key={vertical ? 'vertical' : 'horizontal'}
+          aria-label={ariaLabel}
+          colorMode="system"
           edges={flowEdges}
-          elementsSelectable={false}
+          elementsSelectable={interactive}
           fitView
-          fitViewOptions={{padding: vertical ? 0.12 : 0.06}}
-          maxZoom={1.15}
-          minZoom={0.6}
+          fitViewOptions={{padding: 0.1, maxZoom: 1}}
+          maxZoom={1.6}
+          minZoom={0.35}
           nodes={flowNodes}
           nodesConnectable={false}
-          nodesDraggable={false}
+          nodesDraggable={draggable}
           nodeTypes={nodeTypes}
-          panOnDrag={false}
-          preventScrolling={false}
+          onNodesChange={onNodesChange}
+          panOnDrag={interactive}
+          preventScrolling={!interactive}
           proOptions={{hideAttribution: true}}
-          zoomOnDoubleClick={false}
-          zoomOnPinch={false}
-          zoomOnScroll={false}
+          zoomOnDoubleClick={interactive}
+          zoomOnPinch={interactive}
+          zoomOnScroll={interactive}
         >
-          <Background color="var(--diagram-grid)" gap={20} size={1} variant={BackgroundVariant.Dots} />
+          {background && <Background variant={BackgroundVariant.Dots} gap={22} size={1} />}
+          {showControls && <Controls position="bottom-right" showInteractive={draggable} />}
+          {showMiniMap && <MiniMap pannable zoomable position="top-right" />}
         </ReactFlow>
       </div>
       {caption && <figcaption>{caption}</figcaption>}

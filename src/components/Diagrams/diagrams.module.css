@@ -40,12 +40,23 @@
   --xy-edge-stroke-width: 1.5;
   --xy-edge-label-color: var(--ifm-font-color-secondary);
   --xy-edge-label-background-color: var(--diagram-surface);
+  --xy-controls-button-background-color: color-mix(in srgb, var(--diagram-surface) 94%, transparent);
+  --xy-controls-button-background-color-hover: var(--learning-subtle-surface);
+  --xy-controls-button-color: var(--ifm-font-color-base);
+  --xy-controls-button-border-color: var(--learning-border);
+  --xy-minimap-background-color: color-mix(in srgb, var(--diagram-surface) 92%, transparent);
+  min-height: 280px;
+}
+
+.reactFlowCanvas:focus-within {
+  outline: 2px solid var(--learning-active);
+  outline-offset: 3px;
 }
 
 .flowNode {
   position: relative;
   display: flex;
-  width: 156px;
+  width: var(--flow-node-width, 144px);
   min-height: 76px;
   padding: .72rem .8rem;
   flex-direction: column;
@@ -55,9 +66,19 @@
   text-align: center;
   background: var(--learning-surface);
   border: 1px solid var(--learning-border);
-  border-radius: 10px;
-  box-shadow: var(--learning-shadow);
+  border-radius: 8px;
+  box-shadow: none;
 }
+
+.flowNode_process,
+.flowNode_tool { background: var(--learning-subtle-surface); }
+.flowNode_source { border-style: dashed; }
+.flowNode_constraint,
+.flowNode_decision { background: var(--learning-active-soft); border-color: var(--learning-active-border); }
+.flowNode_output,
+.flowNode_model { border-width: 2px; }
+.flowNode_storage { border-radius: 16px; }
+.flowNode_group { border-style: dashed; background: transparent; }
 
 .flowNodeEmphasis {
   background: var(--learning-active-soft);
@@ -74,12 +95,36 @@
 
 .flowNode strong { font-size: .84rem; line-height: 1.3; }
 .flowNode small { color: var(--ifm-font-color-secondary); font-size: .68rem; line-height: 1.35; }
-.handle { width: 7px; height: 7px; background: var(--learning-active); border: 1px solid var(--diagram-surface); }
+.flowNodeItems {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .38rem;
+  width: 100%;
+  margin: .3rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.flowNodeItems li {
+  padding: .3rem .35rem;
+  color: var(--ifm-font-color-secondary);
+  font-size: .66rem;
+  line-height: 1.25;
+  background: var(--learning-subtle-surface);
+  border: 1px solid var(--learning-border);
+  border-radius: 5px;
+}
+.handle { width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .flowEdgeDashed path { stroke-dasharray: 5 4; }
 
+.reactFlowCanvas :global(.react-flow__edge-text) { font-size: 11px; }
+.reactFlowCanvas :global(.react-flow__controls) { overflow: hidden; border: 1px solid var(--learning-border); border-radius: 7px; box-shadow: var(--learning-shadow); }
+.reactFlowCanvas :global(.react-flow__minimap) { border: 1px solid var(--learning-border); border-radius: 7px; box-shadow: none; }
+.reactFlowCanvas :global(.react-flow__background) { opacity: .28; }
+.reactFlowCanvas :global(.react-flow__node:focus-visible) { outline: 2px solid var(--learning-active); outline-offset: 3px; }
+
 @media (max-width: 700px) {
-  .flowNode { width: 220px; min-height: 72px; padding: .62rem .72rem; }
-  .reactFlowCanvasVertical .react-flow__edge-text { font-size: 11px; }
+  .flowNode { min-height: 72px; }
+  .reactFlowCanvas { min-height: 340px; touch-action: none; }
   .excalidrawFigure figcaption,
   .reactFlowFigure figcaption { text-align: left; }
   .excalidrawFigure picture,

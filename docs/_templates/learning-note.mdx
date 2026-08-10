@@ -24,7 +24,14 @@ Markdown first. Dùng Excalidraw-style SVG cho mental model/conceptual explanati
 dùng shared ReactFlowDiagram cho node-edge flow, pipeline hoặc data movement.
 Không dùng Mermaid cho diagram mới, không dùng text code block thay diagram và
 không tạo component riêng nếu shared abstraction đã đáp ứng được. Mỗi diagram cần
-alt text và explanation/caption ngắn; giữ normal MDX nếu 2–4 dòng đã đủ rõ.
+alt text và explanation/caption ngắn; caption nêu insight thay vì kể lại từng node.
+Với React Flow, dùng semantic node role, giữ action và data/state thành các bước
+riêng khi distinction có giá trị học tập, và chỉ emphasis một concept quan trọng.
+Không mặc định xếp mọi node thành một hàng ngang: 5+ stages cần cân nhắc vertical,
+multi-rank hoặc semantic groups để giữ consecutive edges ngắn và topology rõ.
+Normalize graph bounds và giữ outer padding cân bằng; fan-out tới các leaf tương
+đương nên dùng compact cluster thay vì để leaf stack quyết định toàn canvas.
+Giữ normal MDX nếu 2–4 dòng đã đủ rõ.
 -->
 
 ## TL;DR

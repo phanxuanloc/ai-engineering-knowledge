@@ -8,13 +8,12 @@ Use `.mdx` for every knowledge article and start from `docs/_templates/learning-
 
 ## Diagram decisions
 
-- Core learning visual → reusable React component.
-- Simple conceptual flow or pipeline → React component.
-- Complex graph where automatic layout is materially useful → Mermaid is allowed.
-- Temporary technical diagram → Mermaid is allowed.
-- Timeline-based explanation where motion is essential → consider Remotion only for that exceptional case.
+- Conceptual mental model or analogy → Excalidraw when a visual materially helps.
+- Structured flow, pipeline, architecture, or directed graph → shared React Flow infrastructure.
+- Two to four short lines already explain it → ordinary MDX.
+- New Mermaid diagrams are not used.
 
-Important diagrams must remain understandable without animation and stack cleanly on narrow screens. Do not create a one-off component when the same idea can be expressed with `Diagram`, `Pipeline`, `Flow`, `Group`, and `Step`.
+Important diagrams must remain understandable without animation and work cleanly on narrow screens. When creating or modifying React Flow diagrams, follow `.agents/skills/docs-react-flow/SKILL.md`; keep geometry and interaction in shared infrastructure rather than article-level boilerplate.
 
 ## Learning state
 
