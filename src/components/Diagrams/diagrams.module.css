@@ -15,14 +15,13 @@
 }
 
 .excalidrawFigure picture {
-  aspect-ratio: 24 / 11;
+  aspect-ratio: var(--excalidraw-aspect);
 }
 
 .excalidrawFigure img {
   display: block;
   width: 100%;
-  height: auto;
-  aspect-ratio: 24 / 11;
+  height: 100%;
   object-fit: contain;
 }
 
@@ -84,5 +83,5 @@
   .excalidrawFigure figcaption,
   .reactFlowFigure figcaption { text-align: left; }
   .excalidrawFigure picture,
-  .excalidrawFigure img { aspect-ratio: 3 / 4; }
+  .excalidrawFigure img { aspect-ratio: var(--excalidraw-mobile-aspect); }
 }
