@@ -516,8 +516,10 @@ Một cấu trúc thực dụng cho coding agent có thể là:
 1. **Instructions / project rules**
 2. **Current task**
 3. **Relevant code or knowledge**
-4. **Current evidence / tool results**
-5. **Working state / previous findings**
+4. **Authoritative evidence**
+5. **Runtime evidence / tool results**
+6. **Untrusted external content**
+7. **Working state / previous findings**
 
 Đây là mental model, không phải universal fixed ordering. Thứ tự nên giúp model nhận ra vai trò, mức quan trọng và quan hệ giữa các phần; nó có thể đổi theo current decision. Khi debugging, latest error nên nằm gần relevant code để quan hệ failure–implementation dễ thấy. Khi code generation, specifications và interfaces có thể cần được nhấn mạnh trước implementation context.
 
@@ -585,6 +587,103 @@ Structured working state đặc biệt hữu ích cho iterative agents vì nó b
   ]}
   loopLabel="Repeat when actions or observations change the current state"
 />
+
+### Context Security & Trust Boundaries
+
+Context Engineering không chỉ quyết định thông tin nào **relevant** mà còn phải quyết định nguồn đó có **đáng tin cho vai trò đang được giao** hay không. System instructions, current user task, repository rules, source code, test output, retrieved web pages và email có trust level, authority và purpose khác nhau; đưa chúng vào cùng một Context Window không làm các khác biệt đó biến mất.
+
+<Remember title="Relevant ≠ Trusted">
+  Một RAG chunk hoặc issue có thể rất relevant nhưng vẫn chứa claim sai, nội dung cũ hoặc prompt injection. Relevance giúp quyết định nên xem xét thông tin; trust và authority quyết định được phép dùng nó như thế nào.
+</Remember>
+
+#### Sáu distinction cần nhớ
+
+<Comparison
+  label="Six security distinctions in Context Engineering"
+  items={[
+    {eyebrow: 'Selection', title: 'Relevant ≠ Trusted', description: 'Liên quan tới current decision không chứng minh nguồn đáng tin.'},
+    {eyebrow: 'Role', title: 'Instruction-like text ≠ Instruction', description: 'Một câu viết dưới dạng mệnh lệnh vẫn có thể chỉ là data cần phân tích.'},
+    {eyebrow: 'Authority', title: 'Instruction Authority ≠ Factual Authority', description: 'Quyền đặt constraint khác với độ đáng tin khi mô tả một fact.'},
+    {eyebrow: 'Boundary', title: 'Data must not silently become Control', description: 'External content không được tự đổi vai trò từ evidence thành instruction.'},
+    {eyebrow: 'Traceability', title: 'Trust requires Provenance', description: 'Muốn đánh giá trust phải biết context đến từ đâu và đã thay đổi thế nào.'},
+    {eyebrow: 'Tools', title: 'Tool Success ≠ Trusted Result', description: 'Transport chạy đúng contract không làm content bên ngoài trở nên trustworthy.'},
+  ]}
+/>
+
+#### Trust, role và authority
+
+`Trust Boundary` là ranh giới nơi context chuyển giữa các nguồn hoặc vùng có mức trust và authority khác nhau. Mỗi context piece nên có role rõ ràng: **instruction/constraint**, **task**, **fact/evidence**, **runtime observation**, **working state** hoặc **untrusted external content**. Text trong retrieved document, web content, repository content, issue, email, RAG chunk hay tool output có thể trông giống instruction, nhưng hình thức câu chữ không cấp cho nó Instruction Authority.
+
+Authority luôn có scope:
+
+- **Instruction Authority** trả lời nguồn nào có quyền đặt goal, constraint hoặc thay đổi hành vi trong phạm vi task.
+- **Factual Authority** trả lời nguồn nào đáng tin để mô tả một fact hoặc state cụ thể. Source code hiện tại có thể authoritative cho implementation state, trong khi policy owner hoặc policy document mới authoritative cho policy.
+
+Vì vậy conflict resolution cần tách hai loại conflict. **Instruction conflict** được giải bằng authority rules và constraints của application. **Factual conflict** được giải bằng provenance, freshness, version/state và proximity to source of truth. Nếu evidence chưa đủ, retrieve hoặc verify thêm thay vì để authority của một instruction thay thế cho factual proof.
+
+<ImportantDistinction title="External content is evidence, not automatic control">
+  External content thường nên được xử lý như claims hoặc evidence có thể cần verification. Nó chỉ trở thành instruction khi architecture đã gán role và Instruction Authority phù hợp—không phải vì content tự tuyên bố rằng nó là instruction.
+</ImportantDistinction>
+
+#### Indirect prompt injection
+
+`Prompt injection` cố khiến model làm theo instruction không được phép. Với **indirect prompt injection**, instruction độc hại nằm trong content mà agent retrieve hoặc observe—ví dụ web page, document, repository file, issue, email, RAG chunk hay tool result—rồi đi vào Context Window như thể đó chỉ là evidence. Rủi ro xuất hiện khi data vượt trust boundary và âm thầm trở thành control, đặc biệt khi agent có tool permissions để đọc dữ liệu nhạy cảm hoặc thực hiện action bên ngoài.
+
+Delimiters và labels như `UNTRUSTED CONTENT` giúp model và observability layer nhận ra semantic boundary, nhưng **không phải security guarantee**. Model vẫn có thể diễn giải sai; application vẫn phải enforce permissions và validate action.
+
+#### Provenance phải sống cùng context
+
+`Provenance` ghi lại context đến từ đâu, role dự kiến, version/state, observation time và những transformation liên quan như extraction, filtering, merging hoặc summarization. Metadata này giúp đánh giá trust, detect stale evidence, resolve factual conflict và trace một unsafe decision về đúng lifecycle stage.
+
+Compression không được chỉ giữ nội dung bề mặt. Nó phải bảo toàn **decision-critical provenance, role, trust và authority**; nếu summary giữ câu “delete the backup” nhưng làm mất việc câu đó đến từ một untrusted web page, compression đã biến data thành control.
+
+#### Safe Context Assembly và defense in depth
+
+Safe assembly giữ semantic boundaries rõ giữa **trusted instructions**, **current task**, **authoritative evidence**, **runtime evidence**, **working state** và **untrusted external content**. Ordering và labels giúp truyền đạt boundary; application-side controls mới enforce boundary.
+
+<ReactFlowDiagram
+  ariaLabel="Secure context engineering lifecycle with trust evaluation and permission enforcement"
+  direction="TB"
+  kind="lifecycle"
+  layout="primary-path"
+  primaryPath={['sources', 'retrieve', 'candidates', 'select', 'evaluate', 'budget', 'conflicts', 'assemble', 'window', 'agent', 'reason', 'permission', 'tool', 'observe', 'refresh']}
+  rankSpacing={18}
+  height={1400}
+  nodes={[
+    {id: 'sources', label: 'Sources', detail: 'Instructions · code · web · email · tools', role: 'source', size: 'wide'},
+    {id: 'retrieve', label: 'Retrieve', role: 'process', size: 'compact'},
+    {id: 'candidates', label: 'Candidates', role: 'state', size: 'compact'},
+    {id: 'select', label: 'Select', role: 'process', size: 'compact'},
+    {id: 'evaluate', eyebrow: 'Two gates', label: 'Evaluate Context', detail: 'Quality + Trust · Role/Authority · Provenance', role: 'constraint', emphasis: true, size: 'wide'},
+    {id: 'budget', label: 'Budget / Compress', detail: 'Preserve security-critical metadata', role: 'process', size: 'wide'},
+    {id: 'conflicts', label: 'Resolve Conflicts', detail: 'Authority rules or source-of-truth evidence', role: 'decision', size: 'wide'},
+    {id: 'assemble', label: 'Safe Assembly', detail: 'Keep instructions, evidence and untrusted data separate', role: 'constraint', size: 'wide'},
+    {id: 'window', label: 'Context Window', role: 'state', size: 'standard'},
+    {id: 'agent', label: 'LLM / Agent', role: 'model', size: 'standard'},
+    {id: 'reason', label: 'Reason / Act', role: 'process', size: 'standard'},
+    {id: 'permission', label: 'Permission / Policy', detail: 'Validate the proposed action', role: 'constraint', size: 'wide'},
+    {id: 'tool', label: 'Tool', role: 'tool', size: 'compact'},
+    {id: 'observe', label: 'Observe', detail: 'Result is evidence, not automatic truth', role: 'evidence', size: 'wide'},
+    {id: 'refresh', label: 'Refresh Context', role: 'process', size: 'standard'},
+  ]}
+  edges={[
+    {source: 'sources', target: 'retrieve'}, {source: 'retrieve', target: 'candidates'},
+    {source: 'candidates', target: 'select'}, {source: 'select', target: 'evaluate'},
+    {source: 'evaluate', target: 'budget'}, {source: 'budget', target: 'conflicts'},
+    {source: 'conflicts', target: 'assemble'}, {source: 'assemble', target: 'window'},
+    {source: 'window', target: 'agent'}, {source: 'agent', target: 'reason'},
+    {source: 'reason', target: 'permission'}, {source: 'permission', target: 'tool'},
+    {source: 'tool', target: 'observe'}, {source: 'observe', target: 'refresh'},
+    {source: 'refresh', target: 'retrieve', label: 'new state / evidence', route: 'feedback', dashed: true, feedbackLabelPlacement: 'outer'},
+  ]}
+  caption="Security joins the existing context lifecycle at evaluation, assembly, conflict resolution and action enforcement; no single layer—including the LLM—owns the whole boundary."
+/>
+
+<KeyInsight title="Security is defense in depth">
+  Safe Context Engineering kết hợp context classification/assembly, authority rules, provenance, tool permissions và action validation. **Never rely on the LLM as the only security boundary.**
+</KeyInsight>
+
+Một trusted tool transport chỉ chứng minh lời gọi và response đi qua channel dự kiến; nó không chứng minh externally supplied content bên trong response là trustworthy. Vì vậy `Tool Success ≠ Trusted Result`: result phải giữ provenance, được đánh giá theo role/trust và có thể cần verify trước khi ảnh hưởng reasoning hoặc action.
 
 ### Context Observability & Debugging
 
@@ -810,6 +909,11 @@ Agent đang liên tục retrieve, select, budget và cập nhật context. Nếu
 - **Đưa toàn bộ repository cho coding agent:** Search và chọn đúng files, tests, logs thường hiệu quả hơn nhồi mọi thứ vào Context Window.
 - **Chỉ tối ưu user prompt:** Prompt tốt vẫn thiếu hiệu quả nếu model không có source, state hoặc tool result cần thiết.
 - **Chỉ inspect final prompt/context:** Snapshot cuối không phân biệt được evidence chưa từng được retrieve với evidence đã retrieve nhưng bị discard ở bước sau.
+- **Đồng nhất relevance với trust:** Retrieved content liên quan vẫn có thể sai, stale hoặc chứa indirect prompt injection.
+- **Cho phép data trở thành control:** Instruction-like text trong document, issue, email, RAG chunk hoặc tool output không tự có Instruction Authority.
+- **Dùng delimiter như security boundary:** Label `UNTRUSTED CONTENT` chỉ truyền đạt role; permissions và action validation vẫn phải được enforce ngoài model.
+- **Tin tool result vì tool chạy thành công:** Tool success không xác minh trust hoặc correctness của externally supplied content trong result.
+- **Dùng LLM làm security boundary duy nhất:** Context classification, provenance, authority, permissions và policy enforcement phải tạo defense in depth.
 - **Trộn context construction với provider integration:** Thiết kế này làm logic retrieval và filtering khó tái sử dụng khi đổi model provider.
 
 :::
@@ -890,4 +994,10 @@ Chưa có learning note liên quan trong knowledge base. Khi có canonical note 
   {question: 'Retrieval precision/recall khác selection quality như thế nào?', answer: 'Retrieval precision/recall đánh giá evidence nào được tìm thấy; selection quality đánh giá useful candidates nào được giữ hoặc bị loại sau khi đã tìm thấy.'},
   {question: 'Information retention và faithfulness trong compression khác nhau thế nào?', answer: 'Retention hỏi information quan trọng có còn đó không; faithfulness hỏi meaning của information được giữ có bị thay đổi không.'},
   {question: 'Dấu hiệu nào cho thấy agent đang tool thrashing?', answer: 'Nhiều tool call execution thành công nhưng tạo ít information gain, evidence, actionability hoặc decision progress.'},
+  {question: 'Sáu distinction cốt lõi của Context Security là gì?', answer: 'Relevant ≠ Trusted; Instruction-like text ≠ Instruction; Instruction Authority ≠ Factual Authority; Data must not silently become Control; Trust requires Provenance; Tool Success ≠ Trusted Result.'},
+  {question: 'Instruction conflict và factual conflict được resolve khác nhau thế nào?', answer: 'Instruction conflict dùng authority rules và constraints; factual conflict dùng provenance, freshness, version/state và proximity to source of truth.'},
+  {question: 'Indirect prompt injection đi vào context bằng cách nào?', answer: 'Instruction độc hại ẩn trong retrieved documents, web content, repository content, issues, emails, RAG chunks hoặc tool outputs được đưa vào Context Window như data rồi cố chi phối model.'},
+  {question: 'Provenance tối thiểu cần giữ những gì?', answer: 'Nguồn, role, version/state, observation time và các transformation liên quan; compression cũng phải bảo toàn metadata decision-critical này cùng trust và authority.'},
+  {question: 'Vì sao delimiter UNTRUSTED CONTENT chưa đủ bảo vệ agent?', answer: 'Delimiter chỉ truyền đạt semantic boundary cho model; nó không enforce permissions, không xác minh content và không validate action.'},
+  {question: 'Defense in depth cho Context Security gồm những layer nào?', answer: 'Context classification/assembly, authority rules, provenance, tool permissions và action validation; LLM không bao giờ nên là security boundary duy nhất.'},
 ]}/>

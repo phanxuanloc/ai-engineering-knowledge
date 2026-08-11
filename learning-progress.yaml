@@ -18,7 +18,8 @@ topics:
       - context-assembly-and-ordering
       - context-observability-and-debugging
       - context-metrics-and-signals
-    next_checkpoint: context-security-and-trust-boundaries
+      - context-security-and-trust-boundaries
+    next_checkpoint: practical-context-manager
     experiments: []
     prerequisites: []
     related: []
