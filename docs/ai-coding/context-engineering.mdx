@@ -586,6 +586,82 @@ Structured working state đặc biệt hữu ích cho iterative agents vì nó b
   loopLabel="Repeat when actions or observations change the current state"
 />
 
+### Context Observability & Debugging
+
+`Context Observability` là khả năng inspect và hiểu **thông tin thực tế mà LLM hoặc AI agent đã nhận được trước khi ra quyết định**. Khi agent tạo kết quả sai, không nên lập tức kết luận model yếu hoặc prompt kém; bước đầu tiên là kiểm tra actual context đã được cung cấp cho model.
+
+<KeyInsight title="Observe before blaming">
+  Context Observability trả lời “Model đã thấy gì?”, còn Context Tracing trả lời “Context đó đã đi đến model bằng cách nào?”.
+</KeyInsight>
+
+<ReactFlowDiagram
+  ariaLabel="Context debugging workflow from wrong output to the correct failure layer"
+  direction="TB"
+  height={710}
+  kind="workflow"
+  primaryPath={['wrong-output', 'inspect-context', 'trace-lifecycle', 'locate-failure', 'fix-layer']}
+  nodes={[
+    {id: 'wrong-output', eyebrow: 'Symptom', label: 'Wrong Output', detail: 'Kết quả sai chỉ là điểm bắt đầu', role: 'output', width: 185},
+    {id: 'inspect-context', eyebrow: 'Observability', label: 'Inspect Actual Context', detail: 'Model thực sự đã thấy gì?', role: 'process', emphasis: true, width: 200},
+    {id: 'trace-lifecycle', eyebrow: 'Tracing', label: 'Trace Context Lifecycle', detail: 'Retrieve → Select → Compress → Assemble', role: 'process', width: 215},
+    {id: 'locate-failure', eyebrow: 'Diagnosis', label: 'Locate Failure', detail: 'Xác định layer đầu tiên làm evidence sai lệch', role: 'decision', width: 205},
+    {id: 'fix-layer', eyebrow: 'Action', label: 'Fix the Correct Layer', detail: 'Sửa retrieval, selection, compression, assembly hoặc reasoning', role: 'output', width: 225},
+  ]}
+  edges={[
+    {source: 'wrong-output', target: 'inspect-context'},
+    {source: 'inspect-context', target: 'trace-lifecycle'},
+    {source: 'trace-lifecycle', target: 'locate-failure'},
+    {source: 'locate-failure', target: 'fix-layer'},
+  ]}
+  caption="Wrong output không tự chỉ ra nguyên nhân. Trace ngược context lifecycle để sửa đúng layer thay vì mặc định blame model hoặc prompt."
+/>
+
+Mental model debugging là:
+
+`Wrong Output → Inspect Actual Context → Trace Context Lifecycle → Locate Failure → Fix the Correct Layer`
+
+#### Năm failure layer cần phân biệt
+
+- **Retrieve failure:** Thông tin cần thiết chưa bao giờ đi vào candidate set.
+- **Selection failure:** Thông tin relevant đã được retrieve nhưng không được chọn cho model invocation cần nó.
+- **Compression failure:** Thông tin được giữ lại, nhưng semantic detail quan trọng bị mất trong representation đã compress.
+- **Assembly failure:** Necessary information có mặt, nhưng ordering, priority, conflict, stale information hoặc quá nhiều noise làm model khó sử dụng đúng.
+- **Reasoning failure:** Context đã sufficiently correct và được xây dựng hợp lý, nhưng model vẫn reason hoặc generate sai.
+
+Các layer này nối trực tiếp với lifecycle đã học: Retrieve tạo candidates; Select quyết định evidence nào sống sót; Compression đổi cách biểu diễn; Budgeting và Assembly quyết định capacity, structure, order và priority; chỉ sau khi các bước đó đủ tốt mới có cơ sở quy lỗi cho Reasoning.
+
+#### Context Tracing
+
+`Context Tracing` tương tự distributed tracing hoặc backend request tracing. Khi một API request sai, engineer không chỉ nhìn HTTP response cuối; họ theo trace qua service, database call và transformation để tìm span đầu tiên làm dữ liệu sai lệch. Với agent, mỗi bước retrieve, select, compress, assemble, model invocation và tool call là một span trong context lifecycle.
+
+Một context trace nên cho phép inspect:
+
+- retrieval queries và retrieved candidates;
+- candidates được chọn và bị reject, cùng decision metadata khi có;
+- compression input/output và mức token reduction;
+- final context assembly và token allocation cho từng phần;
+- context thay đổi như thế nào qua nhiều model invocation;
+- tool results và evidence mới nào kích hoạt retrieval hoặc context update tiếp theo.
+
+Chỉ quan sát final prompt hoặc final context là chưa đủ. Một snapshot cuối có thể cho biết `JwtConfig.ts` đang thiếu, nhưng không cho biết file đó **chưa bao giờ được retrieve** hay **đã được retrieve rồi bị selection loại bỏ**. Hai nguyên nhân có cùng triệu chứng ở model boundary nhưng cần hai cách sửa khác nhau.
+
+Agent context cũng động theo iterative workflow:
+
+`Context₁ → Reason/Act → Context₂ → Reason/Act → Context₃`
+
+Tool result từ vòng trước có thể tạo evidence mới, thay đổi retrieval query, selection priority và context được assemble cho vòng sau. Vì vậy trace cần liên kết các model invocation thay vì coi từng final context là một event độc lập.
+
+#### Ví dụ: coding agent chọn sai file
+
+Giả sử coding agent được yêu cầu sửa lỗi `session timeout` nhưng implement timeout cố định trong `SessionService.ts`, dù repository đã có policy theo từng tenant trong `TenantSessionPolicy.ts`.
+
+1. Trace cho thấy query `session timeout` retrieve cả `SessionService.ts` và `TenantSessionPolicy.ts`.
+2. Candidate log xác nhận policy file có đoạn quyết định timeout theo tenant.
+3. Selection log cho thấy agent chỉ đưa `SessionService.ts` vào model context vì lexical score cao hơn; `TenantSessionPolicy.ts` bị reject.
+4. Final context vì vậy không chứa tenant-specific policy, và model tạo implementation hợp lý đối với evidence hạn chế mà nó nhận được.
+
+Đây là **selection failure**, không phải retrieve failure hay đủ evidence để kết luận reasoning failure. Cách sửa đúng là cải thiện selection signal—chẳng hạn ưu tiên symbol references, caller relationship hoặc policy-bearing files—rồi chạy lại trace; đổi model hoặc rewrite prompt trước sẽ không sửa nguyên nhân gốc.
+
 ### Context động và iterative agent loop
 
 AI agent xây dựng context qua một lifecycle lặp, không phải một lần ghép prompt ở đầu task:
@@ -657,6 +733,7 @@ Agent đang liên tục retrieve, select, budget và cập nhật context. Nếu
 - **Cố giải toàn bộ task trong một invocation:** Agent có thể preserve state và refresh context qua iterative lifecycle thay vì giữ mọi useful information cùng lúc.
 - **Đưa toàn bộ repository cho coding agent:** Search và chọn đúng files, tests, logs thường hiệu quả hơn nhồi mọi thứ vào Context Window.
 - **Chỉ tối ưu user prompt:** Prompt tốt vẫn thiếu hiệu quả nếu model không có source, state hoặc tool result cần thiết.
+- **Chỉ inspect final prompt/context:** Snapshot cuối không phân biệt được evidence chưa từng được retrieve với evidence đã retrieve nhưng bị discard ở bước sau.
 - **Trộn context construction với provider integration:** Thiết kế này làm logic retrieval và filtering khó tái sử dụng khi đổi model provider.
 
 :::
@@ -672,6 +749,8 @@ Context construction là một lifecycle lặp: agent `Retrieve` các candidate,
 Context quality có thể được đánh giá có hệ thống thay vì chỉ dựa vào cảm giác. Tôi cần chẩn đoán riêng `Relevance`, `Sufficiency`, `Low Noise` và `Freshness / Correctness`, vì một overall score có thể che giấu dimension đang fail. Rubric với scoring level được định nghĩa rõ giúp semantic evaluation nhất quán hơn; `LLM-as-a-Judge` có thể tự động hóa việc đánh giá context ở quy mô lớn, nhưng judge chỉ là evaluator dựa trên evidence được cung cấp, không phải nguồn ground truth được đảm bảo.
 
 Sau khi chọn đúng information, tôi vẫn cần assemble, structure và order nó để model nhận ra role, priority, relationships và current state. Với iterative agent, structured working state giữ goal, known facts, hypothesis, changes và next action qua nhiều invocation; khi context conflict, cần phân biệt instruction authority với factual freshness/source of truth và thu thập thêm evidence thay vì đoán.
+
+Khi agent tạo wrong output, tôi cần inspect actual context trước khi blame model hoặc prompt. Context Observability cho biết model đã thấy gì; Context Tracing theo provenance qua retrieve, select, compress, assemble, model invocation và tool evidence để giải thích context đó hình thành thế nào. Chỉ nhìn final context không đủ phân biệt missing evidence do retrieve failure hay do candidate đã bị discard ở selection; trace qua nhiều vòng `Context₁ → Reason/Act → Context₂` giúp locate và fix đúng failure layer.
 
 ## My Experiment
 
@@ -725,4 +804,8 @@ Chưa có learning note liên quan trong knowledge base. Khi có canonical note 
   {question: 'Instruction authority khác factual freshness như thế nào?', answer: 'Authority xác định instruction hoặc constraint nào có quyền chi phối; freshness và proximity to source of truth giúp chọn factual claim phản ánh state đáng tin cậy nhất.'},
   {question: 'Agent nên làm gì khi context conflict chưa thể resolve?', answer: 'Retrieve thêm evidence, chạy tool/test, inspect source of truth hoặc hỏi user thay vì đoán.'},
   {question: 'Structured working state giúp iterative agent như thế nào?', answer: 'Nó giữ goal, known facts, current hypothesis, changes made và next action qua các invocation mà không phải giữ toàn bộ history, nhờ đó hỗ trợ compression và budgeting.'},
+  {question: 'Context Observability khác Context Tracing như thế nào?', answer: 'Context Observability trả lời model thực sự đã thấy gì; Context Tracing trả lời context đó hình thành và thay đổi qua retrieve, select, compress, assemble, tool evidence và các model invocation như thế nào.'},
+  {question: 'Năm context-debugging failure layer là gì?', answer: 'Retrieve failure, selection failure, compression failure, assembly failure và reasoning failure.'},
+  {question: 'Vì sao chỉ inspect final prompt/context là chưa đủ?', answer: 'Final snapshot có thể cho thấy evidence bị thiếu nhưng không cho biết nó chưa từng được retrieve hay đã được retrieve rồi bị discard hoặc làm mất detail ở một bước sau.'},
+  {question: 'Nếu coding agent đã retrieve policy file nhưng không đưa file đó vào model context rồi implement sai, đây là failure nào?', answer: 'Đây là selection failure. Cần sửa selection signal hoặc policy thay vì mặc định blame model, prompt hoặc retrieval.'},
 ]}/>
