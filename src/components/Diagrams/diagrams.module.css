@@ -90,7 +90,7 @@
   width: var(--flow-node-width, 144px);
   height: 100%;
   min-height: 100%;
-  padding: .8rem .9rem;
+  padding: .68rem .9rem;
   flex-direction: column;
   gap: .24rem;
   justify-content: center;
@@ -103,9 +103,11 @@
   overflow-wrap: anywhere;
 }
 
-.flowNode_process,
-.flowNode_tool { background: var(--learning-subtle-surface); }
+.flowNode_process { background: var(--learning-subtle-surface); }
+.flowNode_tool { background: var(--learning-subtle-surface); border-style: double; border-width: 3px; }
 .flowNode_source { border-style: dashed; }
+.flowNode_state { border-radius: 14px; }
+.flowNode_evidence { border-left: 3px solid var(--learning-active); border-radius: 14px; }
 .flowNode_constraint,
 .flowNode_decision { background: var(--learning-active-soft); border-color: var(--learning-active-border); }
 .flowNode_output,
@@ -127,8 +129,8 @@
   text-transform: uppercase;
 }
 
-.flowNode strong { max-width: 100%; font-size: .84rem; line-height: 1.3; }
-.flowNode small { max-width: 100%; color: var(--ifm-font-color-secondary); font-size: .68rem; line-height: 1.35; }
+.flowNode strong { max-width: 100%; font-size: .88rem; line-height: 1.3; }
+.flowNode small { max-width: 100%; color: var(--ifm-font-color-secondary); font-size: .76rem; line-height: 1.35; }
 .flowNodeItems {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -151,6 +153,20 @@
 .flowEdgeDashed path { stroke-dasharray: 5 4; }
 .flowEdgeSecondary path { opacity: .72; }
 .flowEdgeFeedback path { opacity: .72; stroke-dasharray: 7 5; }
+.feedbackEdgePath { opacity: .68; stroke-dasharray: 7 5; }
+.feedbackEdgeLabel {
+  position: absolute;
+  z-index: 3;
+  padding: .15rem .38rem;
+  color: var(--ifm-font-color-secondary);
+  font-size: .72rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  background: var(--diagram-surface);
+  border: 1px solid var(--learning-border);
+  border-radius: 999px;
+}
 
 .reactFlowCanvas :global(.react-flow__edge-text) { font-size: 11px; }
 .reactFlowCanvas :global(.react-flow__controls) { overflow: hidden; border: 1px solid var(--learning-border); border-radius: 7px; box-shadow: var(--learning-shadow); }

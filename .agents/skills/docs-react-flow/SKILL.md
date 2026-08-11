@@ -70,9 +70,29 @@ All visible node content is contained by default. Lay out step number/eyebrow, a
 - Do not default five or more meaningful stages to one horizontal row. Use a vertical spine, semantic ranks, or balanced branches.
 - Centralize `nodeSpacing`, `rankSpacing`, and viewport padding. Do not scatter coordinate patches or magic offsets.
 
-Fix routing in this order: graph model/ranks → layout engine → spacing → handle placement → edge type. Reposition or change engine before patching many coordinates. Prefer gentle `smoothstep` or Bezier relationships; reserve straight edges for short, direct connections and sharp step edges for intentional branching. Every directional edge needs a clear arrowhead. Animate only when motion teaches behavior.
+### Compose for topology and canvas utilization
 
-Keep the primary flow short, quiet, and consistent. Route feedback, retry, refresh, and other long-distance cycles through a dedicated outer lane with clear space from nodes, labels, and other edges; never represent a long return path as a straight line beside the graph. Use top/bottom handles for the main `TB` spine and left/right handles for side branches and loops. Feedback edges should normally be subtler or dashed, with labels placed on an unambiguous open segment. Avoid unnecessary S-curves, awkward diagonal entry, and 90-degree turns that do not express a real branch. Design node placement and routing together so edges never have to cross node content.
+Choose composition from topology instead of forcing every graph through one shape:
+
+- simple linear lifecycle → clean `TB` or `LR` spine;
+- lifecycle with feedback → clean primary spine plus an external return edge;
+- branching decision → primary spine plus balanced branches;
+- fan-out/fan-in → use horizontal space for parallel nodes and align the merge;
+- multiple real conceptual groups → use lanes, groups, or clusters only when they clarify boundaries.
+
+On a wide desktop canvas, the meaningful graph should normally occupy a substantial portion of the usable width. If it uses roughly less than half, investigate the composition; ordinary medium-complexity graphs should often reach about 55–75% useful width when topology permits. This is a review heuristic, not a rendering constraint. Empty space is acceptable when it intentionally communicates structure. A narrow single-column stack in a wide canvas requires justification. Improve composition, grouping, semantic width tiers, or topology-aware placement before stretching every node.
+
+Every graph with a declared `primaryPath` has a visual-spine invariant. In `TB`, primary progression moves predominantly downward, node centers are aligned or intentionally related, and connectors do not oscillate left/right. Apply the equivalent rule horizontally for `LR`. The primary path must be traceable within a few seconds without reading every label. **`TB` does not require every node to occupy one vertical column**: branches, parallel stages, evidence, groups, annotations, and feedback lanes should use horizontal space when the authored topology contains them. Never invent a branch merely to avoid a column, but never flatten real topology into one either.
+
+Fix routing in this order: graph model/ranks → layout engine → spacing → handle placement → edge type. Reposition or change engine before patching many coordinates. Use straight edges for simple adjacent primary stages, `smoothstep` only for topology that genuinely needs orthogonal routing, and Bezier/custom curves for intentional feedback. Edge type follows semantic need, not a global default. Reject tiny S-shapes, hooks immediately after handles, repeated unnecessary bends, node crossings, detached labels, visually merged parallel edges, and routes touching node text. Every directional edge needs a clear arrowhead. Animate only when motion teaches behavior.
+
+Keep the primary flow short, quiet, and consistent. Feedback, retry, refresh, and other long-distance cycles are secondary topology: route them outside the main node corridor with one deliberate large curve or a small number of clean orthogonal segments. They must never cross the primary flow, resemble a canvas border/divider, or run through controls. Reserve side clearance, use top/bottom handles for the main `TB` spine and left/right handles for side returns, and apply the equivalent geometry for `LR`. Feedback edges should be subtler or dashed. When the label belongs to the whole return loop, center it on the clear outer return segment and use an opaque label background to create an intentional break in the dashed stroke; when it names the return event at an endpoint, keep it immediately beside that endpoint. If automatic routing produces an ugly loop, use the shared feedback edge, explicit handles, or a reusable waypoint/custom-edge abstraction instead of accepting it.
+
+Treat a feedback loop as a reserved routing lane, not a curve offset from only its source and target. Compute or validate its clearance against the outermost node boundary in the graph, including wider intermediate nodes; the lane must remain visibly detached from every card at desktop and mobile widths. A fixed offset from two compact endpoint nodes is insufficient when another node extends farther into the return corridor.
+
+`fitView` commonly frames node bounds without accounting for the full custom-edge curve or its label. When a feedback lane extends beyond node bounds, explicitly include a non-semantic routing reserve in the fitted bounds or use an equivalent shared viewport calculation. Do not compensate by repeatedly moving the curve inward until it hugs nodes. Verify the initial viewport contains the complete return path and label without clipping or horizontal overflow.
+
+For a label that describes the whole loop, place its center on the clear middle portion of the outer return segment—both vertically centered along the return and visually centered over the dashed stroke. Give the label an opaque background so the stroke breaks cleanly behind it. Do not leave a whole-loop label beside the start/target endpoint or merely at the same height while floating away from its edge.
 
 For `TB`, targets enter from top and sources leave from bottom. For `LR`, targets enter from left and sources leave from right. Multiple semantic connections may use stable handle IDs; hidden handles must retain measurable dimensions (`opacity` or `visibility`, never `display: none`).
 
@@ -86,11 +106,43 @@ For `TB`, targets enter from top and sources leave from bottom. For `LR`, target
 - On mobile, preserve readable node text and provide pan/zoom rather than shrinking the entire graph into illegibility.
 - Use site CSS variables and `colorMode="system"`; verify light and dark themes. Never encode meaning by color alone.
 
+Derive canvas size from computed graph bounds with intentional modest padding whenever practical. Do not use a large fixed height to disguise poor density or a narrow graph. Inspect fit-view zoom: the default view must keep normal labels and metadata readable. Controls must clear meaningful content. Mobile may use responsive widths/spacing or an alternate composition; it must not merely shrink a desktop graph until text becomes unreadable.
+
+## Size nodes and express semantic roles
+
+Node width follows content and topology. Prefer the shared `compact`, `standard`, and `wide` tiers when they fit; use an explicit width only for a real content/layout need. Normal title and metadata must remain readable without fullscreen or zoom. Shorten metadata or move explanation into surrounding prose before shrinking text. Do not make every node wide merely to fill the canvas.
+
+Use the shared semantic roles consistently: `source`, `process`, `state`, `evidence`, `constraint`, `model`, `tool`, `output`, and the closest existing specialized roles. Role differences should be subtle but visible through the established border, shape, surface, or weight language—not random per-diagram color.
+
+For `TB`, rank separation must distinguish stages without turning a simple lifecycle into poster height. Keep consecutive stages close enough to read as one flow, but preserve enough clearance for a visible connector shaft in addition to the arrowhead; an edge that collapses into mostly a marker is a spacing failure. Allocate extra space only where a branch, loop, or annotation needs it. Spacing should remain proportional to node size and edge complexity.
+
 ## Reuse infrastructure
 
 Extend `ReactFlowDiagram` and `layoutGraph.ts` instead of repeating providers, Controls, MiniMap, Background, edge defaults, or layout code in MDX. Keep `nodeTypes` outside the render function. With React Flow v12, use `node.measured` for post-render dimensions if implementing measurement-aware relayout.
 
 Add a new abstraction only for a recurring need. Avoid giant APIs that expose geometry details back to article authors.
+
+## Mandatory review checklist
+
+Before accepting a React Flow diagram, answer all of these:
+
+1. Can I identify the primary path immediately?
+2. Does the graph use the available canvas reasonably?
+3. Is suspicious empty space caused by layout rather than meaning?
+4. Are titles and metadata readable without fullscreen or zoom?
+5. Are primary edges clean and directionally consistent?
+6. Are there tiny hooks or S-curves caused by handle placement?
+7. Are feedback edges secondary and outside the main corridor?
+8. Do custom feedback edges and labels participate in the fitted viewport bounds rather than being clipped outside node-only bounds?
+9. Are edge labels visually attached to their own edges, with whole-loop labels centered over the clear middle return segment?
+10. Are semantic node roles distinguishable before every label is read?
+11. Is the diagram taller or wider than its topology needs?
+12. Does `fitView` produce a useful default zoom?
+13. Does mobile remain readable rather than merely scaled down?
+14. Do controls clear graph content?
+15. Does the diagram teach structure better than plain text?
+
+If several answers fail, redesign the topology/composition instead of accumulating coordinate tweaks.
 
 ## Quality gate
 

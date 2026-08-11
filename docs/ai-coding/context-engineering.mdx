@@ -50,17 +50,18 @@ Một container lớn hơn không tự quyết định được thông tin nào 
 <ReactFlowDiagram
   ariaLabel="Context construction pipeline"
   direction="TB"
-  height={760}
   kind="data-flow"
+  layout="primary-path"
   primaryPath={['sources', 'retrieve', 'candidates', 'select', 'relevant', 'window', 'llm']}
+  rankSpacing={18}
   nodes={[
-    {id: 'sources', eyebrow: 'Available', label: 'Sources', detail: 'Knowledge · Code · Memory · Tools', role: 'source', width: 190},
-    {id: 'retrieve', eyebrow: 'Action', label: 'Retrieve', detail: 'Tìm thông tin có thể hữu ích', role: 'process', width: 170},
-    {id: 'candidates', eyebrow: 'Data', label: 'Candidates', detail: 'Tập thông tin rộng', role: 'state', width: 145},
-    {id: 'select', eyebrow: 'Action', label: 'Select', detail: 'Đánh giá cho current decision', role: 'process', width: 170},
-    {id: 'relevant', eyebrow: 'Data', label: 'Relevant Context', detail: 'Thông tin đáng giữ', role: 'state', width: 160},
-    {id: 'window', eyebrow: 'Constraint', label: 'Context Window', detail: 'Capacity hữu hạn', role: 'constraint', emphasis: true, width: 175},
-    {id: 'llm', eyebrow: 'Consumer', label: 'LLM', role: 'model', width: 120},
+    {id: 'sources', eyebrow: 'Available', label: 'Sources', detail: 'Knowledge · Code · Memory · Tools', role: 'source', size: 'wide'},
+    {id: 'retrieve', eyebrow: 'Action', label: 'Retrieve', detail: 'Tìm thông tin có thể hữu ích', role: 'process', size: 'standard'},
+    {id: 'candidates', eyebrow: 'Data', label: 'Candidates', detail: 'Tập thông tin rộng', role: 'state', size: 'compact'},
+    {id: 'select', eyebrow: 'Action', label: 'Select', detail: 'Đánh giá cho current decision', role: 'process', size: 'standard'},
+    {id: 'relevant', eyebrow: 'Data', label: 'Relevant Context', detail: 'Thông tin đáng giữ', role: 'state', size: 'standard'},
+    {id: 'window', eyebrow: 'Constraint', label: 'Context Window', detail: 'Capacity hữu hạn', role: 'constraint', emphasis: true, size: 'standard'},
+    {id: 'llm', eyebrow: 'Consumer', label: 'LLM', role: 'model', size: 'compact'},
   ]}
   edges={[
     {source: 'sources', target: 'retrieve'},
@@ -296,29 +297,28 @@ Cùng lỗi `JWT expired` xuất hiện trong tool output, conversation summary,
 <ReactFlowDiagram
   ariaLabel="Context engineering lifecycle with continuous quality evaluation"
   direction="TB"
-  height={820}
   kind="lifecycle"
   layout="primary-path"
-  primaryPath={['sources', 'retrieve', 'shape', 'quality', 'assemble', 'llm', 'act', 'observe']}
-  rankSpacing={38}
+  primaryPath={['sources', 'retrieve', 'shape', 'quality', 'assemble', 'llm', 'act', 'observe', 'refresh']}
+  rankSpacing={18}
   nodes={[
-    {id: 'sources', label: 'Sources', role: 'source', width: 115},
-    {id: 'retrieve', label: 'Retrieve', role: 'process', width: 115},
-    {id: 'shape', label: 'Context Preparation', detail: 'Select · Budget · Compress', role: 'process', width: 170},
-    {id: 'quality', label: 'Evaluate Quality', role: 'constraint', emphasis: true, width: 145},
-    {id: 'assemble', label: 'Assemble', role: 'process', width: 115},
-    {id: 'llm', label: 'LLM', role: 'model', width: 105},
-    {id: 'act', label: 'Reason / Act', role: 'process', width: 115},
-    {id: 'observe', label: 'Observe', detail: 'New evidence / changed state', role: 'state', width: 160},
-    {id: 'refresh', label: 'Retrieve / Refresh', role: 'process', width: 135},
+    {id: 'sources', label: 'Sources', role: 'source', size: 'compact'},
+    {id: 'retrieve', label: 'Retrieve', role: 'process', size: 'compact'},
+    {id: 'shape', label: 'Context Preparation', detail: 'Select · Budget · Compress', role: 'process', size: 'wide'},
+    {id: 'quality', label: 'Evaluate Quality', role: 'constraint', emphasis: true, size: 'standard'},
+    {id: 'assemble', label: 'Assemble', role: 'process', size: 'compact'},
+    {id: 'llm', label: 'LLM', role: 'model', size: 'compact'},
+    {id: 'act', label: 'Reason / Act', role: 'process', size: 'compact'},
+    {id: 'observe', label: 'Observe', detail: 'New evidence / changed state', role: 'evidence', size: 'standard'},
+    {id: 'refresh', label: 'Retrieve / Refresh', role: 'process', size: 'standard'},
   ]}
   edges={[
     {source: 'sources', target: 'retrieve'}, {source: 'retrieve', target: 'shape'},
     {source: 'shape', target: 'quality'}, {source: 'quality', target: 'assemble'},
     {source: 'assemble', target: 'llm'}, {source: 'llm', target: 'act'},
     {source: 'act', target: 'observe'},
-    {source: 'observe', target: 'refresh', route: 'secondary', type: 'bezier', sourceHandle: 'right', targetHandle: 'left'},
-    {source: 'refresh', target: 'shape', label: 'next decision', route: 'feedback', type: 'bezier', sourceHandle: 'right', targetHandle: 'right'},
+    {source: 'observe', target: 'refresh'},
+    {source: 'refresh', target: 'shape', label: 'next decision', route: 'feedback', feedbackLabelPlacement: 'outer'},
   ]}
   caption="Quality evaluation nằm trong vòng lặp. Action thay đổi environment, observation tạo evidence mới, rồi agent refresh context cho quyết định tiếp theo."
 />
@@ -597,15 +597,16 @@ Structured working state đặc biệt hữu ích cho iterative agents vì nó b
 <ReactFlowDiagram
   ariaLabel="Context debugging workflow from wrong output to the correct failure layer"
   direction="TB"
-  height={710}
   kind="workflow"
+  layout="primary-path"
   primaryPath={['wrong-output', 'inspect-context', 'trace-lifecycle', 'locate-failure', 'fix-layer']}
+  rankSpacing={20}
   nodes={[
-    {id: 'wrong-output', eyebrow: 'Symptom', label: 'Wrong Output', detail: 'Kết quả sai chỉ là điểm bắt đầu', role: 'output', width: 185},
-    {id: 'inspect-context', eyebrow: 'Observability', label: 'Inspect Actual Context', detail: 'Model thực sự đã thấy gì?', role: 'process', emphasis: true, width: 200},
-    {id: 'trace-lifecycle', eyebrow: 'Tracing', label: 'Trace Context Lifecycle', detail: 'Retrieve → Select → Compress → Assemble', role: 'process', width: 215},
-    {id: 'locate-failure', eyebrow: 'Diagnosis', label: 'Locate Failure', detail: 'Xác định layer đầu tiên làm evidence sai lệch', role: 'decision', width: 205},
-    {id: 'fix-layer', eyebrow: 'Action', label: 'Fix the Correct Layer', detail: 'Sửa retrieval, selection, compression, assembly hoặc reasoning', role: 'output', width: 225},
+    {id: 'wrong-output', eyebrow: 'Symptom', label: 'Wrong Output', detail: 'Kết quả sai chỉ là điểm bắt đầu', role: 'output', size: 'standard'},
+    {id: 'inspect-context', eyebrow: 'Observability', label: 'Inspect Actual Context', detail: 'Model thực sự đã thấy gì?', role: 'process', emphasis: true, size: 'wide'},
+    {id: 'trace-lifecycle', eyebrow: 'Tracing', label: 'Trace Context Lifecycle', detail: 'Retrieve → Select → Compress → Assemble', role: 'process', size: 'wide'},
+    {id: 'locate-failure', eyebrow: 'Diagnosis', label: 'Locate Failure', detail: 'Xác định layer đầu tiên làm evidence sai lệch', role: 'decision', size: 'wide'},
+    {id: 'fix-layer', eyebrow: 'Action', label: 'Fix the Correct Layer', detail: 'Sửa retrieval, selection, compression, assembly hoặc reasoning', role: 'output', size: 'wide'},
   ]}
   edges={[
     {source: 'wrong-output', target: 'inspect-context'},
@@ -662,6 +663,81 @@ Giả sử coding agent được yêu cầu sửa lỗi `session timeout` nhưng
 
 Đây là **selection failure**, không phải retrieve failure hay đủ evidence để kết luận reasoning failure. Cách sửa đúng là cải thiện selection signal—chẳng hạn ưu tiên symbol references, caller relationship hoặc policy-bearing files—rồi chạy lại trace; đổi model hoặc rewrite prompt trước sẽ không sửa nguyên nhân gốc.
 
+### Context Metrics & Signals
+
+Context metrics không phải các verdict độc lập. Chúng là **signals** giúp agent trả lời một câu hỏi chung: context hiện tại có cho phép ra quyết định đáng tin cậy và tiếp tục tiến triển task không?
+
+<ReactFlowDiagram
+  ariaLabel="Context metrics and signals across the iterative context lifecycle"
+  direction="TB"
+  kind="data-flow"
+  layout="primary-path"
+  primaryPath={['metric-sources', 'metric-retrieve', 'metric-candidates', 'metric-select', 'metric-compress', 'metric-window', 'metric-agent', 'metric-tools', 'metric-evidence']}
+  rankSpacing={28}
+  nodes={[
+    {id: 'metric-sources', label: 'Sources', role: 'source', size: 'compact'},
+    {id: 'metric-retrieve', label: 'Retrieve', detail: 'Precision · Recall', role: 'process', size: 'standard'},
+    {id: 'metric-candidates', label: 'Candidates', role: 'state', size: 'compact'},
+    {id: 'metric-select', label: 'Select', detail: 'Selection quality', role: 'process', size: 'standard'},
+    {id: 'metric-compress', label: 'Compress', detail: 'Retention · Faithfulness', role: 'process', size: 'wide'},
+    {id: 'metric-window', label: 'Context Window', detail: 'Token usage · Freshness', role: 'constraint', emphasis: true, size: 'wide'},
+    {id: 'metric-agent', label: 'LLM / Agent', role: 'model', size: 'compact'},
+    {id: 'metric-tools', label: 'Tools', detail: 'Information gain · Actionability', role: 'tool', size: 'wide'},
+    {id: 'metric-evidence', label: 'New Evidence', detail: 'Decision progress', role: 'evidence', size: 'standard'},
+  ]}
+  edges={[
+    {source: 'metric-sources', target: 'metric-retrieve'},
+    {source: 'metric-retrieve', target: 'metric-candidates'},
+    {source: 'metric-candidates', target: 'metric-select'},
+    {source: 'metric-select', target: 'metric-compress'},
+    {source: 'metric-compress', target: 'metric-window'},
+    {source: 'metric-window', target: 'metric-agent'},
+    {source: 'metric-agent', target: 'metric-tools'},
+    {source: 'metric-tools', target: 'metric-evidence'},
+    {source: 'metric-evidence', target: 'metric-retrieve', label: 'next', route: 'feedback', feedbackLabelPlacement: 'outer'},
+  ]}
+  caption="Mỗi lifecycle stage có signal riêng; kết hợp chúng để đánh giá decision reliability và progress, không dùng một metric đơn lẻ làm kết luận."
+/>
+
+#### Context Size / Token Usage
+
+Theo dõi **used tokens**, capacity còn lại của Context Window và mức **context utilization / context pressure**. Utilization cao là tín hiệu để inspect context quality, không phải bằng chứng context đang xấu. Không có rule chung như `>80% thì compress`: compression hoặc eviction chỉ hợp lý khi có low-value context có thể bỏ và vẫn bảo toàn đủ useful information cho next decision.
+
+#### Retrieval Quality
+
+- **Precision:** trong những thông tin đã retrieve, bao nhiêu phần thực sự relevant.
+- **Recall:** trong toàn bộ thông tin relevant hoặc cần thiết, bao nhiêu phần đã được retrieve thành công.
+
+High recall + low precision tạo nhiều noise; high precision + low recall tạo context sạch nhưng insufficient. Retrieval nên tìm **đủ evidence với ít unnecessary noise nhất có thể trong thực tế**, thay vì tối ưu một metric tách biệt.
+
+#### Selection Quality
+
+<ImportantDistinction title="Retrieval failure ≠ Selection failure">
+  Retrieval failure nghĩa là required information chưa bao giờ được tìm thấy. Selection failure nghĩa là useful information đã ở trong candidates nhưng bị loại sai, trong khi low-value information có thể được giữ lại.
+</ImportantDistinction>
+
+Có thể hiểu **selection precision** là mức context được giữ lại thực sự có giá trị, còn **selection recall** là mức useful candidates quan trọng đã sống sót qua selection. Không cần biến chúng thành công thức cứng; khi select, hãy cân nhắc `relevance`, `usefulness`, `freshness`, `necessity` và `token cost` cho current decision.
+
+#### Compression Quality / Compression Loss
+
+Token reduction chỉ có ý nghĩa khi đo cùng **information retention**. Compression phải giữ decision-critical constraints và evidence, nhưng giữ đủ facts vẫn chưa đủ: **faithfulness** hỏi representation sau compression có giữ nguyên ý nghĩa của chúng hay không. Compression có thể fail do xóa information quan trọng hoặc do thay đổi tinh vi meaning của information còn lại. Mục tiêu là giảm context cost trong khi bảo toàn đủ faithful information cho next decision, không phải maximum compression.
+
+#### Freshness / Stale Context
+
+Freshness khác correctness: information có thể đúng khi được quan sát nhưng stale sau khi application hoặc environment state thay đổi. Stable information như protocol contract có freshness expectation khác volatile information như working-tree state, test result hay live resource state.
+
+Age hoặc timestamp chỉ là signal. `commit SHA`, working-tree state, resource version hoặc state identifier tương đương thường cho stale-context signal mạnh hơn vì chúng gắn observation với một state cụ thể. Agent nên revalidate volatile context khi cần, thay vì mặc định tin old tool results.
+
+#### Tool-result Usefulness
+
+Tool execution `success` chỉ cho biết tool đã chạy theo contract; nó không cho biết result có hữu ích cho task hay không. Useful result nên giúp giảm uncertainty, cung cấp evidence, confirm/reject hypothesis, chỉ ra nơi cần inspect tiếp, verify một action hoặc làm next action rõ hơn.
+
+**Information gain** là result đã thay đổi điều agent biết bao nhiêu; **actionability** là result đã làm quyết định hoặc bước tiếp theo rõ hơn bao nhiêu. Nhiều tool call đều thành công nhưng tạo ít evidence hữu ích và hầu như không có decision progress là **tool thrashing**.
+
+<KeyInsight title="Metrics are signals, not verdicts">
+  Đọc các signal cùng lifecycle stage, current decision và source of truth. Metric chỉ có giá trị khi nó giúp agent quyết định nên retrieve thêm, select lại, compress cẩn thận, refresh evidence hay tiếp tục act.
+</KeyInsight>
+
 ### Context động và iterative agent loop
 
 AI agent xây dựng context qua một lifecycle lặp, không phải một lần ghép prompt ở đầu task:
@@ -681,15 +757,15 @@ Khi thiết kế custom AI agent, có thể tách hai trách nhiệm:
 <ReactFlowDiagram
   ariaLabel="Context Manager and Model Adapter architecture"
   direction="TB"
-  height={570}
   kind="architecture"
+  layout="primary-path"
   primaryPath={['agent', 'manager', 'adapter', 'providers']}
-  rankSpacing={44}
+  rankSpacing={22}
   nodes={[
-    {id: 'agent', label: 'Agent', role: 'source', width: 90},
-    {id: 'manager', eyebrow: 'What the model receives', label: 'Context Manager', detail: 'Retrieve · Select · Budget · Compress · Evaluate · Assemble', role: 'constraint', emphasis: true, width: 190},
-    {id: 'adapter', eyebrow: 'How the request is sent', label: 'Model Adapter', detail: 'Provider-specific request / response', role: 'process', width: 180},
-    {id: 'providers', eyebrow: 'Implementations', label: 'Providers', items: ['OpenAI', 'Anthropic', 'Gemini', 'Other'], role: 'output', width: 230},
+    {id: 'agent', label: 'Agent', role: 'source', size: 'compact'},
+    {id: 'manager', eyebrow: 'What the model receives', label: 'Context Manager', detail: 'Retrieve · Select · Budget · Compress · Evaluate · Assemble', role: 'constraint', emphasis: true, size: 'wide'},
+    {id: 'adapter', eyebrow: 'How the request is sent', label: 'Model Adapter', detail: 'Provider-specific request / response', role: 'process', size: 'wide'},
+    {id: 'providers', eyebrow: 'Implementations', label: 'Providers', items: ['OpenAI', 'Anthropic', 'Gemini', 'Other'], role: 'output', size: 'wide'},
   ]}
   edges={[
     {source: 'agent', target: 'manager'},
@@ -752,6 +828,8 @@ Sau khi chọn đúng information, tôi vẫn cần assemble, structure và orde
 
 Khi agent tạo wrong output, tôi cần inspect actual context trước khi blame model hoặc prompt. Context Observability cho biết model đã thấy gì; Context Tracing theo provenance qua retrieve, select, compress, assemble, model invocation và tool evidence để giải thích context đó hình thành thế nào. Chỉ nhìn final context không đủ phân biệt missing evidence do retrieve failure hay do candidate đã bị discard ở selection; trace qua nhiều vòng `Context₁ → Reason/Act → Context₂` giúp locate và fix đúng failure layer.
 
+Context metrics là signals theo từng lifecycle stage chứ không phải verdict. Token utilization cao chỉ nhắc tôi inspect quality; retrieval precision/recall không thay thế selection quality; compression cần giữ cả information lẫn faithful meaning; freshness nên gắn với state/version khi có thể. Tool call chỉ thực sự hữu ích khi nó tăng evidence, giảm uncertainty hoặc làm next action rõ hơn—không chỉ vì execution thành công.
+
 ## My Experiment
 
 <ExperimentCard status="not-started">
@@ -808,4 +886,8 @@ Chưa có learning note liên quan trong knowledge base. Khi có canonical note 
   {question: 'Năm context-debugging failure layer là gì?', answer: 'Retrieve failure, selection failure, compression failure, assembly failure và reasoning failure.'},
   {question: 'Vì sao chỉ inspect final prompt/context là chưa đủ?', answer: 'Final snapshot có thể cho thấy evidence bị thiếu nhưng không cho biết nó chưa từng được retrieve hay đã được retrieve rồi bị discard hoặc làm mất detail ở một bước sau.'},
   {question: 'Nếu coding agent đã retrieve policy file nhưng không đưa file đó vào model context rồi implement sai, đây là failure nào?', answer: 'Đây là selection failure. Cần sửa selection signal hoặc policy thay vì mặc định blame model, prompt hoặc retrieval.'},
+  {question: 'Vì sao token utilization cao không tự động có nghĩa là nên compress context?', answer: 'Utilization chỉ là signal để inspect quality. Chỉ nên compress hoặc evict khi có low-value context và vẫn có thể giữ đủ faithful information cho next decision.'},
+  {question: 'Retrieval precision/recall khác selection quality như thế nào?', answer: 'Retrieval precision/recall đánh giá evidence nào được tìm thấy; selection quality đánh giá useful candidates nào được giữ hoặc bị loại sau khi đã tìm thấy.'},
+  {question: 'Information retention và faithfulness trong compression khác nhau thế nào?', answer: 'Retention hỏi information quan trọng có còn đó không; faithfulness hỏi meaning của information được giữ có bị thay đổi không.'},
+  {question: 'Dấu hiệu nào cho thấy agent đang tool thrashing?', answer: 'Nhiều tool call execution thành công nhưng tạo ít information gain, evidence, actionability hoặc decision progress.'},
 ]}/>

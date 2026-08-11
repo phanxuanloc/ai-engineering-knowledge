@@ -17,7 +17,8 @@ topics:
       - context-quality-evaluation
       - context-assembly-and-ordering
       - context-observability-and-debugging
-    next_checkpoint: context-metrics-and-signals
+      - context-metrics-and-signals
+    next_checkpoint: context-security-and-trust-boundaries
     experiments: []
     prerequisites: []
     related: []

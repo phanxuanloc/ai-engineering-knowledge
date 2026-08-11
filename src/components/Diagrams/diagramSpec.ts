@@ -1,5 +1,6 @@
 import type {Node} from '@xyflow/react';
 import type {DiagramEdge, DiagramKind, DiagramNode} from './ReactFlowDiagram';
+import type {FlowDirection} from './layoutGraph';
 
 export type DiagramDiagnostic = {
   code: string;
@@ -11,6 +12,7 @@ export type DiagramDiagnostic = {
 
 export type DiagramSpec = {
   edges: DiagramEdge[];
+  direction?: FlowDirection;
   kind: DiagramKind;
   nodes: DiagramNode[];
   primaryPath?: string[];
@@ -52,7 +54,7 @@ export function validateDiagramSpec({edges, kind, nodes, primaryPath}: DiagramSp
   return diagnostics;
 }
 
-export function validateDiagramLayout(nodes: Node[], bounds: {height: number; width: number}): DiagramDiagnostic[] {
+export function validateDiagramLayout(nodes: Node[], bounds: {height: number; width: number}, spec?: DiagramSpec): DiagramDiagnostic[] {
   const diagnostics: DiagramDiagnostic[] = [];
   for (let leftIndex = 0; leftIndex < nodes.length; leftIndex += 1) {
     const left = nodes[leftIndex];
@@ -69,11 +71,24 @@ export function validateDiagramLayout(nodes: Node[], bounds: {height: number; wi
   }
   const longAxisRatio = Math.max(bounds.width, bounds.height) / Math.max(1, Math.min(bounds.width, bounds.height));
   if (nodes.length >= 5 && longAxisRatio > 4.5) diagnostics.push({code: 'layout/excessive-aspect-ratio', severity: 'warning', subject: 'graph', evidence: `The graph bounds have a ${longAxisRatio.toFixed(1)}:1 long-axis ratio.`, supportedFixes: ['use multiple semantic ranks', 'choose a more suitable direction', 'split secondary detail']});
+  if (spec?.primaryPath?.length) {
+    const byId = new Map(nodes.map((node) => [node.id, node]));
+    const direction = spec.direction ?? 'TB';
+    const centers = spec.primaryPath.flatMap((id) => {
+      const node = byId.get(id);
+      if (!node) return [];
+      return [direction === 'TB'
+        ? node.position.x + (node.width ?? 0) / 2
+        : node.position.y + (node.height ?? 0) / 2];
+    });
+    const spineDrift = Math.max(...centers) - Math.min(...centers);
+    if (spineDrift > 4) diagnostics.push({code: 'layout/primary-spine-drift', severity: 'warning', subject: spec.primaryPath.join('→'), evidence: `Primary-path centers drift by ${spineDrift.toFixed(1)}px on the cross axis.`, supportedFixes: ['center-align primary ranks', 'use explicit semantic lanes only when topology requires them']});
+  }
   return diagnostics;
 }
 
 export function assertDiagramQuality(spec: DiagramSpec, nodes: Node[], bounds: {height: number; width: number}): DiagramDiagnostic[] {
-  const diagnostics = [...validateDiagramSpec(spec), ...validateDiagramLayout(nodes, bounds)];
+  const diagnostics = [...validateDiagramSpec(spec), ...validateDiagramLayout(nodes, bounds, spec)];
   const errors = diagnostics.filter(({severity}) => severity === 'error');
   if (errors.length) throw new Error(`Diagram validation failed:\n${errors.map(({code, evidence, subject}) => `- ${code} [${subject}]: ${evidence}`).join('\n')}`);
   return diagnostics;

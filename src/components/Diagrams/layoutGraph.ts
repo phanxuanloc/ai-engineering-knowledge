@@ -16,6 +16,8 @@ export type LayoutResult<NodeType extends Node = Node> = {
   nodes: NodeType[];
 };
 
+const MIN_PRIMARY_PATH_GAP = 28;
+
 export function layoutWithDagre<NodeType extends Node>(
   nodes: NodeType[],
   edges: Edge[],
@@ -56,16 +58,21 @@ export function layoutGraph<NodeType extends Node>(
   options: LayoutOptions = {},
 ): LayoutResult<NodeType> {
   if (options.layout === 'primary-path' && options.primaryPath?.length) {
-    const {direction = 'TB', nodeSpacing = 48, primaryPath, rankSpacing = 52} = options;
+    const {direction = 'TB', nodeSpacing = 48, primaryPath, rankSpacing = MIN_PRIMARY_PATH_GAP} = options;
+    const primaryPathGap = Math.max(rankSpacing, MIN_PRIMARY_PATH_GAP);
     const byId = new Map(nodes.map((node) => [node.id, node]));
     const positions = new Map<string, {x: number; y: number}>();
+    const primaryNodes = primaryPath.flatMap((id) => byId.get(id) ? [byId.get(id)!] : []);
+    const primaryCrossSize = Math.max(...primaryNodes.map((node) => direction === 'TB' ? node.width ?? 168 : node.height ?? 76));
     let cursor = 0;
 
     for (const id of primaryPath) {
       const node = byId.get(id);
       if (!node) continue;
-      positions.set(id, direction === 'TB' ? {x: 0, y: cursor} : {x: cursor, y: 0});
-      cursor += (direction === 'TB' ? node.height ?? 76 : node.width ?? 168) + rankSpacing;
+      positions.set(id, direction === 'TB'
+        ? {x: (primaryCrossSize - (node.width ?? 168)) / 2, y: cursor}
+        : {x: cursor, y: (primaryCrossSize - (node.height ?? 76)) / 2});
+      cursor += (direction === 'TB' ? node.height ?? 76 : node.width ?? 168) + primaryPathGap;
     }
 
     const sideNodes = nodes.filter((node) => !positions.has(node.id));
@@ -77,7 +84,7 @@ export function layoutGraph<NodeType extends Node>(
       const anchorPosition = anchor ? positions.get(anchor.id) : undefined;
       const offset = index * ((direction === 'TB' ? node.height ?? 76 : node.width ?? 168) + nodeSpacing);
       positions.set(node.id, direction === 'TB'
-        ? {x: 220 + nodeSpacing, y: (anchorPosition?.y ?? cursor) + 40 + offset}
+        ? {x: primaryCrossSize + nodeSpacing, y: (anchorPosition?.y ?? cursor) + 24 + offset}
         : {x: (anchorPosition?.x ?? cursor) + offset, y: 140 + nodeSpacing});
     });
 
