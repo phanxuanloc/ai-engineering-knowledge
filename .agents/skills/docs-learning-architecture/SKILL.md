@@ -56,6 +56,16 @@ A topic map should let a reader answer within about 30 seconds:
 
 Keep the map compact. Do not repeat full examples, long metric catalogs, security checklists, or implementation details there.
 
+## Front matter safety
+
+Docusaurus parses document front matter as YAML. Treat front matter as code, not prose.
+
+- Quote `title`, `description`, `slug`, or other scalar string values whenever they contain YAML-significant characters such as `:`, `#`, `{}`, `[]`, leading `-`, or other punctuation that may change YAML parsing.
+- A title like `Context Engineering: Foundations & Lifecycle` must be written as `title: "Context Engineering: Foundations & Lifecycle"`.
+- A description containing a colon must also be quoted.
+- When refactoring or renaming docs, inspect every changed front matter block before publishing; do not assume Markdown rendering will catch malformed YAML.
+- A production build is part of acceptance because malformed front matter can fail before MDX compilation or diagram rendering starts.
+
 ## Review diagrams as part of restructuring
 
 Read `docs-diagram` first, then the selected renderer skill.
@@ -80,8 +90,9 @@ Do not use a `Pipeline` card component, ASCII arrows, Mermaid, Excalidraw, and R
 4. Propose the smallest coherent article set.
 5. Preserve the strongest established URL and repair links/navigation.
 6. Review every diagram: teaching job → classification → keep/remove/replace → validate.
-7. Keep progress evidence unchanged unless the learner actually supplied new evidence.
-8. Run typecheck/build/diagram checks when the environment supports them; otherwise state that runtime visual validation was not performed and avoid claiming it passed.
+7. Validate all changed YAML front matter before build; quote ambiguous scalar strings.
+8. Keep progress evidence unchanged unless the learner actually supplied new evidence.
+9. Run typecheck/build/diagram checks when the environment supports them; otherwise state that runtime visual validation was not performed and avoid claiming it passed.
 
 ## Acceptance checklist
 
@@ -94,4 +105,5 @@ A restructure is successful when:
 - practical evidence stays distinguishable from conceptual knowledge;
 - diagrams are fewer but more purposeful, with one canonical end-to-end flow;
 - old public entry URLs still lead somewhere useful;
+- changed front matter is valid YAML and ambiguous scalars are quoted;
 - structural cleanup has not been misrepresented as new mastery evidence.
