@@ -1,0 +1,191 @@
+---
+title: Context Optimization
+description: Tối ưu selected context bằng quality evaluation, budgeting, compression và assembly thay vì chỉ thêm nhiều token.
+tags: [context-engineering, context-budgeting, context-quality]
+sidebar_position: 4
+---
+
+import {Comparison, ImportantDistinction, KeyInsight, Remember, TLDR} from '@site/src/components/Learning';
+
+# Context Optimization
+
+## TL;DR
+
+<TLDR>
+
+Sau khi retrieval tạo candidates và selection chọn information đáng giữ, `Context Optimization` trả lời bốn câu hỏi: context hiện tại **đủ tốt chưa**, capacity nên phân bổ thế nào, phần nào có thể compress, và selected context nên được assemble theo role/order nào. Mục tiêu không phải context nhỏ nhất hay đầy nhất, mà là context **đủ, đúng và ít noise cho current decision**.
+
+</TLDR>
+
+<Remember title="Budget is a ceiling, not a quota">
+  Context Window là capacity tối đa. Không có lý do phải lấp đầy nếu current decision đã có đủ evidence.
+</Remember>
+
+## Mental Model
+
+Hãy coi optimization như chuẩn bị một packet trước khi giao cho model:
+
+- **Quality** kiểm tra packet có đúng và đủ không.
+- **Budget** quyết định phần nào đáng chiếm capacity.
+- **Compression** giảm representation cost của phần cần giữ.
+- **Assembly** đặt từng loại information đúng role và đúng thứ tự để model hiểu rõ nhiệm vụ, constraints và evidence.
+
+`Select`, `Budget`, `Compress` không phải ba từ cho cùng một việc:
+
+<Comparison
+  label="Selection, budgeting, and compression"
+  items={[
+    {eyebrow: 'Keep', title: 'Select', description: 'Information nào đáng giữ cho current decision?'},
+    {eyebrow: 'Allocate', title: 'Budget', description: 'Capacity hữu hạn nên dành cho information nào?'},
+    {eyebrow: 'Represent', title: 'Compress', description: 'Information phải giữ có thể dùng ít token hơn thế nào?'},
+  ]}
+/>
+
+## Core Concepts
+
+### Context Quality
+
+Một context tốt không chỉ cần relevant. Checklist đã học là:
+
+`Good Context = Relevant + Sufficient + Low Noise + Low Redundancy + Fresh + Correct`
+
+- **Relevance:** information có liên quan trực tiếp tới current task/decision không?
+- **Sufficiency:** model đã có đủ evidence để quyết định đáng tin cậy chưa?
+- **Noise:** có information không giúp decision nhưng vẫn cạnh tranh attention không?
+- **Redundancy:** cùng một signal có bị lặp nhiều lần không?
+- **Freshness:** information có còn phản ánh current state không?
+- **Correctness:** content có đúng, được kiểm chứng, hoặc ít nhất được gắn uncertainty/provenance phù hợp không?
+
+Một context có thể rất relevant nhưng vẫn insufficient. Ngược lại, context có nhiều facts đúng nhưng stale sau khi code/config/state đã thay đổi.
+
+### Context Budgeting
+
+`Context Window` là giới hạn của **một invocation**. `Context Budgeting` là policy phân bổ giới hạn đó cho information có giá trị nhất.
+
+Budgeting không tăng Context Window và cũng không yêu cầu dùng hết token. Policy thực dụng:
+
+1. Reserve instructions, task goal và critical constraints trước.
+2. Ưu tiên evidence trực tiếp cho current decision.
+3. Loại duplicate, stale và low-value context.
+4. Compress long context chỉ khi vẫn giữ được decision-critical meaning.
+5. Dừng thêm context khi đã sufficient dù còn budget.
+
+Nếu minimum useful context cho **toàn task** lớn hơn một invocation, giải pháp không phải nhét mạnh hơn. Chia task thành nhiều decisions, preserve important state, rồi refresh context ở invocation tiếp theo.
+
+<KeyInsight title="Useful does not mean simultaneous">
+  Information có thể hữu ích cho toàn bộ task nhưng không cần cùng tồn tại trong một Context Window. Preserve verified state; release evidence cũ và retrieve lại khi thật sự cần.
+</KeyInsight>
+
+### Context Compression
+
+Compression giảm token cost của information đã được quyết định là đáng giữ.
+
+Các kỹ thuật gồm:
+
+- deduplicate repeated content;
+- extract facts/errors cần thiết từ output dài;
+- summarize history thành structured state;
+- truncate low-value sections;
+- normalize representation để cùng meaning dùng ít token hơn.
+
+Có hai trade-off:
+
+- **Lossless-ish:** chủ yếu loại redundancy hoặc đổi representation, ít chủ ý làm mất semantic information.
+- **Lossy:** summarize hoặc drop detail; rẻ hơn nhưng có thể xóa evidence sẽ quan trọng ở bước sau.
+
+Current user request, critical constraints, exact code/config cần inspect, và raw evidence quyết định thường cần fidelity cao hơn old history, repeated logs hoặc obsolete tool results.
+
+<ImportantDistinction title="Compression ≠ Selection">
+  Selection quyết định information có đáng giữ không. Compression chỉ tối ưu representation của information đã giữ.
+</ImportantDistinction>
+
+### Context Assembly & Ordering
+
+Sau selection/budget/compression, context vẫn phải được đóng gói rõ role. Một assembly thực dụng thường tách:
+
+1. **Instructions / authority** — system/project rules và constraints có quyền cao.
+2. **Current task / decision** — model đang phải giải quyết chính xác điều gì ở invocation này.
+3. **Working state** — verified findings, decisions, changes, unresolved questions.
+4. **Evidence** — code, logs, tests, retrieved docs, tool results cần cho decision.
+5. **Output/action contract** — model cần trả lời, chọn action hay gọi tool theo format nào.
+
+Ordering không phải cosmetic formatting. Instructions bị chôn giữa untrusted retrieved content hoặc evidence mới nằm sau một summary stale có thể làm model hiểu sai priority.
+
+### Raw Evidence vs Interpretation
+
+Compression và summaries tạo ra interpretation. Đừng để interpretation biến thành fact chỉ vì nó được đưa vào working state.
+
+- **Raw evidence:** exact code, log, test result, response, config value.
+- **Interpretation:** hypothesis, model summary, inferred root cause.
+
+Giữ provenance đủ rõ để agent có thể quay lại raw evidence khi confidence thấp hoặc khi state thay đổi.
+
+## Example
+
+Coding agent đang sửa login `401`:
+
+- Current decision: issuer mismatch có phải root cause không?
+- Pinned: user goal + `do not bypass authentication`.
+- Evidence: exact token `iss`, expected issuer config, verifier code, fresh failing test.
+- Low-value: full repository tree, old search output, duplicate 401 logs.
+- Compression: giữ 3 dòng decisive từ long log thay vì toàn log.
+- Assembly: constraints → current decision → verified findings → raw evidence → action requested.
+
+Nếu packet đó chỉ dùng 6K token trong một window lớn hơn nhiều, 6K có thể là lựa chọn tốt nhất.
+
+## When to Use
+
+Dùng optimization khi context bắt đầu lớn, evidence cạnh tranh capacity, agent chạy qua nhiều steps, logs/history lặp lại, hoặc model trả lời kém dù retrieval có vẻ tìm đúng information.
+
+Optimization đặc biệt quan trọng khi model cần ra **một quyết định cụ thể** từ nhiều candidate sources, không chỉ trả lời một câu hỏi đơn giản.
+
+## Common Mistakes
+
+- **Fill the window:** thêm context vì còn capacity thay vì vì decision còn thiếu evidence.
+- **Compress too early:** summarize trước khi biết detail nào sẽ quan trọng.
+- **Treat relevance as sufficiency:** có vài đoạn đúng topic không đồng nghĩa đủ evidence.
+- **Keep stale evidence:** dùng test/log trước change như thể đó là current state.
+- **Mix authority:** để retrieved/untrusted text lẫn với instructions mà không có boundary.
+- **Lose provenance:** summary không còn cho biết fact đến từ đâu hoặc có phải inference không.
+
+## My Understanding
+
+Mental model đang dùng: **Context Window là cái bàn; optimization là chọn diện tích cho đúng tài liệu, rút gọn tài liệu khi an toàn, rồi xếp chúng sao cho model hiểu đúng quyết định hiện tại.** `Budget` là maximum capacity chứ không phải quota phải dùng hết.
+
+## My Experiment
+
+**Status:** Planned
+
+**Hypothesis:** Với cùng coding task, managed context có selection + budget + compact working state sẽ tạo decision ổn định hơn raw context gom nhiều file/log/history.
+
+**Setup:** So sánh raw-context baseline với minimal Context Manager v0 trong [Practical Context Manager](./practical-context-manager.mdx), giữ task và model cố định khi có thể.
+
+**Result:** Chưa thực hiện.
+
+**Conclusion:** Chưa có applied evidence; không suy diễn kết quả trước experiment.
+
+## Related Knowledge
+
+- [Context Engineering Map](./context-engineering-map.mdx) — đặt optimization vào canonical lifecycle.
+- [Context Engineering: Foundations & Lifecycle](./context-engineering.mdx) — giải thích Context, Context Window, sources, retrieval và selection trước optimization.
+- [Context Operations](./context-operations.mdx) — dùng observability, metrics và trust boundaries để biết optimization có thực sự hoạt động.
+- [Practical Context Manager](./practical-context-manager.mdx) — triển khai selection/budget/working state/eviction ở application layer.
+
+## Self-test
+
+1. Vì sao relevant context vẫn có thể là bad context?
+2. `Select`, `Budget`, `Compress` khác nhau ở quyết định nào?
+3. Vì sao không nên lấp đầy Context Window chỉ vì còn token?
+4. Khi nào compression có thể nguy hiểm?
+5. Assembly/order có thể làm thay đổi behavior dù selected information giống nhau như thế nào?
+
+<details>
+<summary>Answers</summary>
+
+1. Vì nó có thể insufficient, noisy, redundant, stale hoặc incorrect.
+2. Select chọn cái gì giữ; Budget phân capacity; Compress giảm representation cost của cái đã giữ.
+3. Extra context có thể chỉ thêm cost/noise; capacity là ceiling, không phải target.
+4. Khi lossy summary làm mất evidence/uncertainty/provenance cần cho quyết định sau.
+5. Authority, task, state và evidence có thể bị model hiểu sai priority hoặc bị untrusted content lấn át nếu assembly không rõ role.
+
+</details>
