@@ -27,45 +27,33 @@ Nguyên tắc xuyên suốt: **Relevant context > More context**. Window lớn h
   primaryPath={[
     'sources',
     'retrieve',
-    'candidates',
     'select',
-    'optimize',
-    'assemble',
+    'prepare',
     'window',
     'llm',
-    'observe',
-    'working-state',
-    'evict',
+    'refresh',
   ]}
   nodes={[
     {id: 'sources', eyebrow: 'Available', label: 'Sources', detail: 'Code · Memory · Docs · Tools · State', role: 'source', size: 'wide'},
-    {id: 'retrieve', eyebrow: 'Find', label: 'Retrieve', detail: 'Tạo candidate information', role: 'process', size: 'standard'},
-    {id: 'candidates', eyebrow: 'Pool', label: 'Candidates', detail: 'Có thể hữu ích', role: 'state', size: 'standard'},
+    {id: 'retrieve', eyebrow: 'Find', label: 'Retrieve Candidates', detail: 'Tìm information có thể hữu ích', role: 'process', size: 'wide'},
     {id: 'select', eyebrow: 'Decide', label: 'Select', detail: 'Useful cho current decision?', role: 'process', size: 'standard'},
-    {id: 'optimize', eyebrow: 'Prepare', label: 'Quality · Budget · Compress', detail: 'Đủ, đúng, ít noise, vừa capacity', role: 'process', size: 'wide'},
-    {id: 'assemble', eyebrow: 'Package', label: 'Assemble', detail: 'Authority · Task · State · Evidence', role: 'process', size: 'wide'},
+    {id: 'prepare', eyebrow: 'Prepare', label: 'Optimize & Assemble', detail: 'Quality · Budget · Role · Order', role: 'process', size: 'wide'},
     {id: 'window', eyebrow: 'Capacity', label: 'Context Window', detail: 'Selected context của invocation', role: 'constraint', emphasis: true, size: 'standard'},
-    {id: 'llm', eyebrow: 'Decision', label: 'LLM → Reason / Act', detail: 'Answer hoặc tool/action', role: 'model', size: 'standard'},
-    {id: 'observe', eyebrow: 'Inspect', label: 'Observe', detail: 'Outcome · freshness · usage · failures', role: 'process', size: 'standard'},
-    {id: 'working-state', eyebrow: 'Preserve', label: 'Update Working State', detail: 'Goal · findings · decisions · next actions', role: 'state', size: 'wide'},
-    {id: 'evict', eyebrow: 'Refresh', label: 'Evict / Re-retrieve', detail: 'Bỏ stale/duplicate; chuẩn bị next decision', role: 'process', size: 'wide'},
+    {id: 'llm', eyebrow: 'Decision', label: 'Reason / Act', detail: 'LLM tạo answer hoặc tool/action', role: 'model', size: 'standard'},
+    {id: 'refresh', eyebrow: 'Observe & Preserve', label: 'Update State & Refresh', detail: 'Giữ findings; bỏ stale/duplicate context', role: 'state', size: 'wide'},
   ]}
   edges={[
     {source: 'sources', target: 'retrieve'},
-    {source: 'retrieve', target: 'candidates'},
-    {source: 'candidates', target: 'select'},
-    {source: 'select', target: 'optimize'},
-    {source: 'optimize', target: 'assemble'},
-    {source: 'assemble', target: 'window'},
+    {source: 'retrieve', target: 'select'},
+    {source: 'select', target: 'prepare'},
+    {source: 'prepare', target: 'window'},
     {source: 'window', target: 'llm'},
-    {source: 'llm', target: 'observe'},
-    {source: 'observe', target: 'working-state'},
-    {source: 'working-state', target: 'evict'},
+    {source: 'llm', target: 'refresh'},
   ]}
-  caption="Canonical flow: candidates được tìm và chọn theo current decision, optimized/assembled trước invocation, rồi outcome cập nhật Working State để context được refresh cho decision tiếp theo."
+  caption="Canonical flow: retrieve tạo candidates, selection chọn theo current decision, context được optimize/assemble trước invocation, rồi outcome cập nhật state cho decision tiếp theo."
 />
 
-**Feedback loop:** sau `Evict / Re-retrieve`, agent quay lại `Sources / Retrieve` cho **next decision**. Loop được giải thích bằng prose thay vì thêm một return edge dài dễ làm diagram rối; teaching job chính của diagram là primary lifecycle.
+**Feedback loop:** sau `Update State & Refresh`, agent quay lại `Sources / Retrieve` cho **next decision**. Working State giữ goal, constraints và verified findings; stale hoặc duplicate evidence được evict. Loop được giải thích bằng prose để primary lifecycle vẫn dễ đọc.
 
 ## Four Layers
 
@@ -127,15 +115,6 @@ Nguyên tắc xuyên suốt: **Relevant context > More context**. Window lớn h
 4. **Select ≠ Budget ≠ Compress** — chọn cái gì; phân bao nhiêu capacity; biểu diễn với ít token hơn.
 5. **Evidence ≠ Interpretation** — raw fact khác hypothesis/summary.
 6. **Useful ≠ Simultaneous** — useful cho task không đồng nghĩa phải tồn tại cùng lúc.
-
-## Diagram Review Decision
-
-Sau khi restructure, chỉ giữ visual khi nó có teaching job riêng:
-
-- **Canonical lifecycle:** React Flow ở trang này vì directed topology là bài học chính.
-- **Context Window mental model:** Excalidraw trong Foundations vì analogy “cái bàn” giúp intuition.
-- **Optimization/Operations:** giữ bằng prose, comparison và examples; không lặp lại lifecycle bằng Pipeline/React Flow khác.
-- Không dùng ASCII/Mermaid/Pipeline-card để vẽ lại cùng flow ở nhiều article.
 
 ## Completion Boundary
 

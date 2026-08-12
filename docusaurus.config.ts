@@ -6,7 +6,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'AI Engineering Knowledge',
-  tagline: 'Practical notes, mental models, and experiments for building AI systems',
+  tagline: 'Learning notes, mental models và experiments thực tiễn để xây dựng AI systems',
   favicon: 'img/favicon.ico',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -32,8 +32,8 @@ const config: Config = {
   // useful metadata like html lang. For example, if your site is Chinese, you
   // may want to replace "en" with "zh-Hans".
   i18n: {
-    defaultLocale: 'en',
-    locales: ['en'],
+    defaultLocale: 'vi',
+    locales: ['vi'],
   },
 
   presets: [
@@ -89,7 +89,7 @@ const config: Config = {
           items: [
             {
               label: 'Context Engineering',
-              to: '/docs/ai-coding/context-engineering',
+              to: '/docs/ai-coding/context-engineering-map',
             },
           ],
         },

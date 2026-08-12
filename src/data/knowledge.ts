@@ -2,7 +2,7 @@ export const featuredArticle = {
   title: 'Context Engineering',
   description:
     'Hiểu cách lựa chọn, tổ chức và duy trì thông tin để LLM hoặc AI agent đưa ra quyết định tốt hơn.',
-  href: '/docs/ai-coding/context-engineering',
+  href: '/docs/ai-coding/context-engineering-map',
   category: 'AI Coding',
 };
 
@@ -16,10 +16,9 @@ export const knowledgeAreas = [
 ];
 
 export const contextPath = [
-  {number: '01', title: 'Fundamentals', href: `${featuredArticle.href}#mental-model`},
-  {number: '02', title: 'Context vs Context Window', href: `${featuredArticle.href}#context-và-context-window`},
-  {number: '03', title: 'Retrieve vs Select', href: `${featuredArticle.href}#context-lifecycle--retrieve-vs-select`},
-  {number: '04', title: 'Context Compression', href: `${featuredArticle.href}#context-compression`},
-  {number: '05', title: 'Context Management', href: `${featuredArticle.href}#tách-context-manager-khỏi-model-adapter`},
+  {number: '01', title: 'Bản đồ kiến thức', href: featuredArticle.href},
+  {number: '02', title: 'Foundations & Lifecycle', href: '/docs/ai-coding/context-engineering'},
+  {number: '03', title: 'Context Optimization', href: '/docs/ai-coding/context-optimization'},
+  {number: '04', title: 'Context Operations', href: '/docs/ai-coding/context-operations'},
+  {number: '05', title: 'Practical Context Manager', href: '/docs/ai-coding/practical-context-manager'},
 ];
-

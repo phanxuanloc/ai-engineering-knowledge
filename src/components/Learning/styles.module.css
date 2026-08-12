@@ -9,6 +9,8 @@
 .calloutContent { color:var(--ifm-font-color-secondary); line-height:1.65; }
 .calloutContent > :last-child { margin-bottom:0; }
 .conceptGrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,13rem),1fr)); gap:.8rem; margin:1.2rem 0 1.8rem; }
+.conceptGridTwo { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.conceptGridThree { grid-template-columns:repeat(3,minmax(0,1fr)); }
 .conceptCard { padding:1.1rem 1.15rem; }
 .cardTitle { margin:.22rem 0 .5rem; font-size:1rem; line-height:1.35; }
 .cardContent,.comparisonDescription { color:var(--ifm-font-color-secondary); font-size:.92rem; line-height:1.62; }
@@ -95,7 +97,7 @@
 .answer { padding:.1rem 1.2rem 1rem 3.75rem; color:var(--ifm-font-color-secondary); font-size:.9rem; line-height:1.65; }
 @container (max-width:55rem) { .pipeline { flex-direction:column; gap:1.6rem; }.pipelineStep { min-height:4.75rem; }.pipelineStep:not(:last-child)::after { top:auto; right:50%; bottom:-1.3rem; height:1rem; content:'↓'; transform:translateX(50%); } }
 @container (max-width:38rem) { .flow:not(.flowCompact){flex-direction:column;} }
-@media (max-width:700px) { .comparisonItem + .comparisonItem { border-top:1px solid var(--learning-border); border-left:0; }.selfTestItem summary { grid-template-columns:1.7rem 1fr; }.reveal { grid-column:2; }.answer { padding-left:3.45rem; }.experimentHeader { flex-direction:column; }.connection span { display:none; } }
+@media (max-width:700px) { .conceptGridTwo,.conceptGridThree { grid-template-columns:1fr; }.comparisonItem + .comparisonItem { border-top:1px solid var(--learning-border); border-left:0; }.selfTestItem summary { grid-template-columns:1.7rem 1fr; }.reveal { grid-column:2; }.answer { padding-left:3.45rem; }.experimentHeader { flex-direction:column; }.connection span { display:none; } }
 @media (max-width:700px) { .rubricTableView { display:none; }.rubricCardView { display:grid; gap:.85rem; }.rubricCard { padding:1rem; background:var(--learning-surface); border:1px solid var(--learning-border); border-radius:10px; box-shadow:var(--learning-shadow); }.rubricCard h5 { margin:0 0 .75rem; font-size:.95rem; }.rubricCard ol { display:grid; gap:0; margin:0; padding:0; list-style:none; }.rubricCard li { display:grid; grid-template-columns:2rem minmax(0,1fr); gap:.65rem; padding:.65rem 0; align-items:start; color:var(--ifm-font-color-secondary); font-size:.82rem; line-height:1.5; border-top:1px solid var(--learning-border); }.rubricCard li:first-child { padding-top:0; border-top:0; }.rubricCard li:last-child { padding-bottom:0; }.rubricScore { display:grid; width:1.65rem; height:1.65rem; place-items:center; color:var(--learning-active); font-family:var(--ifm-font-family-monospace); font-size:.72rem; font-weight:750; background:var(--learning-active-soft); border:1px solid var(--learning-active-border); border-radius:50%; } }
 @media (max-width:700px) { .knowledgeMap { padding:1rem; }.mapLevel { flex-direction:column; align-items:stretch; gap:.55rem; }.mapNode { flex:0 0 auto; max-width:none; min-height:3.8rem; text-align:left; }.mapConnection { height:1.35rem; line-height:1.35rem; } }
 @media (prefers-reduced-motion:reduce) { .selfTestItem summary,.pathItem { scroll-behavior:auto; transition:none; } }

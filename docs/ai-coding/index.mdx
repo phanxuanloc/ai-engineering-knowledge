@@ -1,17 +1,46 @@
 ---
 title: AI Coding
+description: Knowledge đã học về cách sử dụng AI trong software development workflows.
 sidebar_position: 1
 slug: /ai-coding
 ---
 
-## Published Knowledge
+import {ConceptCard, ConceptGrid, KeyInsight} from '@site/src/components/Learning';
 
-### Context Engineering Learning Path
+# AI Coding
 
-1. [Context Engineering Map](./context-engineering-map.mdx) — entry point + canonical lifecycle để recall toàn topic.
-2. [Context Engineering: Foundations & Lifecycle](./context-engineering.mdx) — Context, Context Window, sources, Retrieve vs Select, Working State và multi-invocation lifecycle.
-3. [Context Optimization](./context-optimization.mdx) — quality, budgeting, compression, assembly và evidence vs interpretation.
-4. [Context Operations](./context-operations.mdx) — observability, metrics, freshness, provenance, security và trust boundaries.
-5. [Practical Context Manager](./practical-context-manager.mdx) — application layer, Context Items, pinned/working/evictable context và planned controlled experiment.
+Knowledge trong category này hiện tập trung vào **Context Engineering**: cách chọn, tổ chức và duy trì information để LLM hoặc AI agent có đủ evidence cho current decision.
 
-Bắt đầu ở **Map** nếu cần recall nhanh; mở deep dive theo câu hỏi đang cần thay vì đọc một article monolith từ đầu đến cuối.
+## Context Engineering
+
+<KeyInsight title="Bắt đầu bằng mental model, mở deep dive theo câu hỏi">
+  [Context Engineering Map](./context-engineering-map.mdx) là entry point để recall toàn topic và nhìn canonical lifecycle. Sau đó, chỉ mở deep dive phù hợp với điều đang cần hiểu hoặc áp dụng.
+</KeyInsight>
+
+## Deep Dives
+
+<ConceptGrid columns={2}>
+  <ConceptCard eyebrow="01 · Information & lifecycle" title="Foundations & Lifecycle">
+    Model cần biết gì, Context khác Context Window thế nào, và Retrieve/Select vận hành qua nhiều invocation ra sao?
+
+    → [Mở Foundations & Lifecycle](./context-engineering.mdx)
+  </ConceptCard>
+
+  <ConceptCard eyebrow="02 · Quality & capacity" title="Context Optimization">
+    Selected context đã đủ tốt chưa, nên budget/compress thế nào và assembly theo role/order nào?
+
+    → [Mở Context Optimization](./context-optimization.mdx)
+  </ConceptCard>
+
+  <ConceptCard eyebrow="03 · Observe & protect" title="Context Operations">
+    Làm sao trace failure, đo useful signals, giữ freshness/provenance và bảo vệ trust boundaries?
+
+    → [Mở Context Operations](./context-operations.mdx)
+  </ConceptCard>
+
+  <ConceptCard eyebrow="04 · Application layer" title="Practical Context Manager">
+    Application thực thi Context Items, pinned/working/evictable context và Working State như thế nào?
+
+    → [Mở Practical Context Manager](./practical-context-manager.mdx)
+  </ConceptCard>
+</ConceptGrid>
