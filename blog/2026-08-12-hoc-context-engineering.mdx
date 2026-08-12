@@ -1,0 +1,81 @@
+---
+title: 'Học Context Engineering: từ “thêm context” đến “phục vụ current decision”'
+description: Tổng kết những thay đổi trong cách tôi hiểu Context Engineering, những phần đã nắm được và khoảng cách còn lại trước khi có thể áp dụng thực tế.
+slug: hoc-context-engineering
+tags: [context-engineering, learning-journey, ai-engineering]
+---
+
+Trước khi học sâu về `Context Engineering`, tôi thường nhìn vấn đề theo hướng khá đơn giản: nếu model chưa trả lời tốt, có lẽ nó đang thiếu context. Từ đó, phản xạ tự nhiên là đưa thêm files, thêm logs, thêm conversation history — miễn là `Context Window` vẫn còn chỗ.
+
+Sau hành trình này, câu hỏi của tôi đã đổi. Thay vì hỏi **“còn có thể thêm gì?”**, tôi bắt đầu hỏi **“model cần biết gì để đưa ra current decision?”**.
+
+{/* truncate */}
+
+Đây là thay đổi quan trọng nhất trong mental model của tôi. Nó chưa đồng nghĩa tôi đã áp dụng Context Engineering thành công, nhưng đã giúp tôi nhìn rõ hơn vì sao nhiều context không nhất thiết tạo ra một context tốt.
+
+## Điều thay đổi trong cách tôi nhìn Context
+
+Tôi không còn xem `Context Window` lớn là lời giải trực tiếp cho chất lượng. Window chỉ cho biết capacity của một model invocation. Nó không tự bảo đảm information bên trong là relevant, sufficient, fresh hay correct.
+
+Nếu coi Context Window là một cái bàn, thì làm chiếc bàn lớn hơn không giúp ích nhiều khi trên đó vẫn chất đầy tài liệu trùng lặp, stale hoặc không phục vụ quyết định trước mắt. Context tốt không đến từ việc lấp đầy cái bàn, mà từ việc chọn đúng thứ cần đặt lên đó.
+
+Điều này cũng làm tôi nhận ra context có cost ngay cả khi chưa chạm giới hạn token. Information không hữu ích vẫn có thể tạo noise, cạnh tranh attention và tiêu tốn budget. Vì vậy, **budget là ceiling, không phải quota phải dùng hết**.
+
+## Distinction giúp tôi gỡ được nhiều nhầm lẫn nhất
+
+Phân biệt có giá trị nhất với tôi là:
+
+> **Retrieve tạo candidates; Select quyết định candidate nào đáng chiếm context capacity.**
+
+Trước đây, tôi dễ xem kết quả retrieval như context đầu vào gần như mặc định. Nhưng một item match query tốt chưa chắc hữu ích cho decision hiện tại. Selection còn phải cân nhắc relevance, freshness, authority, redundancy, token cost và liệu evidence hiện có đã sufficient hay chưa.
+
+Distinction này cũng cho tôi một cách debug cụ thể hơn. Khi model nhận định sai, tôi có thể hỏi:
+
+- Evidence đúng có được retrieve thành candidate không?
+- Nếu đã retrieve, nó có bị selection loại nhầm không?
+- Selected context có thiếu mảnh evidence quyết định không?
+- Có item stale, duplicate hoặc low-value nào đang lấn át signal quan trọng không?
+
+Tôi đã có thể chẩn đoán failure ở tầng selection thay vì mặc định quy mọi lỗi về prompt wording hoặc model reasoning. Đây là phần tôi cảm thấy mình đã hiểu rõ nhất sau self-test.
+
+## Context phục vụ decision, không phục vụ toàn bộ task cùng lúc
+
+Một insight khác tôi muốn giữ lại là: information hữu ích cho toàn task không nhất thiết phải tồn tại đồng thời trong mọi invocation.
+
+Trong một task nhiều bước, current decision sẽ thay đổi. Context dùng để xác định nơi phát sinh lỗi không nhất thiết còn cần khi verify bản sửa. Thay vì append mọi thứ mãi mãi, agent có thể preserve goal, constraints và verified findings; sau đó retrieve lại fresh evidence cho decision kế tiếp.
+
+Cách nhìn này biến Context Engineering từ bài toán “gom đủ dữ liệu cho cả task” thành một lifecycle có chủ đích: chọn context, reason hoặc act, cập nhật working state, bỏ evidence đã obsolete, rồi chuẩn bị context mới.
+
+## Self-test cho thấy tôi vẫn còn những khoảng trống nào?
+
+Self-test vừa thực hiện cũng chỉ ra khá rõ ranh giới giữa phần tôi có thể giải thích và phần tôi mới nhận biết ở mức khái niệm.
+
+### Assembly và ordering
+
+Tôi hiểu selected information vẫn cần được tách theo role như instructions, current task, working state và evidence. Tuy nhiên, tôi chưa đủ chắc để tự thiết kế ordering tốt hoặc giải thích chính xác behavior sẽ thay đổi ra sao giữa các cách assembly trong một hệ thống thực tế.
+
+### Authority và trust boundary
+
+Tôi biết retrieved content phải được xem là data hoặc evidence, không được tự động nâng thành high-authority instruction. Nhưng tôi chưa thực hành việc biểu diễn provenance, phân cấp authority hay bảo vệ agent trước untrusted context và indirect prompt injection.
+
+### Observability của toàn pipeline
+
+Tôi đã hiểu có thể localize một số lỗi ở selection, nhưng chưa có khả năng quan sát đầy đủ lifecycle từ retrieval, selection, budgeting, assembly đến model outcome và state transition. Tôi cũng chưa tự xác định được bộ signal tối thiểu vừa đủ để debug mà không biến observability thành việc log toàn bộ prompt.
+
+Ba khoảng trống này nhắc tôi rằng hiểu mental model mới chỉ là nền tảng. Chúng chưa phải bằng chứng rằng tôi có thể vận hành một Context Engineering pipeline đáng tin cậy.
+
+## Bước tiếp theo: biến mental model thành experiment
+
+Bước thực hành tiếp theo của tôi là triển khai một `Context Manager v0` tối giản, rồi so sánh `raw-context` với `managed-context` trên cùng một scenario. Mục tiêu không chỉ là giảm token, mà là quan sát chất lượng selection, lượng noise, freshness của evidence và khả năng giải thích vì sao một invocation thành công hoặc thất bại.
+
+Hiện tại đây vẫn là **planned experiment**. Tôi chưa triển khai Context Manager, chưa có kết quả so sánh và chưa có cơ sở để nói Context Engineering đã được áp dụng thành công.
+
+## Tôi đang đứng ở đâu sau chặng học này?
+
+Tôi đã rời khỏi mental model “Context Window càng lớn càng tốt” và có thể giải thích vì sao relevant context quan trọng hơn more context. Tôi hiểu `Retrieve` khác `Select`, context nên phục vụ current decision, và selection failure có thể được chẩn đoán như một failure mode riêng.
+
+Nhưng tôi vẫn đang ở giai đoạn `learning`. Assembly, trust boundary và end-to-end observability cần được đào sâu; Context Manager cần được triển khai và kiểm chứng bằng experiment thật.
+
+Đó là kết quả trung thực nhất của chặng này: **tôi đã có bản đồ và một số distinction đủ rõ để không còn chọn context hoàn toàn theo trực giác, nhưng chưa có applied evidence**.
+
+Nếu muốn xem phần lý thuyết và các deep dive được hệ thống hóa, bắt đầu tại [Context Engineering Map](/docs/ai-coding/context-engineering-map). Bước thực hành dự kiến được mô tả trong [Practical Context Manager](/docs/ai-coding/practical-context-manager).

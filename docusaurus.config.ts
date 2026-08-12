@@ -47,7 +47,7 @@ const config: Config = {
           editUrl:
             'https://github.com/phanxuanloc/ai-engineering-knowledge/edit/main/',
         },
-        blog: false,
+        blog: {},
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -73,6 +73,11 @@ const config: Config = {
           sidebarId: 'knowledgeSidebar',
           position: 'left',
           label: 'Docs',
+        },
+        {
+          to: '/blog',
+          label: 'Blog',
+          position: 'left',
         },
         {
           href: 'https://github.com/phanxuanloc/ai-engineering-knowledge',
