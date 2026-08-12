@@ -1,37 +1,25 @@
 ---
-title: Context Engineering
-description: Cách chọn, truy xuất, tổ chức và duy trì thông tin phù hợp để LLM hoặc AI agent thực hiện một task.
+title: Context Engineering: Foundations & Lifecycle
+description: Nền tảng Context Engineering: Context, Context Window, sources, retrieval, selection và lifecycle qua nhiều model invocation.
 tags: [context-engineering, context-window, ai-agent]
-sidebar_position: 2
+sidebar_position: 3
 ---
 
-import {
-  Comparison,
-  ConceptCard,
-  ConceptGrid,
-  Pipeline,
-  ExperimentCard,
-  ImportantDistinction,
-  KeyInsight,
-  Remember,
-  ResponsiveRubric,
-  SelfTest,
-  TLDR,
-} from '@site/src/components/Learning';
-import {ExcalidrawDiagram, ReactFlowDiagram} from '@site/src/components/Diagrams';
+import {Comparison, ImportantDistinction, KeyInsight, Remember, TLDR} from '@site/src/components/Learning';
+import {ExcalidrawDiagram} from '@site/src/components/Diagrams';
 
-# Context Engineering
+# Context Engineering: Foundations & Lifecycle
 
 ## TL;DR
 
 <TLDR>
 
-`Context Engineering` là việc thiết kế và quản lý thông tin mà một LLM hoặc AI agent có tại thời điểm cần ra quyết định hay thực hiện task. Mục tiêu không phải đưa vào nhiều thông tin nhất, mà là xây dựng context liên quan nhất với task hiện tại: **Relevant context > More context**.
+`Context Engineering` là việc quyết định **model cần biết gì cho current decision** và quản lý information đó qua nhiều invocation. `Context Window` chỉ là capacity model có thể xử lý trong một invocation; window lớn hơn không tự chọn đúng context. Mental rule xuyên suốt: **Relevant context > More context**.
 
 </TLDR>
 
-<Remember title="Relevant Context > More Context">
-  Nhiều thông tin hơn không tự động tạo ra quyết định tốt hơn.
+<Remember title="Relevant context > More context">
+  Nhiều token hơn không tự động tạo ra quyết định tốt hơn. Đúng information, đúng thời điểm và đúng role quan trọng hơn việc đưa mọi thứ vào model.
 </Remember>
 
 ## Mental Model
@@ -41,963 +29,194 @@ import {ExcalidrawDiagram, ReactFlowDiagram} from '@site/src/components/Diagrams
   src="/img/diagrams/excalidraw/context-window-mental-model.svg?v=semantic-flow"
   mobileSrc="/img/diagrams/excalidraw/context-window-mental-model-mobile.svg?v=semantic-flow"
   mobileAspectRatio={398.417810620144 / 928.00509932182}
-  alt="Repository, memory, tools, docs và history hội tụ tại bước Select Useful; unused logs bị loại, còn Selected Context gồm Task / Instructions, Constraints và Relevant Information đi vào Context Window hữu hạn trước khi tới LLM."
-  caption="Nguồn thông tin chỉ tạo candidates; selection và assembly quyết định Selected Context nào được phép chiếm capacity hữu hạn trước khi LLM xử lý."
+  alt="Nhiều nguồn information đi qua selection; chỉ task, constraints và relevant evidence được đưa vào Context Window hữu hạn trước khi LLM xử lý."
+  caption="Context Window là cái bàn; Context Engineering quyết định thứ gì xứng đáng được đặt lên bàn cho current decision."
 />
 
-Một container lớn hơn không tự quyết định được thông tin nào cần thiết. Tương tự, Context Window lớn không loại bỏ nhu cầu selection và assembly trước khi context đi vào model.
+Mental model đơn giản:
 
-<ReactFlowDiagram
-  ariaLabel="Context construction pipeline"
-  direction="TB"
-  kind="data-flow"
-  layout="primary-path"
-  primaryPath={['sources', 'retrieve', 'candidates', 'select', 'relevant', 'window', 'llm']}
-  rankSpacing={18}
-  nodes={[
-    {id: 'sources', eyebrow: 'Available', label: 'Sources', detail: 'Knowledge · Code · Memory · Tools', role: 'source', size: 'wide'},
-    {id: 'retrieve', eyebrow: 'Action', label: 'Retrieve', detail: 'Tìm thông tin có thể hữu ích', role: 'process', size: 'standard'},
-    {id: 'candidates', eyebrow: 'Data', label: 'Candidates', detail: 'Tập thông tin rộng', role: 'state', size: 'compact'},
-    {id: 'select', eyebrow: 'Action', label: 'Select', detail: 'Đánh giá cho current decision', role: 'process', size: 'standard'},
-    {id: 'relevant', eyebrow: 'Data', label: 'Relevant Context', detail: 'Thông tin đáng giữ', role: 'state', size: 'standard'},
-    {id: 'window', eyebrow: 'Constraint', label: 'Context Window', detail: 'Capacity hữu hạn', role: 'constraint', emphasis: true, size: 'standard'},
-    {id: 'llm', eyebrow: 'Consumer', label: 'LLM', role: 'model', size: 'compact'},
-  ]}
-  edges={[
-    {source: 'sources', target: 'retrieve'},
-    {source: 'retrieve', target: 'candidates'},
-    {source: 'candidates', target: 'select'},
-    {source: 'select', target: 'relevant'},
-    {source: 'relevant', target: 'window'},
-    {source: 'window', target: 'llm'},
-  ]}
-  caption="Retrieve mở rộng tập candidates; Select thu hẹp nó thành context đáng để tiêu tốn capacity hữu hạn của Context Window."
-/>
-
-`Retrieve` mở rộng tập thông tin có thể dùng; `Select` thu hẹp tập đó thành context phù hợp với quyết định hiện tại. Hai bước này bảo vệ nguyên tắc **Relevant context > More context**.
+- **Context** = những information model thực sự nhận ở invocation hiện tại.
+- **Context Window** = capacity tối đa của invocation đó.
+- **Context Engineering** = decision process chọn, tổ chức, duy trì và refresh information nào nên chiếm capacity.
+- **Context Manager** = application/agent layer thực thi các quyết định context trong hệ thống thực tế.
 
 ## Core Concepts
 
-### Context Engineering và Prompt Engineering
+### Context Engineering vs Prompt Engineering
 
-`Prompt Engineering` chủ yếu trả lời: **Nên hỏi hoặc chỉ dẫn model như thế nào?**
+`Prompt Engineering` chủ yếu hỏi: **Nên chỉ dẫn model thế nào?**
 
-`Context Engineering` trả lời câu hỏi rộng hơn: **Model cần biết gì khi thực hiện task này?** Vì vậy context không chỉ có user prompt, mà có thể gồm:
-
-- **System instructions và user request:** Các chỉ dẫn xác định behavior, constraints và mục tiêu cụ thể mà model cần thực hiện.
-- **Conversation history và memory:** History giữ các lượt trao đổi trước trong phiên; memory lưu thông tin cần dùng lại qua một khoảng thời gian dài hơn hoặc qua nhiều phiên.
-- **Retrieved knowledge và kết quả RAG:** Retrieval tìm thông tin liên quan từ nguồn bên ngoài. RAG (`Retrieval-Augmented Generation`) đưa thông tin tìm được vào context để model dựa trên nguồn đó khi tạo câu trả lời.
-- **Source code, files và project rules:** Các artifact mô tả implementation thực tế và những quy ước mà thay đổi phải tuân theo.
-- **Tool definitions và tool results:** Definition cho model biết một tool có thể làm gì và cách gọi; result là dữ liệu tool trả về để hỗ trợ quyết định tiếp theo.
-- **Environment hoặc application state:** Trạng thái hiện tại như Git diff, test status, màn hình đang mở hoặc dữ liệu đang được xử lý.
-
-Prompt là một phần của context; viết prompt tốt không thay thế việc cung cấp đúng thông tin.
-
-### Context và Context Window
+`Context Engineering` rộng hơn: **Model cần biết gì để thực hiện đúng task này?** Prompt là một phần của context, cùng với history, memory, retrieved knowledge, source code, project rules, tool definitions/results và environment/application state.
 
 <Comparison
-  label="Context, Context Window, and Context Engineering"
+  label="Context, window, and management"
   items={[
-    {
-      eyebrow: 'Information',
-      title: 'Context',
-      description: 'Thông tin thực tế được cung cấp cho model.',
-    },
-    {
-      eyebrow: 'Capacity',
-      title: 'Context Window',
-      description: 'Lượng thông tin tối đa model có thể xử lý trong một invocation, thường được đo bằng token.',
-    },
-    {
-      eyebrow: 'Decision',
-      title: 'Context Engineering',
-      description: 'Quyết định thông tin nào nên chiếm capacity đó.',
-    },
+    {eyebrow: 'Information', title: 'Context', description: 'Information thực tế được cung cấp cho model.'},
+    {eyebrow: 'Capacity', title: 'Context Window', description: 'Giới hạn information model có thể xử lý trong một invocation.'},
+    {eyebrow: 'Decision', title: 'Context Engineering', description: 'Quyết định information nào nên chiếm capacity và được duy trì ra sao.'},
   ]}
 />
 
-Nhiều context hơn không tự động tốt hơn. Thông tin không liên quan tạo noise, tốn token và khiến model khó tập trung vào tín hiệu quan trọng. Chẳng hạn, 20K token gồm đúng source files, error logs, tests và instructions có thể hữu ích hơn hàng trăm nghìn token chứa toàn bộ repository.
+### Context Sources
 
-### Context Lifecycle — Retrieve vs Select
+Context có thể đến từ nhiều source:
+
+- system/application instructions;
+- user request và conversation history;
+- long-term memory hoặc structured working state;
+- retrieved knowledge/RAG;
+- source code, files, repository rules;
+- tool definitions và tool results;
+- tests, logs, traces, database/configuration state;
+- external environment/application state.
+
+Một source **có sẵn** không đồng nghĩa nó nên vào Context Window. Source chỉ tạo khả năng; retrieval và selection quyết định usefulness.
+
+### Retrieve vs Select
 
 <ImportantDistinction title="Retrieve ≠ Select">
-  Retrieve mở rộng tập candidate. Select thu hẹp tập đó thành relevant context.
+  Retrieve tạo candidates. Select quyết định candidate nào đáng chiếm context capacity cho current decision.
 </ImportantDistinction>
 
-**Retrieve** là tìm các candidate information có thể hữu ích cho task hiện tại. Một coding agent có thể retrieve bằng:
+**Retrieve** tìm information có thể hữu ích bằng keyword/lexical search, semantic search, code references, memory lookup, tools, logs hoặc evidence từ step trước.
 
-- **Keyword / lexical search:** tìm theo từ khóa hoặc chuỗi ký tự chính xác.
-- **Semantic Search:** tìm theo mức độ tương đồng về ý nghĩa.
-- **Code structure và references:** lần theo symbol, definition, caller, import hoặc dependency.
-- **Tool-generated evidence:** lấy evidence từ tests, logs và các tool result trước đó.
+**Select** đánh giá candidates theo current decision. Signals có thể gồm:
 
-Retrieval không phải thao tác một lần. Evidence mới từ quá trình reason và act có thể làm rõ agent cần tìm thêm gì hoặc cần đổi hướng search.
+- relevance;
+- usefulness cho decision hiện tại;
+- priority/authority;
+- freshness;
+- redundancy;
+- token cost;
+- confidence/source quality khi phù hợp.
 
-**Select** là quyết định candidate nào thực sự hữu ích cho quyết định hiện tại. Selection cần cân nhắc:
+Retrieval score là **một signal**, không phải final selection rule. Một file match query mạnh vẫn có thể kém hữu ích hơn một fresh test result hoặc source fragment trực tiếp giải thích failure.
 
-- **Relevance:** có liên quan trực tiếp đến task và bước hiện tại không?
-- **Usefulness:** có giúp model đưa ra quyết định hoặc hành động tốt hơn không?
-- **Freshness:** thông tin còn phản ánh đúng state hiện tại không?
-- **Redundancy:** có lặp lại tín hiệu đã có không?
-- **Token/context cost:** giá trị mang lại có xứng với capacity trong Context Window không?
+### Selection is decision-specific
 
-Retrieve được một candidate không có nghĩa phải đưa candidate đó vào Context Window. Retrieval tạo tập lựa chọn; selection mới tạo `Relevant Context`.
+Context không được tối ưu cho “toàn task” một cách tĩnh. Current decision thay đổi khi agent tiến triển.
 
-### Context Compression
+Ví dụ `Fix login 401`:
 
-`Context Compression` giảm số token của relevant context trong khi cố giữ lại thông tin cần thiết cho quyết định tiếp theo của model:
+1. **401 xảy ra ở đâu?** → route, auth middleware, fresh error.
+2. **Token bị reject vì sao?** → verifier, issuer/audience/expiry evidence.
+3. **Fix đúng chưa?** → diff, focused tests, fresh runtime result.
 
-- **Select:** quyết định thông tin nào nên được giữ lại.
-- **Compress:** biểu diễn thông tin đã được giữ lại bằng ít token hơn.
+Information hữu ích ở bước 1 không nhất thiết còn cần ở bước 3.
 
-Summarization chỉ là một kỹ thuật compression. Các kỹ thuật khác gồm deduplication, trích xuất facts hoặc errors quan trọng, truncation phần có giá trị thấp, và chuyển conversation hay tool history dài thành structured working state.
+### Useful Does Not Mean Simultaneous
 
-<Pipeline
-  label="Context compression pipeline"
-  steps={[
-    'Retrieve',
-    'Select',
-    {label: 'Optional', title: 'Compress when useful', optional: true},
-    'Assemble',
-    'Context Window',
-    'LLM',
-  ]}
-/>
+Khi toàn bộ useful context lớn hơn một invocation, agent nên chia task thành nhiều decisions:
 
-Có hai mức đánh đổi chính:
-
-- **Lossless-ish compression:** loại bỏ redundancy mà không chủ ý làm mất semantic information quan trọng, ví dụ gộp nội dung lặp lại hoặc chuẩn hóa representation.
-- **Lossy compression:** tóm tắt hoặc bỏ bớt chi tiết, nên có rủi ro làm mất evidence có thể trở nên quan trọng ở bước sau.
-
-Mỗi loại context cần compression policy khác nhau. Current user request, critical constraints và source code cần độ chính xác cao thường nên được giữ nguyên. Old conversation history, obsolete tool outputs, repeated information và long logs thường là candidate tốt hơn để compress.
-
-<KeyInsight title="Compression target">
-  The goal is not the smallest context. The goal is the smallest context that still contains enough information for the next decision to be reliable.
-</KeyInsight>
-
-Compression thường là trách nhiệm của application hoặc agent, được `Context Manager` thực hiện khi assemble context cung cấp cho model. LLM không tự kiểm soát độc lập context của nó, và user không cần yêu cầu compression thủ công ở mỗi turn.
-
-Agent thường kích hoạt compression theo context/token budget trước khi Context Window đầy hoàn toàn.
-
-### Context Budgeting
-
-`Context Window` là capacity tối đa model có thể xử lý trong **một invocation**. `Context Budgeting` là quá trình quyết định capacity đang có nên được phân bổ cho thông tin nào có giá trị nhất đối với task hoặc quyết định hiện tại.
-
-<Comparison
-  label="Select, Budget, and Compress"
-  items={[
-    {
-      eyebrow: 'Keep',
-      title: 'Select',
-      description: 'Thông tin nào nên được giữ lại?',
-    },
-    {
-      eyebrow: 'Allocate',
-      title: 'Budget',
-      description: 'Có bao nhiêu capacity, và thông tin nào xứng đáng chiếm capacity đó?',
-    },
-    {
-      eyebrow: 'Represent',
-      title: 'Compress',
-      description: 'Thông tin phải giữ có thể dùng ít token hơn bằng cách nào?',
-    },
-  ]}
-/>
-
-Context Window lớn hơn làm constraint bớt chặt, nhưng không xóa nhu cầu budgeting: irrelevant context vẫn tiêu tốn token và thêm noise. Context Window nhỏ hơn khiến budgeting bị giới hạn hơn, nên selection và compression tốt càng quan trọng. Budgeting **không tăng Context Window**; nó chỉ giúp dùng capacity sẵn có hiệu quả hơn.
-
-Khi minimum useful context cho toàn bộ task vẫn lớn hơn budget, agent không cần ép mọi thứ vào một model invocation. Nó có thể chia task thành các quyết định và duy trì working state qua nhiều vòng:
-
-<Pipeline
-  label="Iterative context lifecycle when useful information exceeds the available budget"
-  steps={[
-    {label: 'Current decision', title: 'Retrieve / Select'},
-    'Reason / Act',
-    {label: 'Keep across invocations', title: 'Preserve result / state'},
-    {label: 'Free capacity', title: 'Release obsolete context'},
-    {label: 'Next decision', title: 'Retrieve next information'},
-  ]}
-  loopLabel="Continue with a refreshed Context Window for the next decision"
-/>
+`Retrieve/Select → Reason/Act → Preserve important state → Release obsolete context → Retrieve for next decision`
 
 <KeyInsight title="Useful does not mean simultaneous">
-  Không phải mọi thông tin hữu ích đều cần tồn tại đồng thời trong Context Window. Điều cần giữ xuyên vòng lặp là kết quả, constraints và state quan trọng; evidence cũ hoặc ít giá trị có thể được release rồi retrieve lại khi thực sự cần.
+  Information hữu ích cho toàn task không cần cùng tồn tại trong một Context Window. Preserve goal, constraints, verified findings và next actions; refresh evidence theo decision tiếp theo.
 </KeyInsight>
 
-### Context Quality Evaluation
+### Working State Across Invocations
 
-Retrieve, select, budget và compress chỉ tạo ra một tập context có thể dùng; agent vẫn cần đánh giá tập đó có **đủ tốt cho quyết định hiện tại** hay không.
+Working state là compact structured memory giúp carry forward task state mà không kéo toàn bộ history.
 
-<KeyInsight title="Good Context">
-  Good Context = Relevant + Sufficient + Low Noise + Low Redundancy + Fresh + Correct
-</KeyInsight>
+Một coding-agent working state có thể giữ:
 
-<ExcalidrawDiagram
-  aspectRatio={968.0699999999999 / 484.04625168270195}
-  src="/img/diagrams/excalidraw/context-quality.svg"
-  mobileSrc="/img/diagrams/excalidraw/context-quality-mobile.svg"
-  mobileAspectRatio={440.64 / 678}
-  alt="Candidate context đi qua các kiểm tra relevance, sufficiency, noise, redundancy, freshness và correctness để trở thành good context."
-  caption="Quality là một bộ tiêu chí, không phải một cảm giác hay một average score duy nhất. Context phải đủ tốt cho next decision cụ thể."
-/>
+- `goal`;
+- `constraints`;
+- `verifiedFindings`;
+- `decisions`;
+- `changesMade`;
+- `unresolvedQuestions`;
+- `nextActions`.
 
-#### Relevance — “Đúng”
+Working state không thay thế raw evidence. Nó là state summary có provenance/uncertainty phù hợp để quyết định invocation tiếp theo cần retrieve gì.
 
-`Relevance` hỏi: **Thông tin này có giúp ích cho quyết định hiện tại không?** Liên quan tới repository hoặc chủ đề chung chưa có nghĩa là relevant. Với task sửa login bug, `AuthService` và login stack trace có relevance cao; JWT configuration có thể relevant; `PaymentService` có relevance thấp.
+### Context Lifecycle
 
-Relevance là động và phải được đánh giá theo **current decision**, không phải toàn bộ task hay project. Một file ít liên quan lúc đầu có thể trở nên quan trọng sau khi evidence mới xuất hiện:
+Canonical lifecycle của topic được giữ tại [Context Engineering Map](./context-engineering-map.mdx). Foundations tập trung vào đoạn đầu của lifecycle:
 
-<Pipeline
-  label="Relevance changes with new evidence"
-  steps={['AuthService', 'Run test', 'JwtFilter failure discovered', 'JwtFilter becomes highly relevant']}
-/>
+**Sources → Retrieve → Candidates → Select → selected context**.
 
-#### Sufficiency — “Đủ”
-
-`Sufficiency` hỏi: **Model đã có đủ thông tin để đưa ra quyết định hiện tại một cách đáng tin cậy chưa?** Context có thể rất relevant nhưng vẫn insufficient. Với lỗi login trả về `500`, chỉ có `AuthService.java` là relevant nhưng có thể chưa đủ; thêm failing request, stack trace, relevant source code và failing test có thể làm context đủ cho bước kế tiếp.
-
-Sufficiency thường nên được đánh giá cho **next decision**, không nhất thiết cho việc giải toàn bộ task trong một invocation. Stack trace có thể đủ để trả lời “bug nằm ở đâu?”, nhưng chưa đủ để trả lời “nên sửa bug như thế nào?”. Cách đánh giá này khớp với [Context Budgeting](#context-budgeting): agent có thể tiến qua nhiều quyết định nhỏ thay vì giữ mọi useful information cùng lúc.
-
-#### Noise và Redundancy — “Rác / Lặp”
-
-`Noise` là thông tin tiêu tốn context capacity nhưng không giúp đáng kể cho quyết định hiện tại. Khi debug authentication, payment code, deployment logs không liên quan, các phần README không liên quan hoặc hàng trăm source files khác có thể trở thành noise. Evidence hữu ích vẫn có thể nằm trong context, nhưng **signal-to-noise ratio** thấp khiến model khó ưu tiên đúng tín hiệu và làm lãng phí budget.
-
-`Redundancy` khác noise:
-
-<Comparison
-  label="Noise and redundancy"
-  items={[
-    {
-      eyebrow: 'Rác',
-      title: 'Noise',
-      description: 'Thông tin không hữu ích cho quyết định hiện tại.',
-    },
-    {
-      eyebrow: 'Lặp',
-      title: 'Redundancy',
-      description: 'Thông tin hữu ích hoặc relevant được lặp lại mà không bổ sung evidence có ý nghĩa.',
-    },
-  ]}
-/>
-
-Cùng lỗi `JWT expired` xuất hiện trong tool output, conversation summary, previous test result và agent notes không tự động mang lại giá trị gấp bốn lần. Deduplication và [Context Compression](#context-compression) có thể giảm redundancy để thu hồi budget. Tuy nhiên, context nhỏ hơn không phải lúc nào cũng tốt hơn: mục tiêu là giữ **smallest practical context** vẫn bảo toàn đủ evidence cho next decision đáng tin cậy.
-
-#### Freshness và Correctness — “Cũ / Sai”
-
-`Freshness` hỏi: **Context còn phản ánh state hiện tại của environment không?** Nếu agent đọc `AuthService`, sửa file rồi chạy tests, source snapshot và failing test result cũ có thể không còn mô tả repository hiện tại. Thông tin có thể đúng khi được quan sát nhưng trở nên stale sau một action.
-
-`Correctness` hỏi: **Bản thân thông tin có chính xác không?** Context ghi `JWT expiration = 30 minutes` trong khi configuration hiện tại là `15 minutes` vẫn có thể rất relevant, nhưng sẽ dẫn reasoning sai hướng.
-
-<ImportantDistinction title="Freshness ≠ Correctness">
-  Freshness kiểm tra thông tin còn đại diện cho current state hay không. Correctness kiểm tra thông tin có chính xác hay không.
-</ImportantDistinction>
-
-Điểm này đặc biệt quan trọng với agent vì action làm environment thay đổi. Old tool results, source snapshots, test results và application state không nên tự động được coi là current truth. Agent cần quay lại source of truth và refresh context trong lifecycle `Observe → Refresh Context → Reason → Act → Observe`.
-
-<ReactFlowDiagram
-  ariaLabel="Context engineering lifecycle with continuous quality evaluation"
-  direction="TB"
-  kind="lifecycle"
-  layout="primary-path"
-  primaryPath={['sources', 'retrieve', 'shape', 'quality', 'assemble', 'llm', 'act', 'observe', 'refresh']}
-  rankSpacing={18}
-  nodes={[
-    {id: 'sources', label: 'Sources', role: 'source', size: 'compact'},
-    {id: 'retrieve', label: 'Retrieve', role: 'process', size: 'compact'},
-    {id: 'shape', label: 'Context Preparation', detail: 'Select · Budget · Compress', role: 'process', size: 'wide'},
-    {id: 'quality', label: 'Evaluate Quality', role: 'constraint', emphasis: true, size: 'standard'},
-    {id: 'assemble', label: 'Assemble', role: 'process', size: 'compact'},
-    {id: 'llm', label: 'LLM', role: 'model', size: 'compact'},
-    {id: 'act', label: 'Reason / Act', role: 'process', size: 'compact'},
-    {id: 'observe', label: 'Observe', detail: 'New evidence / changed state', role: 'evidence', size: 'standard'},
-    {id: 'refresh', label: 'Retrieve / Refresh', role: 'process', size: 'standard'},
-  ]}
-  edges={[
-    {source: 'sources', target: 'retrieve'}, {source: 'retrieve', target: 'shape'},
-    {source: 'shape', target: 'quality'}, {source: 'quality', target: 'assemble'},
-    {source: 'assemble', target: 'llm'}, {source: 'llm', target: 'act'},
-    {source: 'act', target: 'observe'},
-    {source: 'observe', target: 'refresh'},
-    {source: 'refresh', target: 'shape', label: 'next decision', route: 'feedback', feedbackLabelPlacement: 'outer'},
-  ]}
-  caption="Quality evaluation nằm trong vòng lặp. Action thay đổi environment, observation tạo evidence mới, rồi agent refresh context cho quyết định tiếp theo."
-/>
-
-Đây là mental model, không phải rigid implementation pipeline. Agent thực tế có thể đánh giá relevance, sufficiency, noise, redundancy, freshness và correctness liên tục trong toàn bộ iterative loop, rồi retrieve hoặc refresh ngay khi phát hiện context chưa đạt quality cần thiết.
-
-<Remember title="Context quality is decision-relative">
-  Context quality không phải tối đa hóa lượng thông tin. Đó là duy trì đúng evidence, đủ cho next decision, ít noise và redundancy, đồng thời còn current và accurate.
-</Remember>
-
-#### Context Quality Scoring — scorecard thay vì cảm giác
-
-Nhận xét định tính như “context này trông có vẻ tốt” rất khó đo lường và cũng không chỉ ra pipeline hỏng ở đâu. Thay vào đó, nên bắt đầu bằng một **multi-dimensional scorecard**: chấm riêng từng dimension rồi giữ nguyên các điểm thành phần để chẩn đoán.
-
-<Pipeline
-  label="Context quality scorecard"
-  steps={[
-    'Context',
-    'Relevance score',
-    'Sufficiency score',
-    'Low Noise score',
-    'Freshness / Correctness score',
-  ]}
-/>
-
-Một điểm trung bình duy nhất có thể che giấu critical failure. Ví dụ, `Relevance = 3`, `Sufficiency = 0`, `Low Noise = 3`, `Freshness = 3` cho average `2.25/3`, nhưng context vẫn không có đủ evidence để trả lời đáng tin cậy. Điểm theo từng dimension hữu ích hơn vì cho biết cần retrieve thêm evidence, loại noise hay refresh source nào.
-
-<ImportantDistinction title="High average ≠ reliable context">
-  Một dimension thiết yếu bị fail không được bù bởi điểm cao ở các dimension khác. Đặc biệt, context rất relevant nhưng insufficient vẫn không đủ để ra quyết định đáng tin cậy.
-</ImportantDistinction>
-
-#### Evaluation Rubric
-
-`Evaluation Rubric` là **explicit evaluation criteria + clearly defined scoring levels**. Câu hỏi mơ hồ như `Rate relevance from 1 to 10` không định nghĩa semantic difference giữa `7`, `8` và `9`, nên cùng một context có thể nhận điểm thiếu ổn định.
-
-Nên dùng ordinal scale nhỏ và định nghĩa rõ từng level. Mỗi dimension cần rubric riêng vì “đủ evidence” không mang cùng ý nghĩa với “ít noise” hay “còn current”.
-
-<ResponsiveRubric
-  label="Context quality evaluation rubric"
-  rows={[
-    {dimension: 'Relevance', levels: [
-      {score: 0, description: 'Irrelevant: không giúp trả lời câu hỏi hiện tại.'},
-      {score: 1, description: 'Partially relevant: có một ít thông tin hữu ích nhưng phần lớn không liên quan.'},
-      {score: 2, description: 'Mostly relevant: phần lớn context hữu ích, chỉ có ít thông tin không liên quan.'},
-      {score: 3, description: 'Fully relevant: gần như toàn bộ context trực tiếp hỗ trợ quyết định hiện tại.'},
-    ]},
-    {dimension: 'Sufficiency', levels: [
-      {score: 0, description: 'Không có evidence thiết yếu để ra quyết định.'},
-      {score: 1, description: 'Có một phần evidence nhưng còn thiếu gap lớn.'},
-      {score: 2, description: 'Gần đủ; còn thiếu một số evidence có thể ảnh hưởng kết luận.'},
-      {score: 3, description: 'Đủ evidence để ra quyết định hiện tại một cách đáng tin cậy.'},
-    ]},
-    {dimension: 'Low Noise', levels: [
-      {score: 0, description: 'Noise chiếm ưu thế và che khuất signal.'},
-      {score: 1, description: 'Có nhiều noise làm việc tìm signal khó khăn.'},
-      {score: 2, description: 'Phần lớn là signal, chỉ còn ít noise.'},
-      {score: 3, description: 'Gần như không có thông tin thừa đối với quyết định hiện tại.'},
-    ]},
-    {dimension: 'Freshness / Correctness', levels: [
-      {score: 0, description: 'Evidence đã stale hoặc mâu thuẫn với source of truth.'},
-      {score: 1, description: 'Có dấu hiệu stale/sai đáng kể nhưng chưa xác định hết.'},
-      {score: 2, description: 'Phần lớn current/accurate, còn một số điểm chưa được xác minh.'},
-      {score: 3, description: 'Evidence được đối chiếu và phản ánh source of truth hiện tại.'},
-    ]},
-  ]}
-/>
-
-Rubric này là ví dụ khởi đầu, không phải universal scale. Khi triển khai, cần điều chỉnh definition theo task, source of truth và mức rủi ro của hệ thống, nhưng không được dùng cùng một mô tả mơ hồ cho mọi dimension.
-
-<KeyInsight title="Define, then score">
-  Đừng chỉ yêu cầu judge “give a score”. Hãy định nghĩa ý nghĩa của từng score và yêu cầu judge chọn level khớp nhất với evidence.
-</KeyInsight>
-
-#### LLM-as-a-Judge cho context
-
-`LLM-as-a-Judge` là dùng một LLM trong vai trò evaluator để đánh giá output của hệ thống, retrieved context hoặc model response theo một rubric đã định nghĩa. Trong Context Engineering, judge tập trung đánh giá retrieved/assembled context trước hoặc sau khi nó được đưa cho generator.
-
-<Pipeline
-  label="LLM-as-a-Judge for context evaluation"
-  steps={[
-    {label: 'Evaluation input', title: 'User Question + Retrieved Context + Rubric'},
-    'Judge LLM',
-    'Dimension Scores + Reasons',
-  ]}
-/>
-
-Generator và judge không bắt buộc thuộc hai model family khác nhau. Cùng một model có thể được invoke riêng: một lần ở vai trò generator để tạo answer/action, một lần ở vai trò judge để đánh giá evidence hoặc output. Điểm phân biệt là **role và instruction**, không phải tên model.
-
-<Comparison
-  label="Generator and judge roles"
-  items={[
-    {
-      eyebrow: 'Produce',
-      title: 'Generator',
-      description: 'Tạo answer hoặc action từ context được cung cấp.',
-    },
-    {
-      eyebrow: 'Evaluate',
-      title: 'Judge',
-      description: 'Đánh giá evidence hoặc output theo rubric và giải thích lựa chọn.',
-    },
-  ]}
-/>
-
-#### Deterministic checks và semantic evaluation
-
-<Comparison
-  label="Choose the evaluation mechanism"
-  items={[
-    {
-      eyebrow: 'Exact and repeatable',
-      title: 'Rules / Code',
-      description: 'Phù hợp với token length, timestamp, duplicate count và schema validation.',
-    },
-    {
-      eyebrow: 'Meaning and judgment',
-      title: 'LLM Judge',
-      description: 'Phù hợp khi cần hiểu document có thực sự relevant, evidence có sufficient hoặc context có meaningful noise hay không.',
-    },
-    {
-      eyebrow: 'Reference evaluation',
-      title: 'Human Evaluator',
-      description: 'Có giá trị để xử lý judgment phức tạp và validate evaluator, nhưng tốn kém và khó scale trên dataset hoặc production traces lớn.',
-    },
-  ]}
-/>
-
-LLM Judge giúp tự động hóa semantic evaluation ở quy mô lớn hơn human review, nhưng **không tự động trở thành ground truth**. Nên dùng deterministic check cho thuộc tính có thể tính hoặc xác minh chính xác bằng code; chỉ dùng judge khi bài toán thật sự cần semantic reasoning.
-
-#### Giới hạn của Judge
-
-<ImportantDistinction title="Judge evidence ≠ ground truth">
-  Judge chỉ có thể đánh giá đáng tin cậy những thuộc tính mà input cung cấp đủ evidence. Khả năng diễn giải một claim không đồng nghĩa với khả năng chứng minh claim đó đúng.
-</ImportantDistinction>
-
-Nếu context ghi `Annual leave policy 2026: 14 days`, judge có thể đánh giá câu này có relevant với câu hỏi về phép năm hay không và có dấu hiệu current hay không. Nhưng nếu không có authoritative policy hoặc ground truth để đối chiếu, judge không thể chứng minh con số `14 days` là correct.
-
-Judge cũng có thể thiếu nhất quán, mang bias hoặc chưa được calibration phù hợp. Việc đo consistency, calibration và validation kết quả judge với human evaluation là các concern tiếp theo; chưa nên coi một lần chấm của LLM là kết luận hoàn hảo.
-
-#### Nguyên tắc thiết kế rubric tốt
-
-Một evaluation rubric tốt nên:
-
-1. Tách rõ các dimension cần đánh giá.
-2. Dùng ít scoring level khi có thể.
-3. Định nghĩa explicit ý nghĩa của mọi score.
-4. Yêu cầu judge chọn category được định nghĩa phù hợp nhất thay vì tự nghĩ ra một con số chủ quan.
-5. Chỉ yêu cầu judge đánh giá thuộc tính có đủ evidence trong input.
-
-### Context Assembly & Ordering
-
-Selection trả lời **“Thông tin nào nên được giữ?”**; `Context Assembly` trả lời **“Những thông tin đã chọn nên được kết hợp thành context cho model invocation hiện tại như thế nào?”**. Một coding agent có thể đã chọn đúng project rules, current user task, relevant source code, latest errors/evidence và working state, nhưng model vẫn có thể hiểu sai nếu các phần này bị trộn lẫn, thiếu nhãn hoặc không thể hiện quan hệ giữa chúng.
-
-<Pipeline
-  label="Context assembly mental model"
-  steps={[
-    'Selected Context',
-    'Assemble',
-    'Structure',
-    'Order',
-    'Resolve Priority / Conflicts',
-    'LLM',
-  ]}
-/>
-
-<KeyInsight title="Selection is necessary, not sufficient">
-  Selecting the right information is not enough. Good context engineering also makes the role, priority, relationships, and current state of that information clear to the model.
-</KeyInsight>
-
-#### Select, Assemble và Order
-
-<Comparison
-  label="Three context decisions"
-  items={[
-    {
-      eyebrow: 'Keep',
-      title: 'Select',
-      description: 'Thông tin nào nên được giữ cho current decision?',
-    },
-    {
-      eyebrow: 'Combine',
-      title: 'Assemble',
-      description: 'Các phần đã chọn trở thành model context như thế nào?',
-    },
-    {
-      eyebrow: 'Place',
-      title: 'Order',
-      description: 'Mỗi phần nên xuất hiện ở đâu để role và relationship rõ ràng?',
-    },
-  ]}
-/>
-
-Một cấu trúc thực dụng cho coding agent có thể là:
-
-1. **Instructions / project rules**
-2. **Current task**
-3. **Relevant code or knowledge**
-4. **Authoritative evidence**
-5. **Runtime evidence / tool results**
-6. **Untrusted external content**
-7. **Working state / previous findings**
-
-Đây là mental model, không phải universal fixed ordering. Thứ tự nên giúp model nhận ra vai trò, mức quan trọng và quan hệ giữa các phần; nó có thể đổi theo current decision. Khi debugging, latest error nên nằm gần relevant code để quan hệ failure–implementation dễ thấy. Khi code generation, specifications và interfaces có thể cần được nhấn mạnh trước implementation context.
-
-#### Priority & Conflict Resolution
-
-Các context piece không mặc nhiên có priority ngang nhau. Khi chúng xung đột, agent cần đánh giá:
-
-- **Authority:** nguồn nào có quyền đặt instruction hoặc constraint?
-- **Freshness:** observation nào phản ánh state mới nhất?
-- **Proximity to source of truth:** thông tin nào gần artifact hoặc hệ thống authoritative nhất?
-- **Relevance:** conflict nào ảnh hưởng trực tiếp đến current decision?
-
-<ImportantDistinction title="Instruction authority ≠ factual freshness">
-  Authority giúp giải quyết conflict giữa instructions; freshness và proximity to source of truth giúp giải quyết conflict giữa factual claims. Một instruction có authority cao không tự động là observation mới nhất, và một observation mới không tự động có quyền thay đổi constraint.
-</ImportantDistinction>
-
-Ví dụ:
-
-- Project rule nói generated files không được edit, trong khi user yêu cầu sửa trực tiếp một generated file. Đây là conflict về **instruction authority và constraint**; cách xử lý phụ thuộc authority rules của agent/application.
-- Old test result là `PASS`, latest result là `FAIL`. Với cùng setup và target, latest result thường có factual freshness cao hơn.
-- Old conversation summary mâu thuẫn với current source code. Source code hiện tại gần source of truth hơn cho implementation state.
-
-Không có một instruction hierarchy universal cho mọi AI system. System, application hoặc agent architecture phải định nghĩa authority rules của chính nó; mọi hierarchy trong mental model chỉ là điểm khởi đầu để reason. Nếu chưa thể resolve conflict đáng tin cậy, agent nên retrieve thêm evidence, chạy tool/test, inspect source of truth hoặc hỏi user thay vì đoán.
-
-#### Context Structure & Working State
-
-Thông tin **có mặt** trong context không đồng nghĩa với việc model có thể dễ dàng **nhận diện và sử dụng** nó. Labels và sections rõ ràng giúp tách constraints khỏi evidence, facts khỏi hypotheses và current state khỏi history.
-
-<ConceptGrid>
-  <ConceptCard eyebrow="Rules" title="Instructions / Constraints">
-    Những điều model phải tuân theo và boundary của task.
-  </ConceptCard>
-  <ConceptCard eyebrow="Goal" title="Current Task">
-    Outcome cần đạt trong invocation hiện tại.
-  </ConceptCard>
-  <ConceptCard eyebrow="Inputs" title="Relevant Context">
-    Code, knowledge và artifacts cần để reason.
-  </ConceptCard>
-  <ConceptCard eyebrow="Observations" title="Current Evidence">
-    Latest errors, test results và tool outputs.
-  </ConceptCard>
-  <ConceptCard eyebrow="Continuity" title="Working State">
-    Kết quả đã biết, hypothesis và next action cần giữ qua các vòng.
-  </ConceptCard>
-</ConceptGrid>
-
-Structured working state đặc biệt hữu ích cho iterative agents vì nó bảo toàn continuity mà không phải giữ toàn bộ history. Một working state ngắn có thể gồm:
-
-- **Goal:** outcome hiện tại.
-- **Known facts:** facts đã được evidence hỗ trợ.
-- **Current hypothesis:** giải thích đang được kiểm tra, không giả dạng fact.
-- **Changes made:** actions đã làm thay đổi environment.
-- **Next action:** bước kiểm chứng hoặc thực thi kế tiếp.
-
-Điều này nối trực tiếp với [Context Compression](#context-compression), [Context Budgeting](#context-budgeting) và [iterative context lifecycle](#context-động-và-iterative-agent-loop): compress history thành important state, dành budget cho current evidence và assemble lại context cho mỗi decision.
-
-<Pipeline
-  label="Working state across iterative invocations"
-  steps={[
-    'Old Context',
-    'Extract Important State',
-    'Release Obsolete Evidence',
-    'Retrieve New Evidence',
-    'Assemble Next Context',
-  ]}
-  loopLabel="Repeat when actions or observations change the current state"
-/>
-
-### Context Security & Trust Boundaries
-
-Context Engineering không chỉ quyết định thông tin nào **relevant** mà còn phải quyết định nguồn đó có **đáng tin cho vai trò đang được giao** hay không. System instructions, current user task, repository rules, source code, test output, retrieved web pages và email có trust level, authority và purpose khác nhau; đưa chúng vào cùng một Context Window không làm các khác biệt đó biến mất.
-
-<Remember title="Relevant ≠ Trusted">
-  Một RAG chunk hoặc issue có thể rất relevant nhưng vẫn chứa claim sai, nội dung cũ hoặc prompt injection. Relevance giúp quyết định nên xem xét thông tin; trust và authority quyết định được phép dùng nó như thế nào.
-</Remember>
-
-#### Sáu distinction cần nhớ
-
-<Comparison
-  label="Six security distinctions in Context Engineering"
-  items={[
-    {eyebrow: 'Selection', title: 'Relevant ≠ Trusted', description: 'Liên quan tới current decision không chứng minh nguồn đáng tin.'},
-    {eyebrow: 'Role', title: 'Instruction-like text ≠ Instruction', description: 'Một câu viết dưới dạng mệnh lệnh vẫn có thể chỉ là data cần phân tích.'},
-    {eyebrow: 'Authority', title: 'Instruction Authority ≠ Factual Authority', description: 'Quyền đặt constraint khác với độ đáng tin khi mô tả một fact.'},
-    {eyebrow: 'Boundary', title: 'Data must not silently become Control', description: 'External content không được tự đổi vai trò từ evidence thành instruction.'},
-    {eyebrow: 'Traceability', title: 'Trust requires Provenance', description: 'Muốn đánh giá trust phải biết context đến từ đâu và đã thay đổi thế nào.'},
-    {eyebrow: 'Tools', title: 'Tool Success ≠ Trusted Result', description: 'Transport chạy đúng contract không làm content bên ngoài trở nên trustworthy.'},
-  ]}
-/>
-
-#### Trust, role và authority
-
-`Trust Boundary` là ranh giới nơi context chuyển giữa các nguồn hoặc vùng có mức trust và authority khác nhau. Mỗi context piece nên có role rõ ràng: **instruction/constraint**, **task**, **fact/evidence**, **runtime observation**, **working state** hoặc **untrusted external content**. Text trong retrieved document, web content, repository content, issue, email, RAG chunk hay tool output có thể trông giống instruction, nhưng hình thức câu chữ không cấp cho nó Instruction Authority.
-
-Authority luôn có scope:
-
-- **Instruction Authority** trả lời nguồn nào có quyền đặt goal, constraint hoặc thay đổi hành vi trong phạm vi task.
-- **Factual Authority** trả lời nguồn nào đáng tin để mô tả một fact hoặc state cụ thể. Source code hiện tại có thể authoritative cho implementation state, trong khi policy owner hoặc policy document mới authoritative cho policy.
-
-Vì vậy conflict resolution cần tách hai loại conflict. **Instruction conflict** được giải bằng authority rules và constraints của application. **Factual conflict** được giải bằng provenance, freshness, version/state và proximity to source of truth. Nếu evidence chưa đủ, retrieve hoặc verify thêm thay vì để authority của một instruction thay thế cho factual proof.
-
-<ImportantDistinction title="External content is evidence, not automatic control">
-  External content thường nên được xử lý như claims hoặc evidence có thể cần verification. Nó chỉ trở thành instruction khi architecture đã gán role và Instruction Authority phù hợp—không phải vì content tự tuyên bố rằng nó là instruction.
-</ImportantDistinction>
-
-#### Indirect prompt injection
-
-`Prompt injection` cố khiến model làm theo instruction không được phép. Với **indirect prompt injection**, instruction độc hại nằm trong content mà agent retrieve hoặc observe—ví dụ web page, document, repository file, issue, email, RAG chunk hay tool result—rồi đi vào Context Window như thể đó chỉ là evidence. Rủi ro xuất hiện khi data vượt trust boundary và âm thầm trở thành control, đặc biệt khi agent có tool permissions để đọc dữ liệu nhạy cảm hoặc thực hiện action bên ngoài.
-
-Delimiters và labels như `UNTRUSTED CONTENT` giúp model và observability layer nhận ra semantic boundary, nhưng **không phải security guarantee**. Model vẫn có thể diễn giải sai; application vẫn phải enforce permissions và validate action.
-
-#### Provenance phải sống cùng context
-
-`Provenance` ghi lại context đến từ đâu, role dự kiến, version/state, observation time và những transformation liên quan như extraction, filtering, merging hoặc summarization. Metadata này giúp đánh giá trust, detect stale evidence, resolve factual conflict và trace một unsafe decision về đúng lifecycle stage.
-
-Compression không được chỉ giữ nội dung bề mặt. Nó phải bảo toàn **decision-critical provenance, role, trust và authority**; nếu summary giữ câu “delete the backup” nhưng làm mất việc câu đó đến từ một untrusted web page, compression đã biến data thành control.
-
-#### Safe Context Assembly và defense in depth
-
-Safe assembly giữ semantic boundaries rõ giữa **trusted instructions**, **current task**, **authoritative evidence**, **runtime evidence**, **working state** và **untrusted external content**. Ordering và labels giúp truyền đạt boundary; application-side controls mới enforce boundary.
-
-<ReactFlowDiagram
-  ariaLabel="Secure context engineering lifecycle with trust evaluation and permission enforcement"
-  direction="TB"
-  kind="lifecycle"
-  layout="primary-path"
-  primaryPath={['sources', 'retrieve', 'candidates', 'select', 'evaluate', 'budget', 'conflicts', 'assemble', 'window', 'agent', 'reason', 'permission', 'tool', 'observe', 'refresh']}
-  rankSpacing={18}
-  height={1400}
-  nodes={[
-    {id: 'sources', label: 'Sources', detail: 'Instructions · code · web · email · tools', role: 'source', size: 'wide'},
-    {id: 'retrieve', label: 'Retrieve', role: 'process', size: 'compact'},
-    {id: 'candidates', label: 'Candidates', role: 'state', size: 'compact'},
-    {id: 'select', label: 'Select', role: 'process', size: 'compact'},
-    {id: 'evaluate', eyebrow: 'Two gates', label: 'Evaluate Context', detail: 'Quality + Trust · Role/Authority · Provenance', role: 'constraint', emphasis: true, size: 'wide'},
-    {id: 'budget', label: 'Budget / Compress', detail: 'Preserve security-critical metadata', role: 'process', size: 'wide'},
-    {id: 'conflicts', label: 'Resolve Conflicts', detail: 'Authority rules or source-of-truth evidence', role: 'decision', size: 'wide'},
-    {id: 'assemble', label: 'Safe Assembly', detail: 'Keep instructions, evidence and untrusted data separate', role: 'constraint', size: 'wide'},
-    {id: 'window', label: 'Context Window', role: 'state', size: 'standard'},
-    {id: 'agent', label: 'LLM / Agent', role: 'model', size: 'standard'},
-    {id: 'reason', label: 'Reason / Act', role: 'process', size: 'standard'},
-    {id: 'permission', label: 'Permission / Policy', detail: 'Validate the proposed action', role: 'constraint', size: 'wide'},
-    {id: 'tool', label: 'Tool', role: 'tool', size: 'compact'},
-    {id: 'observe', label: 'Observe', detail: 'Result is evidence, not automatic truth', role: 'evidence', size: 'wide'},
-    {id: 'refresh', label: 'Refresh Context', role: 'process', size: 'standard'},
-  ]}
-  edges={[
-    {source: 'sources', target: 'retrieve'}, {source: 'retrieve', target: 'candidates'},
-    {source: 'candidates', target: 'select'}, {source: 'select', target: 'evaluate'},
-    {source: 'evaluate', target: 'budget'}, {source: 'budget', target: 'conflicts'},
-    {source: 'conflicts', target: 'assemble'}, {source: 'assemble', target: 'window'},
-    {source: 'window', target: 'agent'}, {source: 'agent', target: 'reason'},
-    {source: 'reason', target: 'permission'}, {source: 'permission', target: 'tool'},
-    {source: 'tool', target: 'observe'}, {source: 'observe', target: 'refresh'},
-    {source: 'refresh', target: 'retrieve', label: 'new state / evidence', route: 'feedback', dashed: true, feedbackLabelPlacement: 'outer'},
-  ]}
-  caption="Security joins the existing context lifecycle at evaluation, assembly, conflict resolution and action enforcement; no single layer—including the LLM—owns the whole boundary."
-/>
-
-<KeyInsight title="Security is defense in depth">
-  Safe Context Engineering kết hợp context classification/assembly, authority rules, provenance, tool permissions và action validation. **Never rely on the LLM as the only security boundary.**
-</KeyInsight>
-
-Một trusted tool transport chỉ chứng minh lời gọi và response đi qua channel dự kiến; nó không chứng minh externally supplied content bên trong response là trustworthy. Vì vậy `Tool Success ≠ Trusted Result`: result phải giữ provenance, được đánh giá theo role/trust và có thể cần verify trước khi ảnh hưởng reasoning hoặc action.
-
-### Context Observability & Debugging
-
-`Context Observability` là khả năng inspect và hiểu **thông tin thực tế mà LLM hoặc AI agent đã nhận được trước khi ra quyết định**. Khi agent tạo kết quả sai, không nên lập tức kết luận model yếu hoặc prompt kém; bước đầu tiên là kiểm tra actual context đã được cung cấp cho model.
-
-<KeyInsight title="Observe before blaming">
-  Context Observability trả lời “Model đã thấy gì?”, còn Context Tracing trả lời “Context đó đã đi đến model bằng cách nào?”.
-</KeyInsight>
-
-<ReactFlowDiagram
-  ariaLabel="Context debugging workflow from wrong output to the correct failure layer"
-  direction="TB"
-  kind="workflow"
-  layout="primary-path"
-  primaryPath={['wrong-output', 'inspect-context', 'trace-lifecycle', 'locate-failure', 'fix-layer']}
-  rankSpacing={20}
-  nodes={[
-    {id: 'wrong-output', eyebrow: 'Symptom', label: 'Wrong Output', detail: 'Kết quả sai chỉ là điểm bắt đầu', role: 'output', size: 'standard'},
-    {id: 'inspect-context', eyebrow: 'Observability', label: 'Inspect Actual Context', detail: 'Model thực sự đã thấy gì?', role: 'process', emphasis: true, size: 'wide'},
-    {id: 'trace-lifecycle', eyebrow: 'Tracing', label: 'Trace Context Lifecycle', detail: 'Retrieve → Select → Compress → Assemble', role: 'process', size: 'wide'},
-    {id: 'locate-failure', eyebrow: 'Diagnosis', label: 'Locate Failure', detail: 'Xác định layer đầu tiên làm evidence sai lệch', role: 'decision', size: 'wide'},
-    {id: 'fix-layer', eyebrow: 'Action', label: 'Fix the Correct Layer', detail: 'Sửa retrieval, selection, compression, assembly hoặc reasoning', role: 'output', size: 'wide'},
-  ]}
-  edges={[
-    {source: 'wrong-output', target: 'inspect-context'},
-    {source: 'inspect-context', target: 'trace-lifecycle'},
-    {source: 'trace-lifecycle', target: 'locate-failure'},
-    {source: 'locate-failure', target: 'fix-layer'},
-  ]}
-  caption="Wrong output không tự chỉ ra nguyên nhân. Trace ngược context lifecycle để sửa đúng layer thay vì mặc định blame model hoặc prompt."
-/>
-
-Mental model debugging là:
-
-`Wrong Output → Inspect Actual Context → Trace Context Lifecycle → Locate Failure → Fix the Correct Layer`
-
-#### Năm failure layer cần phân biệt
-
-- **Retrieve failure:** Thông tin cần thiết chưa bao giờ đi vào candidate set.
-- **Selection failure:** Thông tin relevant đã được retrieve nhưng không được chọn cho model invocation cần nó.
-- **Compression failure:** Thông tin được giữ lại, nhưng semantic detail quan trọng bị mất trong representation đã compress.
-- **Assembly failure:** Necessary information có mặt, nhưng ordering, priority, conflict, stale information hoặc quá nhiều noise làm model khó sử dụng đúng.
-- **Reasoning failure:** Context đã sufficiently correct và được xây dựng hợp lý, nhưng model vẫn reason hoặc generate sai.
-
-Các layer này nối trực tiếp với lifecycle đã học: Retrieve tạo candidates; Select quyết định evidence nào sống sót; Compression đổi cách biểu diễn; Budgeting và Assembly quyết định capacity, structure, order và priority; chỉ sau khi các bước đó đủ tốt mới có cơ sở quy lỗi cho Reasoning.
-
-#### Context Tracing
-
-`Context Tracing` tương tự distributed tracing hoặc backend request tracing. Khi một API request sai, engineer không chỉ nhìn HTTP response cuối; họ theo trace qua service, database call và transformation để tìm span đầu tiên làm dữ liệu sai lệch. Với agent, mỗi bước retrieve, select, compress, assemble, model invocation và tool call là một span trong context lifecycle.
-
-Một context trace nên cho phép inspect:
-
-- retrieval queries và retrieved candidates;
-- candidates được chọn và bị reject, cùng decision metadata khi có;
-- compression input/output và mức token reduction;
-- final context assembly và token allocation cho từng phần;
-- context thay đổi như thế nào qua nhiều model invocation;
-- tool results và evidence mới nào kích hoạt retrieval hoặc context update tiếp theo.
-
-Chỉ quan sát final prompt hoặc final context là chưa đủ. Một snapshot cuối có thể cho biết `JwtConfig.ts` đang thiếu, nhưng không cho biết file đó **chưa bao giờ được retrieve** hay **đã được retrieve rồi bị selection loại bỏ**. Hai nguyên nhân có cùng triệu chứng ở model boundary nhưng cần hai cách sửa khác nhau.
-
-Agent context cũng động theo iterative workflow:
-
-`Context₁ → Reason/Act → Context₂ → Reason/Act → Context₃`
-
-Tool result từ vòng trước có thể tạo evidence mới, thay đổi retrieval query, selection priority và context được assemble cho vòng sau. Vì vậy trace cần liên kết các model invocation thay vì coi từng final context là một event độc lập.
-
-#### Ví dụ: coding agent chọn sai file
-
-Giả sử coding agent được yêu cầu sửa lỗi `session timeout` nhưng implement timeout cố định trong `SessionService.ts`, dù repository đã có policy theo từng tenant trong `TenantSessionPolicy.ts`.
-
-1. Trace cho thấy query `session timeout` retrieve cả `SessionService.ts` và `TenantSessionPolicy.ts`.
-2. Candidate log xác nhận policy file có đoạn quyết định timeout theo tenant.
-3. Selection log cho thấy agent chỉ đưa `SessionService.ts` vào model context vì lexical score cao hơn; `TenantSessionPolicy.ts` bị reject.
-4. Final context vì vậy không chứa tenant-specific policy, và model tạo implementation hợp lý đối với evidence hạn chế mà nó nhận được.
-
-Đây là **selection failure**, không phải retrieve failure hay đủ evidence để kết luận reasoning failure. Cách sửa đúng là cải thiện selection signal—chẳng hạn ưu tiên symbol references, caller relationship hoặc policy-bearing files—rồi chạy lại trace; đổi model hoặc rewrite prompt trước sẽ không sửa nguyên nhân gốc.
-
-### Context Metrics & Signals
-
-Context metrics không phải các verdict độc lập. Chúng là **signals** giúp agent trả lời một câu hỏi chung: context hiện tại có cho phép ra quyết định đáng tin cậy và tiếp tục tiến triển task không?
-
-<ReactFlowDiagram
-  ariaLabel="Context metrics and signals across the iterative context lifecycle"
-  direction="TB"
-  kind="data-flow"
-  layout="primary-path"
-  primaryPath={['metric-sources', 'metric-retrieve', 'metric-candidates', 'metric-select', 'metric-compress', 'metric-window', 'metric-agent', 'metric-tools', 'metric-evidence']}
-  rankSpacing={28}
-  nodes={[
-    {id: 'metric-sources', label: 'Sources', role: 'source', size: 'compact'},
-    {id: 'metric-retrieve', label: 'Retrieve', detail: 'Precision · Recall', role: 'process', size: 'standard'},
-    {id: 'metric-candidates', label: 'Candidates', role: 'state', size: 'compact'},
-    {id: 'metric-select', label: 'Select', detail: 'Selection quality', role: 'process', size: 'standard'},
-    {id: 'metric-compress', label: 'Compress', detail: 'Retention · Faithfulness', role: 'process', size: 'wide'},
-    {id: 'metric-window', label: 'Context Window', detail: 'Token usage · Freshness', role: 'constraint', emphasis: true, size: 'wide'},
-    {id: 'metric-agent', label: 'LLM / Agent', role: 'model', size: 'compact'},
-    {id: 'metric-tools', label: 'Tools', detail: 'Information gain · Actionability', role: 'tool', size: 'wide'},
-    {id: 'metric-evidence', label: 'New Evidence', detail: 'Decision progress', role: 'evidence', size: 'standard'},
-  ]}
-  edges={[
-    {source: 'metric-sources', target: 'metric-retrieve'},
-    {source: 'metric-retrieve', target: 'metric-candidates'},
-    {source: 'metric-candidates', target: 'metric-select'},
-    {source: 'metric-select', target: 'metric-compress'},
-    {source: 'metric-compress', target: 'metric-window'},
-    {source: 'metric-window', target: 'metric-agent'},
-    {source: 'metric-agent', target: 'metric-tools'},
-    {source: 'metric-tools', target: 'metric-evidence'},
-    {source: 'metric-evidence', target: 'metric-retrieve', label: 'next', route: 'feedback', feedbackLabelPlacement: 'outer'},
-  ]}
-  caption="Mỗi lifecycle stage có signal riêng; kết hợp chúng để đánh giá decision reliability và progress, không dùng một metric đơn lẻ làm kết luận."
-/>
-
-#### Context Size / Token Usage
-
-Theo dõi **used tokens**, capacity còn lại của Context Window và mức **context utilization / context pressure**. Utilization cao là tín hiệu để inspect context quality, không phải bằng chứng context đang xấu. Không có rule chung như `>80% thì compress`: compression hoặc eviction chỉ hợp lý khi có low-value context có thể bỏ và vẫn bảo toàn đủ useful information cho next decision.
-
-#### Retrieval Quality
-
-- **Precision:** trong những thông tin đã retrieve, bao nhiêu phần thực sự relevant.
-- **Recall:** trong toàn bộ thông tin relevant hoặc cần thiết, bao nhiêu phần đã được retrieve thành công.
-
-High recall + low precision tạo nhiều noise; high precision + low recall tạo context sạch nhưng insufficient. Retrieval nên tìm **đủ evidence với ít unnecessary noise nhất có thể trong thực tế**, thay vì tối ưu một metric tách biệt.
-
-#### Selection Quality
-
-<ImportantDistinction title="Retrieval failure ≠ Selection failure">
-  Retrieval failure nghĩa là required information chưa bao giờ được tìm thấy. Selection failure nghĩa là useful information đã ở trong candidates nhưng bị loại sai, trong khi low-value information có thể được giữ lại.
-</ImportantDistinction>
-
-Có thể hiểu **selection precision** là mức context được giữ lại thực sự có giá trị, còn **selection recall** là mức useful candidates quan trọng đã sống sót qua selection. Không cần biến chúng thành công thức cứng; khi select, hãy cân nhắc `relevance`, `usefulness`, `freshness`, `necessity` và `token cost` cho current decision.
-
-#### Compression Quality / Compression Loss
-
-Token reduction chỉ có ý nghĩa khi đo cùng **information retention**. Compression phải giữ decision-critical constraints và evidence, nhưng giữ đủ facts vẫn chưa đủ: **faithfulness** hỏi representation sau compression có giữ nguyên ý nghĩa của chúng hay không. Compression có thể fail do xóa information quan trọng hoặc do thay đổi tinh vi meaning của information còn lại. Mục tiêu là giảm context cost trong khi bảo toàn đủ faithful information cho next decision, không phải maximum compression.
-
-#### Freshness / Stale Context
-
-Freshness khác correctness: information có thể đúng khi được quan sát nhưng stale sau khi application hoặc environment state thay đổi. Stable information như protocol contract có freshness expectation khác volatile information như working-tree state, test result hay live resource state.
-
-Age hoặc timestamp chỉ là signal. `commit SHA`, working-tree state, resource version hoặc state identifier tương đương thường cho stale-context signal mạnh hơn vì chúng gắn observation với một state cụ thể. Agent nên revalidate volatile context khi cần, thay vì mặc định tin old tool results.
-
-#### Tool-result Usefulness
-
-Tool execution `success` chỉ cho biết tool đã chạy theo contract; nó không cho biết result có hữu ích cho task hay không. Useful result nên giúp giảm uncertainty, cung cấp evidence, confirm/reject hypothesis, chỉ ra nơi cần inspect tiếp, verify một action hoặc làm next action rõ hơn.
-
-**Information gain** là result đã thay đổi điều agent biết bao nhiêu; **actionability** là result đã làm quyết định hoặc bước tiếp theo rõ hơn bao nhiêu. Nhiều tool call đều thành công nhưng tạo ít evidence hữu ích và hầu như không có decision progress là **tool thrashing**.
-
-<KeyInsight title="Metrics are signals, not verdicts">
-  Đọc các signal cùng lifecycle stage, current decision và source of truth. Metric chỉ có giá trị khi nó giúp agent quyết định nên retrieve thêm, select lại, compress cẩn thận, refresh evidence hay tiếp tục act.
-</KeyInsight>
-
-### Context động và iterative agent loop
-
-AI agent xây dựng context qua một lifecycle lặp, không phải một lần ghép prompt ở đầu task:
-
-<Pipeline
-  label="Iterative agent context lifecycle"
-  steps={['Task', 'Retrieve', 'Select', 'Reason', 'Act / Tool', 'Observe']}
-  loopLabel="New evidence changes information needs → Retrieve again"
-/>
-
-Mỗi action hoặc tool call có thể tạo evidence mới như test failure, log hay code reference. Observation đó thay đổi nhu cầu thông tin, nên agent retrieve và select lại cho lần quyết định tiếp theo.
-
-### Tách Context Manager khỏi Model Adapter
-
-Khi thiết kế custom AI agent, có thể tách hai trách nhiệm:
-
-<ReactFlowDiagram
-  ariaLabel="Context Manager and Model Adapter architecture"
-  direction="TB"
-  kind="architecture"
-  layout="primary-path"
-  primaryPath={['agent', 'manager', 'adapter', 'providers']}
-  rankSpacing={22}
-  nodes={[
-    {id: 'agent', label: 'Agent', role: 'source', size: 'compact'},
-    {id: 'manager', eyebrow: 'What the model receives', label: 'Context Manager', detail: 'Retrieve · Select · Budget · Compress · Evaluate · Assemble', role: 'constraint', emphasis: true, size: 'wide'},
-    {id: 'adapter', eyebrow: 'How the request is sent', label: 'Model Adapter', detail: 'Provider-specific request / response', role: 'process', size: 'wide'},
-    {id: 'providers', eyebrow: 'Implementations', label: 'Providers', items: ['OpenAI', 'Anthropic', 'Gemini', 'Other'], role: 'output', size: 'wide'},
-  ]}
-  edges={[
-    {source: 'agent', target: 'manager'},
-    {source: 'manager', target: 'adapter', label: 'model request'},
-    {source: 'adapter', target: 'providers'},
-  ]}
-  caption="Context Manager sở hữu logic xây context; Model Adapter chỉ chuyển request/response sang contract của provider."
-/>
-
-`Context Manager` retrieve, select, compress khi cần và assemble thông tin cho task hiện tại. `Model Adapter` là lớp chuyển đổi request và response theo API cụ thể của từng provider. Các model và coding agent như ChatGPT, Claude, Gemini, Codex-style agents, Claude Code hoặc Cursor có thể expose và assemble context khác nhau, nhưng application vẫn là bên xây dựng context được cung cấp cho model.
+Sau đó selected context đi qua quality/budget/compression/assembly trước model invocation; phần này nằm ở [Context Optimization](./context-optimization.mdx). Quan sát, metrics, freshness và trust boundaries nằm ở [Context Operations](./context-operations.mdx).
 
 ## Example
 
-Với task `Fix authentication bug`, một coding agent có thể:
+User yêu cầu agent sửa lỗi `401` trong một repository lớn.
 
-1. Hiểu yêu cầu.
-2. Search codebase thay vì đọc toàn bộ repository.
-3. Xác định các file liên quan như `AuthService` và `JwtFilter`.
-4. Đọc những file đó.
-5. Chạy tests.
-6. Thu thập error logs và tool output.
-7. Kết hợp instructions, relevant code và test evidence thành context.
-8. Đưa context này cho LLM để quyết định hành động tiếp theo.
+Bad approach: đưa toàn repo, toàn chat history và hàng nghìn log lines vào một prompt vì “window còn chỗ”.
 
-Agent đang liên tục retrieve, select, budget và cập nhật context. Nếu toàn bộ useful context không vừa một invocation, agent có thể giữ lại result/state quan trọng, release context cũ và retrieve thông tin cần cho quyết định kế tiếp. Chất lượng quyết định phụ thuộc vào việc agent tìm được rồi phân bổ capacity cho đúng tín hiệu, không chỉ vào kích thước Context Window.
+Better approach:
+
+- pin user goal + critical repository constraints;
+- retrieve auth path và fresh failing evidence;
+- select vài source fragments trực tiếp cho current decision;
+- reason/act;
+- save verified finding vào working state;
+- evict obsolete search output;
+- retrieve fresh evidence cho decision kế tiếp.
+
+Khi task tiến triển, context được **reconstructed**, không chỉ append mãi.
 
 ## When to Use
 
-- Khi xây AI agent cần kết hợp instructions, memory, Retrieval/RAG, tools và application state.
-- Khi một task có nhiều nguồn thông tin nhưng chỉ một phần liên quan đến quyết định hiện tại.
-- Khi cần giảm token cost, noise hoặc thông tin cũ trong conversation dài.
-- Khi hỗ trợ nhiều model provider và muốn giữ logic xây dựng context độc lập với API integration.
+Context Engineering đặc biệt quan trọng khi:
+
+- coding agent cần đọc repository lớn;
+- task có nhiều tool calls/model invocations;
+- RAG trả nhiều candidates;
+- conversation/history dài;
+- environment state thay đổi trong quá trình làm;
+- model trả lời kém dù prompt wording có vẻ ổn;
+- cost/latency/noise tăng vì context ngày càng phình.
+
+Với task đơn giản chỉ cần vài facts ổn định, không cần dựng Context Manager phức tạp.
 
 ## Common Mistakes
 
-:::warning[Misconceptions that degrade context quality]
-
-- **Đồng nhất Context với Context Window:** Một bên là thông tin thực tế, bên kia là capacity tối đa.
-- **Cho rằng nhiều context luôn tốt hơn:** Context không liên quan có thể làm loãng tín hiệu quan trọng và tiêu tốn token.
-- **Cho rằng Context Window lớn thì không cần budgeting:** Capacity lớn vẫn có thể bị lấp bởi context ít giá trị và noise.
-- **Cố giải toàn bộ task trong một invocation:** Agent có thể preserve state và refresh context qua iterative lifecycle thay vì giữ mọi useful information cùng lúc.
-- **Đưa toàn bộ repository cho coding agent:** Search và chọn đúng files, tests, logs thường hiệu quả hơn nhồi mọi thứ vào Context Window.
-- **Chỉ tối ưu user prompt:** Prompt tốt vẫn thiếu hiệu quả nếu model không có source, state hoặc tool result cần thiết.
-- **Chỉ inspect final prompt/context:** Snapshot cuối không phân biệt được evidence chưa từng được retrieve với evidence đã retrieve nhưng bị discard ở bước sau.
-- **Đồng nhất relevance với trust:** Retrieved content liên quan vẫn có thể sai, stale hoặc chứa indirect prompt injection.
-- **Cho phép data trở thành control:** Instruction-like text trong document, issue, email, RAG chunk hoặc tool output không tự có Instruction Authority.
-- **Dùng delimiter như security boundary:** Label `UNTRUSTED CONTENT` chỉ truyền đạt role; permissions và action validation vẫn phải được enforce ngoài model.
-- **Tin tool result vì tool chạy thành công:** Tool success không xác minh trust hoặc correctness của externally supplied content trong result.
-- **Dùng LLM làm security boundary duy nhất:** Context classification, provenance, authority, permissions và policy enforcement phải tạo defense in depth.
-- **Trộn context construction với provider integration:** Thiết kế này làm logic retrieval và filtering khó tái sử dụng khi đổi model provider.
-
-:::
+- **Context Window = Context:** nhầm capacity với information thực tế.
+- **More context = better:** thêm noise vì window còn chỗ.
+- **Retrieve = Select:** coi top search result là context mặc định.
+- **Static context for dynamic task:** không refresh evidence sau khi state thay đổi.
+- **Keep everything forever:** history/tool output chỉ append, không có eviction.
+- **Treat working state as truth:** summary/hypothesis được carry forward nhưng không còn raw evidence/provenance.
 
 ## My Understanding
 
-Context Engineering rộng hơn việc viết prompt tốt.
-
-Đây là bài toán engineering về chọn, truy xuất, tổ chức và duy trì thông tin mà LLM cần đúng tại thời điểm thực hiện một task. Model có Context Window rất lớn không có nghĩa application nên đưa mọi thứ vào; một AI system hoặc agent tốt cần xây dựng context chất lượng cao, liên quan với task một cách linh hoạt.
-
-Context construction là một lifecycle lặp: agent `Retrieve` các candidate, `Select` thông tin cần giữ, `Budget` capacity cho thông tin có giá trị nhất, chỉ `Compress` khi có lợi hoặc cần thiết, rồi `Assemble` context cho LLM. Model reason, agent act, preserve result/state quan trọng, release context đã obsolete và dùng evidence mới để retrieve lại. Vì vậy đây không phải thao tác build một prompt duy nhất ở đầu task; khi useful context lớn hơn budget, agent có thể tiến qua nhiều invocation thay vì giữ mọi thứ đồng thời trong Context Window.
-
-Context quality có thể được đánh giá có hệ thống thay vì chỉ dựa vào cảm giác. Tôi cần chẩn đoán riêng `Relevance`, `Sufficiency`, `Low Noise` và `Freshness / Correctness`, vì một overall score có thể che giấu dimension đang fail. Rubric với scoring level được định nghĩa rõ giúp semantic evaluation nhất quán hơn; `LLM-as-a-Judge` có thể tự động hóa việc đánh giá context ở quy mô lớn, nhưng judge chỉ là evaluator dựa trên evidence được cung cấp, không phải nguồn ground truth được đảm bảo.
-
-Sau khi chọn đúng information, tôi vẫn cần assemble, structure và order nó để model nhận ra role, priority, relationships và current state. Với iterative agent, structured working state giữ goal, known facts, hypothesis, changes và next action qua nhiều invocation; khi context conflict, cần phân biệt instruction authority với factual freshness/source of truth và thu thập thêm evidence thay vì đoán.
-
-Khi agent tạo wrong output, tôi cần inspect actual context trước khi blame model hoặc prompt. Context Observability cho biết model đã thấy gì; Context Tracing theo provenance qua retrieve, select, compress, assemble, model invocation và tool evidence để giải thích context đó hình thành thế nào. Chỉ nhìn final context không đủ phân biệt missing evidence do retrieve failure hay do candidate đã bị discard ở selection; trace qua nhiều vòng `Context₁ → Reason/Act → Context₂` giúp locate và fix đúng failure layer.
-
-Context metrics là signals theo từng lifecycle stage chứ không phải verdict. Token utilization cao chỉ nhắc tôi inspect quality; retrieval precision/recall không thay thế selection quality; compression cần giữ cả information lẫn faithful meaning; freshness nên gắn với state/version khi có thể. Tool call chỉ thực sự hữu ích khi nó tăng evidence, giảm uncertainty hoặc làm next action rõ hơn—không chỉ vì execution thành công.
+Mental model đã chốt: **Context Window = cái bàn; Context = thứ đặt trên bàn; Context Engineering = chọn đúng thứ đặt lên bàn.** Với agent thực tế, Context Manager là lớp application quyết định thứ gì cần xuất hiện cho **current decision**, không phải cố giữ toàn bộ task trong một invocation.
 
 ## My Experiment
 
-<ExperimentCard status="not-started">
-  Chưa thực hiện experiment trong learning session này.
-</ExperimentCard>
+**Status:** Planned
+
+**Hypothesis:** Coding agent dùng context được select theo current decision + compact working state sẽ ít noise và dễ debug hơn baseline append raw context.
+
+**Setup:** Xây minimal Context Manager v0 và so sánh raw context vs managed context trong cùng một coding scenario.
+
+**Result:** Chưa thực hiện.
+
+**Conclusion:** Chưa có applied evidence; xem [Practical Context Manager](./practical-context-manager.mdx).
 
 ## Related Knowledge
 
-Chưa có learning note liên quan trong knowledge base. Khi có canonical note về `RAG`, `Memory` hoặc `Coding Agent`, cần bổ sung liên kết hai chiều thay vì lặp lại nội dung tại đây.
+- [Context Engineering Map](./context-engineering-map.mdx) — canonical overview và learning path.
+- [Context Optimization](./context-optimization.mdx) — quality, budgeting, compression, assembly.
+- [Context Operations](./context-operations.mdx) — observability, metrics, freshness, security/trust.
+- [Practical Context Manager](./practical-context-manager.mdx) — application layer triển khai lifecycle qua nhiều invocation.
 
 ## Self-test
 
-<SelfTest items={[
-  {question: 'Context Engineering là gì?', answer: 'Là việc thiết kế và quản lý thông tin mà LLM hoặc AI agent cần tại thời điểm ra quyết định hay thực hiện task.'},
-  {question: 'Context khác Context Window như thế nào?', answer: 'Context là thông tin thực tế được cung cấp; Context Window là capacity tối đa cho thông tin đó trong một model invocation.'},
-  {question: 'Prompt Engineering khác Context Engineering như thế nào?', answer: 'Prompt Engineering tập trung vào cách hỏi hoặc chỉ dẫn; Context Engineering tập trung vào toàn bộ những gì model cần biết, trong đó prompt chỉ là một phần.'},
-  {question: 'Vì sao Context Window lớn hơn không thay thế Context Engineering?', answer: 'Capacity lớn hơn không tự chọn được thông tin liên quan và không loại bỏ noise.'},
-  {question: 'Vì sao quá nhiều context có thể làm giảm hiệu quả của model?', answer: 'Thông tin không liên quan tiêu tốn token, tạo noise và làm model khó tập trung vào tín hiệu quan trọng.'},
-  {question: 'Coding agent xây dựng context động như thế nào?', answer: 'Agent search, retrieve, đọc relevant files, chạy tools/tests, rồi filter và kết hợp kết quả cho lần quyết định tiếp theo.'},
-  {question: 'Vì sao custom agent nên tách Context Manager khỏi Model Adapter?', answer: 'Việc tách trách nhiệm giúp logic chọn context độc lập với khác biệt API và có thể tái sử dụng khi đổi model provider.'},
-  {question: 'Retrieve khác Select như thế nào?', answer: 'Retrieve tìm candidate information có thể hữu ích; Select đánh giá và chọn candidate thực sự phù hợp với quyết định hiện tại.'},
-  {question: 'Vì sao agent không nên đưa mọi candidate đã retrieve vào Context Window?', answer: 'Candidate có thể không liên quan, đã cũ, trùng lặp hoặc tốn quá nhiều token so với giá trị; đưa tất cả vào sẽ tạo noise và chiếm Context Window.'},
-  {question: 'Vì sao retrieval trong agent là iterative?', answer: 'Mỗi lần reason, act và observe có thể tạo evidence mới, làm thay đổi điều agent cần tìm cho bước tiếp theo.'},
-  {question: 'Coding agent có thể dùng những retrieval mechanism nào?', answer: 'Ví dụ gồm keyword/lexical search, Semantic Search, lần theo code structure và references, cùng evidence do tools tạo ra như tests, logs và previous tool results.'},
-  {question: 'Context Compression là gì?', answer: 'Là việc giảm token size của relevant context trong khi cố giữ đủ thông tin để quyết định tiếp theo vẫn đáng tin cậy.'},
-  {question: 'Compression khác Selection như thế nào?', answer: 'Selection quyết định thông tin nào sống sót; Compression biểu diễn thông tin sống sót bằng ít token hơn.'},
-  {question: 'Vì sao Summarization không đồng nghĩa với Compression?', answer: 'Summarization chỉ là một kỹ thuật; compression còn gồm deduplication, fact/error extraction, truncation và chuyển history thành structured working state.'},
-  {question: 'Thông tin nào thường nên được compress và thông tin nào nên được giữ nguyên?', answer: 'Old history, obsolete tool outputs, nội dung lặp và long logs thường nên compress; current request, critical constraints và precision-sensitive source code thường nên giữ nguyên.'},
-  {question: 'Rủi ro chính của lossy compression là gì?', answer: 'Nó có thể làm mất chi tiết hoặc evidence trở nên quan trọng ở bước sau.'},
-  {question: 'Ai thường kiểm soát compression trong kiến trúc AI agent?', answer: 'Application hoặc agent, thường qua Context Manager, xây dựng và quản lý context đưa vào model.'},
-  {question: 'Vì sao agent không nên chờ Context Window đầy hoàn toàn mới compress?', answer: 'Compression theo context/token budget giúp agent chủ động giữ đủ capacity và tránh phải xử lý khẩn cấp khi window đã đầy.'},
-  {question: 'Context Window khác Context Budgeting như thế nào?', answer: 'Context Window là capacity tối đa của một model invocation; Context Budgeting là quyết định cách phân bổ capacity sẵn có cho thông tin giá trị nhất. Budgeting không làm Context Window lớn hơn.'},
-  {question: 'Select, Budgeting và Compression khác nhau thế nào?', answer: 'Select quyết định giữ thông tin nào; Budgeting xác định capacity có bao nhiêu và thông tin nào xứng đáng chiếm capacity đó; Compression biểu diễn thông tin phải giữ bằng ít token hơn.'},
-  {question: 'Agent có thể làm gì khi minimum useful context lớn hơn available budget?', answer: 'Agent xử lý theo nhiều vòng: retrieve/select cho quyết định hiện tại, reason hoặc act, preserve result/state quan trọng, release context obsolete hoặc ít giá trị, retrieve thông tin cho quyết định tiếp theo và tiếp tục lifecycle. Không phải mọi useful information đều phải nằm trong Context Window cùng lúc.'},
-  {question: 'Sáu dimension của good context là gì?', answer: 'Relevant, sufficient, low noise, low redundancy, fresh và correct.'},
-  {question: 'Vì sao relevance phải được đánh giá theo current decision?', answer: 'Evidence mới có thể thay đổi điều agent cần biết; một file ít liên quan lúc đầu có thể trở nên rất relevant ở bước kế tiếp.'},
-  {question: 'Context relevant có đồng nghĩa với sufficient không?', answer: 'Không. AuthService có thể relevant với login bug nhưng agent vẫn cần request, stack trace, relevant code hoặc failing test để quyết định tiếp theo đáng tin cậy.'},
-  {question: 'Noise khác redundancy như thế nào?', answer: 'Noise không hữu ích cho current decision; redundancy là evidence hữu ích hoặc relevant bị lặp mà không thêm thông tin có ý nghĩa.'},
-  {question: 'Freshness khác correctness như thế nào?', answer: 'Freshness hỏi thông tin còn đại diện cho current state không; correctness hỏi bản thân thông tin có chính xác không.'},
-  {question: 'Vì sao agent phải refresh context sau khi act?', answer: 'Action có thể thay đổi source code, test result hoặc application state, khiến snapshot và tool result trước đó trở nên stale.'},
-  {question: 'Vì sao một overall context-quality score có thể gây hiểu nhầm?', answer: 'Average có thể che giấu một critical dimension đang fail. Context có relevance, low noise và freshness cao nhưng sufficiency bằng 0 vẫn không đủ evidence để ra quyết định đáng tin cậy.'},
-  {question: 'Evaluation rubric là gì?', answer: 'Là explicit evaluation criteria cùng các scoring level được định nghĩa rõ về mặt semantic cho từng dimension.'},
-  {question: 'Vì sao rubric 0–3 có definition rõ có thể tốt hơn thang 1–10 không định nghĩa?', answer: 'Judge có category rõ để đối chiếu với evidence, thay vì tự diễn giải khác biệt mơ hồ giữa các số như 7, 8 và 9; nhờ đó kết quả dễ hiểu và ổn định hơn.'},
-  {question: 'LLM-as-a-Judge là gì?', answer: 'Là dùng một LLM trong vai trò evaluator để đánh giá system output, retrieved context hoặc model response theo rubric đã định nghĩa. Trong topic này, judge đánh giá retrieved/assembled context và trả về dimension scores cùng reasons.'},
-  {question: 'Khi nào nên ưu tiên deterministic rules thay vì LLM Judge?', answer: 'Khi thuộc tính có thể được tính hoặc kiểm tra chính xác bằng code, như token length, timestamp, duplicate count hoặc schema validity. LLM Judge phù hợp hơn với semantic judgment như relevance hay sufficiency.'},
-  {question: 'Vì sao LLM Judge không thể xác minh correctness khi thiếu evidence hoặc ground truth?', answer: 'Judge chỉ reason trên input được cung cấp. Nếu không có authoritative source để đối chiếu, nó có thể đánh giá một claim có vẻ relevant hoặc current nhưng không thể chứng minh claim đó đúng.'},
-  {question: 'Select, Assemble và Order khác nhau như thế nào?', answer: 'Select quyết định giữ thông tin nào; Assemble quyết định kết hợp các phần đã chọn thành model context như thế nào; Order quyết định mỗi phần xuất hiện ở đâu để role và relationship rõ ràng.'},
-  {question: 'Vì sao chọn đúng information vẫn có thể tạo context kém?', answer: 'Nếu các phần bị trộn lẫn, thiếu structure hoặc không thể hiện priority và relationship, model có thể khó nhận ra constraint, evidence và current state dù tất cả đều có mặt.'},
-  {question: 'Có một context ordering universal cho mọi task không?', answer: 'Không. Ordering phụ thuộc current decision và architecture; debugging có thể đặt latest error gần relevant code, còn code generation có thể ưu tiên specifications và interfaces trước implementation context.'},
-  {question: 'Instruction authority khác factual freshness như thế nào?', answer: 'Authority xác định instruction hoặc constraint nào có quyền chi phối; freshness và proximity to source of truth giúp chọn factual claim phản ánh state đáng tin cậy nhất.'},
-  {question: 'Agent nên làm gì khi context conflict chưa thể resolve?', answer: 'Retrieve thêm evidence, chạy tool/test, inspect source of truth hoặc hỏi user thay vì đoán.'},
-  {question: 'Structured working state giúp iterative agent như thế nào?', answer: 'Nó giữ goal, known facts, current hypothesis, changes made và next action qua các invocation mà không phải giữ toàn bộ history, nhờ đó hỗ trợ compression và budgeting.'},
-  {question: 'Context Observability khác Context Tracing như thế nào?', answer: 'Context Observability trả lời model thực sự đã thấy gì; Context Tracing trả lời context đó hình thành và thay đổi qua retrieve, select, compress, assemble, tool evidence và các model invocation như thế nào.'},
-  {question: 'Năm context-debugging failure layer là gì?', answer: 'Retrieve failure, selection failure, compression failure, assembly failure và reasoning failure.'},
-  {question: 'Vì sao chỉ inspect final prompt/context là chưa đủ?', answer: 'Final snapshot có thể cho thấy evidence bị thiếu nhưng không cho biết nó chưa từng được retrieve hay đã được retrieve rồi bị discard hoặc làm mất detail ở một bước sau.'},
-  {question: 'Nếu coding agent đã retrieve policy file nhưng không đưa file đó vào model context rồi implement sai, đây là failure nào?', answer: 'Đây là selection failure. Cần sửa selection signal hoặc policy thay vì mặc định blame model, prompt hoặc retrieval.'},
-  {question: 'Vì sao token utilization cao không tự động có nghĩa là nên compress context?', answer: 'Utilization chỉ là signal để inspect quality. Chỉ nên compress hoặc evict khi có low-value context và vẫn có thể giữ đủ faithful information cho next decision.'},
-  {question: 'Retrieval precision/recall khác selection quality như thế nào?', answer: 'Retrieval precision/recall đánh giá evidence nào được tìm thấy; selection quality đánh giá useful candidates nào được giữ hoặc bị loại sau khi đã tìm thấy.'},
-  {question: 'Information retention và faithfulness trong compression khác nhau thế nào?', answer: 'Retention hỏi information quan trọng có còn đó không; faithfulness hỏi meaning của information được giữ có bị thay đổi không.'},
-  {question: 'Dấu hiệu nào cho thấy agent đang tool thrashing?', answer: 'Nhiều tool call execution thành công nhưng tạo ít information gain, evidence, actionability hoặc decision progress.'},
-  {question: 'Sáu distinction cốt lõi của Context Security là gì?', answer: 'Relevant ≠ Trusted; Instruction-like text ≠ Instruction; Instruction Authority ≠ Factual Authority; Data must not silently become Control; Trust requires Provenance; Tool Success ≠ Trusted Result.'},
-  {question: 'Instruction conflict và factual conflict được resolve khác nhau thế nào?', answer: 'Instruction conflict dùng authority rules và constraints; factual conflict dùng provenance, freshness, version/state và proximity to source of truth.'},
-  {question: 'Indirect prompt injection đi vào context bằng cách nào?', answer: 'Instruction độc hại ẩn trong retrieved documents, web content, repository content, issues, emails, RAG chunks hoặc tool outputs được đưa vào Context Window như data rồi cố chi phối model.'},
-  {question: 'Provenance tối thiểu cần giữ những gì?', answer: 'Nguồn, role, version/state, observation time và các transformation liên quan; compression cũng phải bảo toàn metadata decision-critical này cùng trust và authority.'},
-  {question: 'Vì sao delimiter UNTRUSTED CONTENT chưa đủ bảo vệ agent?', answer: 'Delimiter chỉ truyền đạt semantic boundary cho model; nó không enforce permissions, không xác minh content và không validate action.'},
-  {question: 'Defense in depth cho Context Security gồm những layer nào?', answer: 'Context classification/assembly, authority rules, provenance, tool permissions và action validation; LLM không bao giờ nên là security boundary duy nhất.'},
-]}/>
+1. `Context`, `Context Window` và `Context Engineering` khác nhau thế nào?
+2. Vì sao retrieval score không đủ để quyết định context?
+3. Một information hữu ích cho task có nhất thiết phải nằm trong mọi invocation không?
+4. Working State nên giữ gì và không nên thay thế cái gì?
+5. Khi agent vừa sửa code, vì sao old test output có thể phải bị evict?
+
+<details>
+<summary>Answers</summary>
+
+1. Context là information thực tế; Context Window là capacity; Context Engineering là decision process quản lý information chiếm capacity đó.
+2. Retrieval score chỉ tạo/xếp candidate theo retrieval signal; selection còn phụ thuộc current-decision usefulness, freshness, authority, redundancy và token cost.
+3. Không. Context nên thay đổi theo current decision; preserve important state, retrieve evidence khi cần.
+4. Giữ goal, constraints, verified findings, decisions, changes, questions, next actions; không thay thế raw evidence/provenance khi decision cần kiểm chứng.
+5. Vì state đã thay đổi; old result có thể stale và dẫn model đánh giá fix sai.
+
+</details>
