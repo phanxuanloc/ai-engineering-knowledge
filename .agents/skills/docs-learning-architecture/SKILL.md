@@ -1,6 +1,6 @@
 ---
 name: docs-learning-architecture
-description: Structure or refactor broad learning topics into concise, non-duplicative Docusaurus learning paths while preserving learned knowledge, canonical URLs, progress evidence, and useful diagrams. Use when a learning note becomes a monolith, when several related notes need a canonical map, or when reorganizing a completed/near-complete topic.
+description: Structure or refactor broad learning topics into concise, non-duplicative Docusaurus learning paths while preserving learned knowledge, canonical URLs, progress evidence, useful diagrams, and semantic navigation hierarchy.
 ---
 
 # Documentation Learning Architecture
@@ -16,6 +16,18 @@ When a topic contains several distinct sub-concepts, prefer this shape:
 3. **Practical / experiment article** — keep implementation, experiment setup, observations, and applied evidence separate when they form a distinct practical purpose.
 
 Do not create a fixed number of pages mechanically. Split only where a section can answer a distinct reader question and remain useful independently.
+
+## Promote broad topics into navigation groups
+
+Knowledge hierarchy and sidebar hierarchy should agree. Do not leave a broad topic's deep dives as peers of that topic's parent category merely because all files currently live in one directory.
+
+- When a broad topic grows to roughly 2–3 or more standalone articles with one shared mental model, consider promoting it to a nested sidebar/category group.
+- The broad topic should own its map/overview and its conceptual/practical children. Example: `AI Coding → Context Engineering → Foundations / Optimization / Operations / Practical Context Manager`.
+- Prefer the canonical map/overview as the clickable category landing page when it already provides orientation; do not add a redundant extra overview solely to make nesting work.
+- Preserve established public URLs when possible. Sidebar nesting does not require moving files or breaking URLs; use explicit Docusaurus sidebar categories when that is the smallest coherent change.
+- Move files into nested directories only when filesystem ownership or URL hierarchy provides real long-term value and redirects/link migration are handled deliberately.
+- Do not create one-item categories or deep nesting. Normally keep knowledge navigation to about 2–3 semantic levels: domain → broad topic → article.
+- Future broad topics should follow the same semantic pattern instead of accumulating every article at the domain root.
 
 ## Prevent monoliths and fragmentation
 
@@ -39,7 +51,7 @@ When splitting an existing canonical article:
 
 A documentation refactor is not new learning evidence by itself.
 
-- Do not increase `status`, `confidence`, or mastery merely because docs were split, polished, mapped, or diagrammed.
+- Do not increase `status`, `confidence`, or mastery merely because docs were split, polished, mapped, nested, or diagrammed.
 - Do not add a learning checkpoint for purely structural work.
 - Keep `learning-progress.yaml` pointing at a real canonical learning note and preserve experiment gaps.
 - Only learning discussion, self-test, review, implementation, or experiment evidence can justify progress promotion.
@@ -87,7 +99,7 @@ Do not use a `Pipeline` card component, ASCII arrows, Mermaid, Excalidraw, and R
 1. Read `AGENTS.md`, the learning note template, `learning-progress.yaml`, the whole topic, related practical notes, and diagram skills.
 2. Inventory concepts by **reader question**, not by existing heading.
 3. Identify duplicate explanations and choose one canonical home for each.
-4. Propose the smallest coherent article set.
+4. Propose the smallest coherent article set and decide whether the broad topic deserves a nested navigation group.
 5. Preserve the strongest established URL and repair links/navigation.
 6. Review every diagram: teaching job → classification → keep/remove/replace → validate.
 7. Validate all changed YAML front matter before build; quote ambiguous scalar strings.
@@ -99,6 +111,7 @@ Do not use a `Pipeline` card component, ASCII arrows, Mermaid, Excalidraw, and R
 A restructure is successful when:
 
 - a reader can recover the topic from the map without opening every article;
+- sidebar hierarchy reflects domain → broad topic → article instead of flattening child concepts at the domain root;
 - no deep-dive article tries to teach the whole broad topic again;
 - no learned concept disappears during condensation;
 - definitions and decision rules have one primary home;
