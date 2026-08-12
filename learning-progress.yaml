@@ -19,6 +19,14 @@ topics:
       - context-observability-and-debugging
       - context-metrics-and-signals
       - context-security-and-trust-boundaries
+    checkpoint_progress:
+      practical-context-manager:
+        status: learning
+        note: docs/ai-coding/practical-context-manager.mdx
+        learned_at: 2026-08-12
+        remaining:
+          - implement-minimal-context-manager-v0
+          - run-controlled-raw-context-vs-managed-context-experiment
     next_checkpoint: practical-context-manager
     experiments: []
     prerequisites: []
