@@ -1,0 +1,103 @@
+---
+title: Context Engineering Map
+description: Bản đồ canonical hệ thống hóa các mảnh kiến thức Context Engineering đã học và cách chúng liên kết thành một lifecycle.
+tags: [context-engineering, learning-map, ai-agent]
+sidebar_position: 2
+---
+
+# Context Engineering Map
+
+Trang này là **canonical map** để nhìn toàn bộ Context Engineering như một hệ thống. Nó không thay thế bài chi tiết; mục tiêu là giúp recall nhanh: model cần context nào, context được tìm/chọn/đóng gói ra sao, chất lượng được đánh giá thế nào, và hệ thống được quan sát/bảo vệ thế nào.
+
+## One Mental Model
+
+> **Context Window là cái bàn. Context là những thứ đặt trên bàn. Context Engineering là quyết định đúng thứ cần đặt lên bàn cho quyết định hiện tại.**
+
+Nguyên tắc xuyên suốt: **Relevant context > More context**. Context Window lớn hơn chỉ tăng capacity; nó không tự làm selection, budgeting hay quality tốt hơn.
+
+## Canonical Lifecycle
+
+`Sources → Retrieve → Candidates → Select → Budget → Compress when useful → Assemble → Context Window → LLM → Reason / Act → Observe → Update Working State → Evict obsolete context → next decision`
+
+Mỗi bước trả lời một câu hỏi khác nhau:
+
+| Stage | Câu hỏi chính |
+| --- | --- |
+| Sources | Thông tin có thể đến từ đâu? |
+| Retrieve | Candidate nào có thể hữu ích? |
+| Select | Candidate nào hữu ích cho **current decision**? |
+| Budget | Context nào xứng đáng chiếm capacity hữu hạn? |
+| Compress | Có thể giữ meaning cần thiết với ít token hơn không? |
+| Assemble | Context nên được tổ chức và đặt theo role/order nào? |
+| LLM | Model cần quyết định hoặc hành động gì ở invocation này? |
+| Observe | Context nào thực sự được dùng, thiếu, stale hoặc gây noise? |
+| Working State | Kết quả/constraint/state nào phải giữ qua invocation? |
+| Evict | Evidence nào đã obsolete, duplicate hoặc không còn cần thiết? |
+
+## Learning Path
+
+### 1. Foundations — Context, Context Window, Context Engineering
+
+Phân biệt **information**, **capacity** và **decision logic**. Prompt chỉ là một phần của context; context còn có instructions, history, memory, retrieved knowledge, source code, files, project rules, tool definitions/results và environment state.
+
+→ [Deep dive: Context Engineering](./context-engineering.mdx)
+
+### 2. Context Sources — What can become context?
+
+Nguồn thông tin chỉ tạo ra khả năng. Việc một file, memory, log hay tool result tồn tại không có nghĩa nó nên xuất hiện trong Context Window.
+
+### 3. Retrieve vs Select — Candidate generation is not context selection
+
+**Retrieve mở rộng**, **Select thu hẹp**. Retrieval score chỉ là một signal; selection cần xét usefulness cho current decision cùng relevance, freshness, redundancy, priority và token cost.
+
+### 4. Compression — Keep meaning, reduce representation cost
+
+Compression diễn ra sau khi đã biết information đáng giữ. Mục tiêu không phải context nhỏ nhất mà là **context nhỏ nhất vẫn đủ để next decision reliable**.
+
+### 5. Budgeting — Capacity is a ceiling, not a quota
+
+Budgeting phân bổ capacity cho information có giá trị nhất. Không cần lấp đầy Context Window. Khi task lớn hơn một invocation, chia task thành nhiều decision và preserve state quan trọng.
+
+### 6. Context Quality — Is the selected context good enough?
+
+Mental checklist:
+
+`Good Context = Relevant + Sufficient + Low Noise + Low Redundancy + Fresh + Correct`
+
+Selection tốt nhưng thiếu evidence vẫn thất bại; context đúng nhưng stale cũng có thể dẫn model tới quyết định sai.
+
+### 7. Assembly & Ordering — How should selected context be presented?
+
+Sau selection và budgeting, context vẫn cần được assemble theo role và intent rõ ràng: instructions/constraints, current task, evidence, working state và tool results. Ordering là một phần của context design, không phải cosmetic formatting.
+
+### 8. Observability — Can we see why context failed?
+
+Muốn debug agent, cần quan sát được context lifecycle thay vì chỉ nhìn final answer: retrieve gì, select gì, bỏ gì, token cost ra sao, evidence có fresh không, model đã nhận context nào.
+
+### 9. Metrics & Signals — How do we measure context behavior?
+
+Metrics biến intuition thành evidence: retrieval/selection signals, token usage, redundancy/noise, freshness, context utilization và các outcome liên quan. Metric không thay thế judgment; nó giúp phát hiện và so sánh behavior.
+
+### 10. Security & Trust Boundaries — Not all context is equally trusted
+
+Context có provenance và trust khác nhau. User input, retrieved web content, repository instructions và tool outputs không nên được coi như cùng một authority. Context Engineering phải giữ trust boundary rõ và tránh biến untrusted content thành instruction có quyền cao hơn.
+
+### 11. Practical Context Manager — Put the lifecycle into application logic
+
+Context Manager là application/agent layer thực thi các quyết định trên: quản lý `Context Item`, pinned/working/evictable context, selection, budget, Working State và eviction qua nhiều model invocation.
+
+→ [Practical Context Manager](./practical-context-manager.mdx)
+
+## The Three Distinctions to Remember
+
+1. **Context Manager ≠ Context Window** — một bên là decision logic, một bên là capacity.
+2. **Retrieve ≠ Select** — retrieval tạo options; selection tiêu context capacity.
+3. **Useful ≠ Simultaneous** — information hữu ích cho toàn task không cần cùng tồn tại trong một invocation.
+
+## Current Completion Boundary
+
+Phần conceptual learning đã bao phủ lifecycle chính và đã có checkpoint Practical Context Manager. Topic **chưa được nâng trạng thái** chỉ vì map này tồn tại: practical implementation/controlled experiment và final review/self-test vẫn là evidence riêng cần hoàn thành trước khi tăng mức progress.
+
+## Next Step
+
+Thực hiện **final review + self-test** trên toàn map để kiểm tra khả năng tự giải thích các distinction và áp dụng lifecycle vào một coding-agent scenario. Practical Context Manager experiment vẫn được giữ là phần applied evidence riêng, không được giả định là đã hoàn thành.

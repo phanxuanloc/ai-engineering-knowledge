@@ -19,6 +19,7 @@ topics:
       - context-observability-and-debugging
       - context-metrics-and-signals
       - context-security-and-trust-boundaries
+      - context-learning-path-systematized
     checkpoint_progress:
       practical-context-manager:
         status: learning
@@ -27,7 +28,7 @@ topics:
         remaining:
           - implement-minimal-context-manager-v0
           - run-controlled-raw-context-vs-managed-context-experiment
-    next_checkpoint: practical-context-manager
+    next_checkpoint: final-context-engineering-review-and-self-test
     experiments: []
     prerequisites: []
     related: []
