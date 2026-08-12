@@ -1,6 +1,6 @@
 ---
 title: Practical Context Manager
-description: Thiết kế Context Manager thực dụng cho coding agent bằng selection, budgeting, working state và eviction qua nhiều model invocation.
+description: Thiết kế và quan sát Context Manager thực dụng cho coding agent bằng selection, budgeting, working state và eviction.
 tags: [context-engineering, context-manager, coding-agent]
 sidebar_position: 3
 ---
@@ -14,6 +14,7 @@ import {
   SelfTest,
   TLDR,
 } from '@site/src/components/Learning';
+import ContextManagerPlayground from '@site/src/components/ContextManagerPlayground';
 
 # Practical Context Manager
 
@@ -21,7 +22,7 @@ import {
 
 <TLDR>
 
-`Context Manager` là lớp application/agent quyết định **model cần biết gì cho current decision**, chọn context nào đáng giữ, phân bổ token budget, compress khi cần, preserve working state và evict evidence đã obsolete. Nó không phải `Context Window`: Context Window chỉ là capacity tối đa của một model invocation.
+`Context Manager` là lớp application/agent quyết định **model cần biết gì cho current decision**. Nó chọn context, phân bổ token budget, preserve working state và evict evidence đã obsolete. Nó không phải `Context Window`: Context Window chỉ là capacity tối đa của một model invocation.
 
 Trong ví dụ xuyên suốt `Fix login 401`, agent không cần nhét toàn bộ repository, logs và history vào một lần gọi model. Nó cần giữ đúng task state, đưa đúng evidence vào đúng decision, rồi thay context khi task tiến triển.
 
@@ -53,25 +54,13 @@ Một thông tin có thể hữu ích cho toàn task nhưng không cần xuất 
 
 Context Manager nên làm việc với các `Context Item` thay vì một khối prompt không có cấu trúc. Một item có thể là user request, repository rule, source file fragment, test result, log excerpt, tool output hoặc working-state record.
 
-Metadata/signals hữu ích tùy item gồm:
-
-- `source`: item đến từ user, repository, file, test, log hay tool nào.
-- `type`: instruction, constraint, code, evidence, working-state, tool-result...
-- `relevance`: mức liên quan tới current decision.
-- `priority`: mức nên được giữ khi phải cạnh tranh capacity.
-- `freshness`: item có còn phản ánh current state không.
-- `tokenCost`: chi phí context ước tính.
-- `confidence`: mức tin cậy của interpretation hoặc extracted finding khi phù hợp.
-
-Với `Fix login 401`, `AuthFilter.ts` có thể relevance cao, một log 401 mới có freshness cao, project rule `do not bypass authentication` có priority rất cao, còn một test output từ trước khi sửa code có thể nhanh chóng trở thành stale.
+Metadata/signals hữu ích tùy item gồm `source`, `type`, `relevance`, `priority`, `freshness`, `tokenCost` và `confidence` khi phù hợp. Với `Fix login 401`, `AuthService.ts` có thể relevance cao, một log 401 mới có freshness cao, repository auth rule có priority rất cao, còn một design note cũ có thể nhanh chóng trở thành stale.
 
 ### Retrieval score tạo candidates; selection mới quyết định context
 
 Retrieval trả về **candidate items**. Retrieval score chỉ là một signal cho biết item có vẻ liên quan với query; nó không tự trả lời item có nên vào model context cho current decision hay không.
 
 Selection nên kết hợp nhiều tín hiệu: relevance, current-decision usefulness, priority, freshness, confidence/source quality khi cần, redundancy và token cost.
-
-Ví dụ search `401 jwt` có thể xếp `README authentication setup` cao vì lexical match. Nhưng khi agent đã biết failure xảy ra trong runtime validation, một fresh stack trace và `JwtVerifier.ts` có thể hữu ích hơn cho decision hiện tại dù retrieval score thấp hơn.
 
 <ImportantDistinction title="Retrieve creates options; Select spends capacity">
   Retrieval mở rộng tập candidates. Selection quyết định candidate nào thực sự đáng chiếm Context Window cho bước tiếp theo.
@@ -100,34 +89,23 @@ Ví dụ search `401 jwt` có thể xếp `README authentication setup` cao vì 
   ]}
 />
 
-Trong `Fix login 401`, user goal và repository auth rules thường là pinned. `JwtVerifier.ts` và latest failing test là working context khi đang chẩn đoán JWT. Full search listing hoặc old logs trở thành evictable sau khi nguyên nhân đã được thu hẹp.
-
 ### Practical context budgeting
 
-Budgeting trả lời: **với capacity có hạn, nên dành bao nhiêu chỗ cho information nào để quyết định tiếp theo đủ reliable?**
+Budgeting trả lời: **với capacity có hạn, nên dành bao nhiêu chỗ cho information nào để quyết định tiếp theo đủ reliable?** Budget không phải mục tiêu sử dụng. Nếu pinned context + vài relevant items đã sufficient, Context Manager nên dừng dù Context Window vẫn còn chỗ.
 
-Budget không phải mục tiêu sử dụng. Nếu pinned context + 3 relevant items chỉ cần 6K token trong một window lớn hơn nhiều, Context Manager không nên thêm 20K token “cho đủ”. Capacity còn trống là bình thường.
-
-Một policy đơn giản có thể:
+Một policy v0 có thể:
 
 1. Reserve pinned context trước.
-2. Ưu tiên decision-critical evidence.
-3. Loại duplicate/stale/low-value items.
-4. Compress item lớn chỉ khi vẫn giữ được facts cần thiết.
-5. Dừng thêm context khi current decision đã sufficient, dù budget chưa đầy.
+2. Loại stale hoặc clearly irrelevant items.
+3. Score các selectable candidates theo nhiều signal.
+4. Chọn item tốt nhất khi còn budget.
+5. Dừng khi current decision đã sufficient hoặc chạm ceiling.
 
 ### Useful does not mean simultaneous
 
 Task lớn nên được giải qua nhiều model invocation. Mỗi invocation chỉ cần context đủ cho **next decision**, còn important state được preserve giữa các vòng.
 
-`Fix login 401` có thể tách thành:
-
-- Invocation A: locate authentication failure path.
-- Invocation B: inspect JWT validation và form hypothesis.
-- Invocation C: choose minimal fix dựa trên verified evidence.
-- Invocation D: inspect diff + test result và decide whether the fix is complete.
-
-Source files hữu ích ở A không nhất thiết phải tiếp tục tồn tại ở D. Cái cần preserve là findings/decisions đã được xác minh và state cần để tiếp tục task.
+`Fix login 401` có thể tách thành locate failure path → inspect JWT validation → choose minimal fix → verify diff/tests. Source files hữu ích ở vòng đầu không nhất thiết phải tiếp tục tồn tại ở vòng cuối.
 
 <KeyInsight title="Useful does not mean simultaneous">
   Information hữu ích cho toàn bộ task không đồng nghĩa phải giữ trong cùng một Context Window. Preserve state, refresh evidence và assemble lại context theo từng decision.
@@ -135,26 +113,13 @@ Source files hữu ích ở A không nhất thiết phải tiếp tục tồn t�
 
 ### Working State: bộ nhớ tác nghiệp giữa các invocation
 
-`Working State` nên là structured state nhỏ, dễ inspect và cập nhật. Với coding agent, nó có thể giữ:
-
-- `goal`: sửa login 401 mà không bypass authentication.
-- `constraints`: giữ public API, tuân project rules, chỉ sửa scope cần thiết.
-- `findings`: 401 phát sinh sau JWT verification; request tới đúng route.
-- `decisions`: tập trung inspect issuer validation thay vì session storage.
-- `changesMade`: cập nhật issuer normalization trong `JwtVerifier.ts`.
-- `unresolvedQuestions`: production issuer format có giống test fixture không?
-- `nextActions`: chạy focused auth tests và replay failing request.
+`Working State` nên là structured state nhỏ, dễ inspect và cập nhật. Với coding agent, nó có thể giữ `goal`, `constraints`, `findings`, `decisions`, `changesMade`, `unresolvedQuestions` và `nextActions`.
 
 Working State không thay thế raw evidence. Nó giúp carry forward state quan trọng mà không phải giữ toàn bộ history/tool output.
 
 ### Raw evidence phải tách khỏi model interpretation
 
-Context Manager cần phân biệt:
-
-- **Raw evidence / facts:** test output, exact log line, source code, config value, HTTP response.
-- **Interpretation:** hypothesis, summary, inferred cause hoặc compressed finding do model tạo ra.
-
-Ví dụ raw evidence nói `expected issuer=https://api.example.com` và token chứa `iss=https://api.example.com/`. Model có thể interpret rằng trailing slash gây 401. Interpretation này hữu ích để quyết định inspect code, nhưng chưa phải truth cho tới khi code/test xác minh.
+Context Manager cần phân biệt raw evidence/facts với model interpretation. Ví dụ exact test output hoặc code là evidence; hypothesis rằng trailing slash ở issuer gây 401 là interpretation cho tới khi được code/test xác minh.
 
 <ImportantDistinction title="Evidence ≠ Interpretation">
   Compression hoặc Working State không được biến một assumption thành fact. Giữ provenance/label đủ rõ để biết đâu là observed evidence và đâu là model interpretation.
@@ -162,16 +127,7 @@ Ví dụ raw evidence nói `expected issuer=https://api.example.com` và token c
 
 ### Eviction policy
 
-Eviction không có nghĩa quên task. Nó có nghĩa giải phóng context không còn hữu ích trong khi preserve state quan trọng.
-
-Sau khi fix được verify, Context Manager có thể evict:
-
-- long initial search output;
-- duplicate 401 logs;
-- old test failures từ trước code change;
-- source fragments không còn liên quan tới final verification.
-
-Nhưng nên preserve task goal, constraints, verified root cause, decision, changes made và final verification state cho tới khi task hoàn tất.
+Eviction không có nghĩa quên task. Nó có nghĩa giải phóng context không còn hữu ích trong khi preserve state quan trọng. Sau khi fix được verify, long initial search output, duplicate logs, old failures và superseded source fragments có thể bị evict; task goal, constraints, verified root cause và final verification state vẫn phải được giữ tới khi task hoàn tất.
 
 ### Complete lifecycle
 
@@ -179,46 +135,21 @@ Lifecycle thực dụng cho mỗi decision là:
 
 `Current Decision → Retrieve → Context Items → Score/Priority → Select → Budget → Compress → Assemble → LLM → Reason/Act → Update Working State → Evict obsolete context → next decision`
 
-Áp vào `Fix login 401`:
-
-1. **Current Decision:** xác định 401 phát sinh ở route, middleware hay token validation.
-2. **Retrieve:** search auth path, đọc error mới, inspect relevant files.
-3. **Context Items:** biến findings, code, logs và rules thành items có metadata.
-4. **Score/Priority:** đánh giá relevance, freshness, priority, token cost và các signal cần thiết.
-5. **Select:** chọn evidence hữu ích nhất cho decision hiện tại.
-6. **Budget:** bảo đảm selected set nằm dưới ceiling; không cố lấp đầy.
-7. **Compress:** rút gọn long logs/history khi có thể mà vẫn giữ decision-critical evidence.
-8. **Assemble:** đặt pinned context, raw evidence, interpretation và working state vào role rõ ràng.
-9. **LLM → Reason/Act:** model quyết định inspect/chạy tool/sửa code.
-10. **Update Working State:** ghi findings, decisions, changes, unresolved questions và next action.
-11. **Evict obsolete context:** bỏ evidence/tool output đã superseded hoặc không còn hữu ích.
-12. **Next decision:** build một context mới cho bước kế tiếp thay vì kéo nguyên toàn bộ context cũ.
-
 ## Example
 
-Một Context Manager v0 chưa cần ranking model phức tạp. Pseudocode đủ để thể hiện ownership:
+Một Context Manager v0 chưa cần ranking model phức tạp. Policy dưới đây đủ để làm rõ ownership: mandatory items luôn được giữ; selectable items bị lọc theo freshness/relevance, được score rồi lấy lần lượt trong token budget.
 
 ```ts
-type ContextItem = {
-  id: string;
-  source: string;
-  type: 'instruction' | 'constraint' | 'code' | 'evidence' | 'working-state';
-  content: string;
-  relevance: number;
-  priority: number;
-  freshness: number;
-  tokenCost: number;
-  pinned?: boolean;
-};
+function score(item: ContextItem) {
+  return item.relevance * 0.5 + item.priority * 0.3 + item.freshness * 0.2;
+}
 
-function buildContext(items: ContextItem[], budget: number) {
-  const pinned = items.filter((item) => item.pinned);
+function select(items: ContextItem[], budget: number) {
+  const pinned = items.filter((item) => item.kind === 'mandatory');
   const candidates = items
-    .filter((item) => !item.pinned)
-    .sort((a, b) =>
-      (b.relevance + b.priority + b.freshness) -
-      (a.relevance + a.priority + a.freshness),
-    );
+    .filter((item) => item.kind === 'selectable')
+    .filter((item) => item.freshness >= 0.25 && item.relevance >= 0.3)
+    .sort((a, b) => score(b) - score(a));
 
   const selected = [...pinned];
   let used = pinned.reduce((sum, item) => sum + item.tokenCost, 0);
@@ -233,14 +164,15 @@ function buildContext(items: ContextItem[], budget: number) {
 }
 ```
 
-Đây chỉ là v0 để test lifecycle. Production policy cần xử lý redundancy, trust/provenance, confidence calibration, per-type budget, compression và richer selection. Điểm quan trọng là **retrieval result không tự động trở thành model context**.
+### Interactive Context Manager v0
 
-Với `Fix login 401`, controlled experiment tiếp theo sẽ chạy cùng một task theo hai mode:
+Playground dưới đây chạy đúng một policy deterministic, không gọi LLM và không dùng Vector Database. Mục tiêu là quan sát **cách Context Manager sử dụng signals và budget**, không phải mô phỏng trí thông minh của model.
 
-- **Raw-context baseline:** đưa broad retrieved context/tool history vào model với ít management.
-- **Managed-context:** Context Items + pinned state + explicit selection/budget + Working State + eviction.
+<ContextManagerPlayground />
 
-Giữ model/task/tools tương đương và so sánh token usage, irrelevant context, số vòng/tool call, evidence quality và khả năng tìm/verify root cause.
+Thử ba thao tác: giảm budget xuống gần `1,500`, tăng relevance của một item thấp, rồi giảm freshness của một item đang được chọn. Quan sát item nào bị loại và lý do thay đổi. Điểm cần nhìn thấy là retrieval vẫn có thể trả về tất cả candidates, nhưng Context Manager chỉ spend capacity cho một subset phù hợp current decision.
+
+Đây vẫn chỉ là v0. Production policy còn cần redundancy handling, trust/provenance, confidence calibration, per-type budget, compression và richer selection.
 
 ## When to Use
 
@@ -265,16 +197,16 @@ Giữ model/task/tools tương đương và so sánh token usage, irrelevant con
 
 Context Manager là responsibility của application/agent layer: nó quyết định model cần information nào cho current decision, không phải chỉ nối tất cả retrieved content thành prompt. Context Window là capacity; Context Manager là policy sử dụng capacity đó.
 
-Practical unit nên là Context Item có metadata đủ để selection không phụ thuộc một retrieval score duy nhất. Pinned context giữ goal/critical constraints; working context thay đổi theo decision; evictable context được release khi superseded. Budget là ceiling, không phải quota phải fill.
+Practical unit là Context Item có metadata đủ để selection không phụ thuộc một retrieval score duy nhất. Pinned context giữ goal/critical constraints; working context thay đổi theo decision; evictable context được release khi superseded. Budget là ceiling, không phải quota phải fill.
 
-Với task lớn như `Fix login 401`, agent có thể tiến qua nhiều invocation và chỉ preserve Working State quan trọng gồm goal, constraints, findings, decisions, changes made, unresolved questions và next actions. Raw evidence cần tách khỏi interpretation để hypothesis sau compression không bị biến thành truth.
-
-Checkpoint này mới chốt mental model và design của Practical Context Manager. Chưa có implementation/experiment để chứng minh policy thực sự cải thiện context quality.
+V0 đã biến mental model thành một implementation deterministic có thể inspect: thay relevance, freshness hoặc budget sẽ làm selected/rejected context đổi theo policy. Điều này chứng minh ownership của Context Manager ở application layer, nhưng **chưa chứng minh managed context tốt hơn raw context trong một coding task thật**.
 
 ## My Experiment
 
-<ExperimentCard status="not-started">
-  **Next step:** implement minimal `Context Manager v0`, sau đó chạy controlled `raw-context vs managed-context` experiment trên cùng một `Fix login 401` task. Chưa có result nên Practical Context Manager chưa được coi là complete.
+<ExperimentCard status="in-progress" title="Context Manager v0">
+  **Implemented:** interactive deterministic Context Manager v0 cho scenario `Fix login 401`. Playground cho phép thay token budget, relevance và freshness; nó hiển thị pipeline selection, score, selected/rejected reasons và final Context Window.
+
+  **Remaining:** chạy controlled `raw-context vs managed-context` experiment trên cùng task/model/tools và ghi lại token usage, irrelevant context, số vòng/tool call, evidence quality và khả năng tìm/verify root cause.
 </ExperimentCard>
 
 ## Related Knowledge
@@ -297,7 +229,6 @@ Checkpoint này mới chốt mental model và design của Practical Context Man
   {question: 'Useful does not mean simultaneous nghĩa là gì?', answer: 'Information có thể hữu ích ở các giai đoạn khác nhau của task nhưng không cần cùng tồn tại trong một model invocation; agent preserve important state và rebuild context cho từng decision.'},
   {question: 'Working State nên giữ những gì?', answer: 'Goal, constraints, findings, decisions, changes made, unresolved questions và next actions.'},
   {question: 'Vì sao phải tách raw evidence khỏi interpretation?', answer: 'Để hypothesis/summary do model tạo không mất provenance rồi bị dùng như observed truth ở vòng sau.'},
-  {question: 'Eviction policy tốt phải bảo vệ điều gì?', answer: 'Preserve task-critical state và verified findings trong khi release obsolete evidence, duplicate logs và superseded tool outputs.'},
-  {question: 'Lifecycle đầy đủ của Context Manager là gì?', answer: 'Current Decision → Retrieve → Context Items → Score/Priority → Select → Budget → Compress → Assemble → LLM → Reason/Act → Update Working State → Evict obsolete context → next decision.'},
-  {question: 'Điều gì còn thiếu trước khi Practical Context Manager hoàn tất?', answer: 'Implement minimal Context Manager v0 và chạy controlled raw-context vs managed-context experiment với evidence/result thực tế.'},
+  {question: 'V0 hiện chứng minh được gì?', answer: 'Nó chứng minh selection/budget policy có thể được implement và inspect ở application layer; chưa chứng minh managed context cải thiện outcome trên coding task thật.'},
+  {question: 'Điều gì còn thiếu trước khi Practical Context Manager hoàn tất?', answer: 'Controlled raw-context vs managed-context experiment với evidence/result thực tế.'},
 ]}/>
