@@ -17,6 +17,8 @@ const stateLabel: Record<ContextItemState, string> = {
   rejected: 'Rejected',
 };
 
+type MobileTab = 'window' | 'state' | 'outside';
+
 function ContextItem({item}: {item: ContextItemSnapshot}) {
   return (
     <details className={styles.contextItem} data-state={item.state}>
@@ -41,6 +43,7 @@ export default function ContextManagerPlayground() {
   const [playing, setPlaying] = useState(false);
   const [showAllOutside, setShowAllOutside] = useState(false);
   const [showAllState, setShowAllState] = useState(false);
+  const [mobileTab, setMobileTab] = useState<MobileTab>('window');
   const step = lifecycleSteps[stepIndex];
   const usage = getUsagePercent(step);
   const freeTokens = Math.max(0, step.budget - step.usedTokens);
@@ -58,6 +61,7 @@ export default function ContextManagerPlayground() {
   useEffect(() => {
     setShowAllOutside(false);
     setShowAllState(false);
+    setMobileTab('window');
   }, [stepIndex]);
 
   const visibleGroups = useMemo(() => {
@@ -112,7 +116,11 @@ export default function ContextManagerPlayground() {
               key={candidate.id}
               className={styles.timelineStep}
               data-state={index < stepIndex ? 'done' : index === stepIndex ? 'active' : 'idle'}
-              onClick={() => { setPlaying(false); setStepIndex(index); }}>
+              onClick={(event) => {
+                setPlaying(false);
+                setStepIndex(index);
+                event.currentTarget.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'center'});
+              }}>
               <span>{index + 1}</span>
               <strong>{candidate.phase.replace(/^\d+ · /, '')}</strong>
             </button>
@@ -151,8 +159,20 @@ export default function ContextManagerPlayground() {
         </div>
       )}
 
-      <div className={styles.flowGrid}>
-        <section className={styles.contextColumn}>
+      <div className={styles.mobileTabs} role="tablist" aria-label="Context views">
+        <button type="button" role="tab" aria-selected={mobileTab === 'window'} data-active={mobileTab === 'window'} onClick={() => setMobileTab('window')}>
+          Window <span>{visibleGroups.active.length}</span>
+        </button>
+        <button type="button" role="tab" aria-selected={mobileTab === 'state'} data-active={mobileTab === 'state'} onClick={() => setMobileTab('state')}>
+          State <span>{step.workingState.length}</span>
+        </button>
+        <button type="button" role="tab" aria-selected={mobileTab === 'outside'} data-active={mobileTab === 'outside'} onClick={() => setMobileTab('outside')}>
+          Outside <span>{visibleGroups.outside.length}</span>
+        </button>
+      </div>
+
+      <div className={styles.flowGrid} data-mobile-tab={mobileTab}>
+        <section className={`${styles.contextColumn} ${styles.windowPanel}`}>
           <div className={styles.sectionHeading}>
             <div>
               <div className={styles.eyebrow}>Inside model input</div>
@@ -165,7 +185,7 @@ export default function ContextManagerPlayground() {
           </div>
         </section>
 
-        <aside className={styles.stateColumn}>
+        <aside className={`${styles.stateColumn} ${styles.statePanel}`}>
           <div className={styles.sectionHeading}>
             <div>
               <div className={styles.eyebrow}>Cross-invocation memory</div>
@@ -184,7 +204,7 @@ export default function ContextManagerPlayground() {
           <div className={styles.arrowNote}>↓ feeds next decision, not whole history</div>
         </aside>
 
-        <section className={styles.outsideColumn}>
+        <section className={`${styles.outsideColumn} ${styles.outsidePanel}`}>
           <div className={styles.sectionHeading}>
             <div>
               <div className={styles.eyebrow}>Outside current window</div>
