@@ -1,0 +1,48 @@
+---
+title: Context Manager A/B Experiment
+description: Guided raw-context vs managed-context experiment để quan sát trade-off giữa peak context, noise, số model call và total tokens.
+tags: [context-engineering, context-manager, experiment]
+sidebar_position: 4
+---
+
+import ContextManagerABExperiment from '@site/src/components/ContextManagerABExperiment';
+import {ImportantDistinction, KeyInsight, TLDR} from '@site/src/components/Learning';
+
+# Context Manager A/B Experiment
+
+## TL;DR
+
+<TLDR>
+
+Experiment này chỉ làm một việc: cho **cùng một bug `login 401`** đi qua hai cách cung cấp context.
+
+- `Raw Context`: đưa gần như mọi thứ vào một model call lớn.
+- `Managed Context`: chia task thành nhiều decision nhỏ; mỗi call chỉ nhận context cần cho decision hiện tại và carry forward Working State quan trọng.
+
+Mục tiêu không phải chứng minh Managed luôn ít token hơn. Mục tiêu là quan sát trade-off giữa **peak Context Window**, **noise**, **số model call** và **total token**.
+
+</TLDR>
+
+## Guided Experiment
+
+<ContextManagerABExperiment />
+
+Hãy xem `A · Raw` trước. Raw chỉ có một call: task, code, logs, history và vài file không liên quan cùng nằm trong model input. Nó đơn giản và có thể dùng ít total token hơn vì chỉ gọi model một lần, nhưng peak context lớn và có noise.
+
+Sau đó chuyển sang `B · Managed` và đi lần lượt ba call. Mỗi call chỉ trả lời một câu hỏi nhỏ: failure ở đâu → root cause là gì → fix nào nhỏ nhất và verify ra sao. Kết luận quan trọng được preserve sang Working State; source/evidence không còn cần cho next decision không phải tiếp tục nằm trong Context Window.
+
+<ImportantDistinction title="Peak context ≠ total tokens">
+  Managed Context có thể giảm kích thước context của **mỗi invocation** nhưng tổng token của cả task vẫn cao hơn vì có nhiều model call. Vì vậy đánh giá Context Manager chỉ bằng token reduction là sai.
+</ImportantDistinction>
+
+<KeyInsight title="Điều experiment này muốn bạn nhìn thấy">
+  Raw hỏi model giải cả bài với một chiếc bàn rất đầy. Managed đổi chiếc bàn theo từng quyết định: giữ mục tiêu và kết luận quan trọng, nhưng thay evidence khi task tiến triển.
+</KeyInsight>
+
+## What This Proves — And What It Does Not
+
+Đây là **deterministic teaching fixture**. Các con số token và outcome được cố định để bạn học cách đọc một A/B experiment, nên nó chưa chứng minh model thật sẽ tốt hơn khi dùng Managed Context.
+
+Một controlled benchmark thật sẽ giữ nguyên `task + model + tools + repository fixture`, chạy Raw và Managed nhiều lần, rồi đo outcome thực tế như root-cause correctness, test pass rate, peak context, total tokens, irrelevant context và số tool/model call.
+
+Sau khi mental model này rõ, benchmark thật mới đáng làm. Nếu chưa hiểu được guided experiment thì chạy model thật chỉ tạo thêm log và số liệu nhưng không giúp hiểu Context Manager hơn.
