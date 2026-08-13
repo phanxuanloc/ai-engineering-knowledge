@@ -1,0 +1,263 @@
+.experiment {
+  margin: 1.4rem 0 2rem;
+  padding: .9rem;
+  border: 1px solid var(--learning-border);
+  border-radius: var(--learning-radius);
+  background: var(--learning-surface);
+  box-shadow: var(--learning-shadow);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.header h3 {
+  margin: .12rem 0 .25rem;
+}
+
+.header p {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--ifm-font-color-secondary);
+  font-size: .82rem;
+}
+
+.eyebrow {
+  color: var(--learning-active);
+  font-size: .66rem;
+  font-weight: 760;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.modeSwitch {
+  display: flex;
+  flex-shrink: 0;
+  gap: .35rem;
+}
+
+.modeSwitch button,
+.stepper button {
+  border: 1px solid var(--learning-border);
+  background: var(--learning-subtle-surface);
+  color: var(--ifm-font-color-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.modeSwitch button {
+  padding: .48rem .65rem;
+  border-radius: 8px;
+  font-size: .72rem;
+  font-weight: 750;
+}
+
+.modeSwitch button[data-active='true'],
+.stepper button[data-active='true'] {
+  border-color: var(--learning-active-border);
+  background: var(--learning-active-soft);
+  color: var(--learning-active);
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .45rem;
+  margin: .8rem 0;
+}
+
+.metricGrid div {
+  display: grid;
+  gap: .1rem;
+  padding: .5rem;
+  border: 1px solid var(--learning-border);
+  border-radius: 8px;
+  background: var(--learning-subtle-surface);
+}
+
+.metricGrid span {
+  color: var(--ifm-font-color-secondary);
+  font-size: .62rem;
+}
+
+.metricGrid strong {
+  font-size: .82rem;
+}
+
+.stepper {
+  display: flex;
+  gap: .35rem;
+  overflow-x: auto;
+  padding-bottom: .15rem;
+  scrollbar-width: none;
+}
+
+.stepper::-webkit-scrollbar { display: none; }
+
+.stepper button {
+  flex: 0 0 auto;
+  padding: .38rem .52rem;
+  border-radius: 8px;
+  font-size: .66rem;
+  font-weight: 700;
+}
+
+.stepper span {
+  display: inline-flex;
+  width: 1.05rem;
+  height: 1.05rem;
+  align-items: center;
+  justify-content: center;
+  margin-right: .28rem;
+  border-radius: 999px;
+  background: var(--learning-border);
+  font-size: .56rem;
+}
+
+.currentStep {
+  margin-top: .55rem;
+  padding: .65rem;
+  border: 1px solid var(--learning-active-border);
+  border-radius: 9px;
+  background: var(--learning-active-soft);
+}
+
+.decision {
+  display: grid;
+  gap: .08rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid var(--learning-border);
+}
+
+.decision span,
+.decision small {
+  color: var(--ifm-font-color-secondary);
+  font-size: .62rem;
+}
+
+.decision strong {
+  font-size: .8rem;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .55rem;
+  margin-top: .55rem;
+}
+
+.columns > div {
+  padding: .5rem;
+  border: 1px solid var(--learning-border);
+  border-radius: 8px;
+  background: var(--learning-surface);
+}
+
+.columns h4 {
+  margin: 0 0 .3rem;
+  font-size: .72rem;
+}
+
+.columns ul {
+  display: grid;
+  gap: .18rem;
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.columns li,
+.columns p {
+  margin: 0;
+  color: var(--ifm-font-color-secondary);
+  font-size: .65rem;
+  line-height: 1.35;
+}
+
+.noiseColumn {
+  border-style: dashed !important;
+}
+
+.outcome {
+  display: flex;
+  gap: .45rem;
+  margin-top: .5rem;
+  padding: .48rem .55rem;
+  border-radius: 8px;
+  background: var(--learning-surface);
+  font-size: .7rem;
+}
+
+.outcome span {
+  color: var(--ifm-font-color-secondary);
+}
+
+.comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .45rem;
+  margin-top: .65rem;
+}
+
+.comparison div {
+  display: grid;
+  gap: .15rem;
+  padding: .55rem;
+  border: 1px solid var(--learning-border);
+  border-radius: 8px;
+  background: var(--learning-subtle-surface);
+}
+
+.comparison strong {
+  font-size: .72rem;
+}
+
+.comparison span {
+  color: var(--ifm-font-color-secondary);
+  font-size: .64rem;
+  line-height: 1.4;
+}
+
+.disclaimer {
+  margin: .55rem 0 0;
+  color: var(--ifm-font-color-secondary);
+  font-size: .62rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 650px) {
+  .experiment {
+    margin-left: -.45rem;
+    margin-right: -.45rem;
+    padding: .65rem;
+  }
+
+  .header {
+    display: grid;
+  }
+
+  .modeSwitch {
+    width: 100%;
+  }
+
+  .modeSwitch button {
+    flex: 1;
+    min-height: 38px;
+  }
+
+  .metricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .columns,
+  .comparison {
+    grid-template-columns: 1fr;
+  }
+
+  .outcome {
+    display: grid;
+    gap: .12rem;
+  }
+}
