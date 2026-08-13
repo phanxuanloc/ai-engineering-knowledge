@@ -13,7 +13,7 @@ import {ImportantDistinction, Principle, TLDR} from '@site/src/components/Learni
 
 <TLDR>
 
-Evaluation đo một AI system **thực hiện task tốt đến đâu**, không chỉ kiểm tra execution có hoàn tất hay không. Bắt đầu từ success criteria của task, xây dataset đại diện cho production, chọn evaluator phù hợp, tổng hợp thành metrics, rồi xem các failure theo slice thay vì chỉ nhìn overall score.
+Evaluation đo một AI system **thực hiện task tốt đến đâu**, không chỉ kiểm tra execution có hoàn tất hay không. Bắt đầu từ success criteria của task, xây dataset vừa phản ánh production vừa bao phủ rủi ro quan trọng, chọn evaluator phù hợp, tổng hợp thành metrics, rồi xem failure theo slice thay vì chỉ nhìn overall score.
 
 </TLDR>
 
@@ -39,17 +39,65 @@ Một output tốt có thể cần **correctness, relevance, completeness, safet
 
 Ví dụ, một Coding Agent sửa bug cần ưu tiên correctness và regression risk. Với security fix, safety có thể là release gate. Với refactor trong hot path, performance và maintainability mới trở thành criteria quan trọng.
 
-### Eval Dataset phải đại diện cho production
+### Test Case mô tả điều kiện thành công, không nhất thiết là exact answer
 
-Eval Dataset nên chứa:
+Với open-ended AI system, mental model hữu ích cho một test case là:
 
-- **common cases:** behavior thường gặp trong production;
-- **edge cases:** input hoặc state hiếm nhưng hợp lệ;
-- **critical/risky cases:** failure có impact lớn, như bypass authorization, data loss hoặc performance degradation nghiêm trọng.
+**Situation/Input → Success Criteria → Evaluators → Result**
+
+Nhiều outputs khác nhau có thể cùng hợp lệ, nên expected behavior có thể được mô tả bằng criteria và constraints thay vì một reference output duy nhất. Với task refactor, success có thể là giữ nguyên behavior, pass existing tests, cải thiện maintainability hoặc coupling khi đo được, và không phá public contract. Ép implementation khớp exact reference patch sẽ đánh trượt những lời giải khác nhưng vẫn đúng.
+
+### Eval Dataset cần coverage có chủ đích
+
+Eval Dataset là tập hợp được thiết kế để đại diện cho những tình huống system phải xử lý, không chỉ là một collection lớn lấy mẫu ngẫu nhiên. Với Coding Agent, các slices có ý nghĩa có thể gồm:
+
+- simple fixes;
+- logic bugs;
+- multi-file changes;
+- dependency-related tasks;
+- refactoring;
+- ambiguous requirements;
+- security-sensitive hoặc high-risk operations.
 
 Nếu dataset chỉ gồm happy paths dễ, metric cao chủ yếu chứng minh system làm tốt trên happy paths dễ.
 
-AI tasks thường không có một exact expected output duy nhất. Hai patch khác nhau vẫn có thể cùng sửa đúng bug. Vì vậy, một eval case có thể định nghĩa **criteria/rubric** như “reproduce test phải pass, existing tests không regression, không mở security flaw mới” thay vì ép output khớp một answer cố định.
+<ImportantDistinction title="Frequency ≠ Importance">
+  Production distribution giúp ước lượng expected production performance, nhưng tần suất thấp không có nghĩa một case ít quan trọng. Rare failures có impact lớn cần đủ samples để tạo evidence đáng tin cậy.
+</ImportantDistinction>
+
+Vì vậy, dataset thường phục vụ hai mục tiêu bổ sung cho nhau:
+
+- **Representative evaluation:** giữ distribution gần workload thực tế để ước lượng performance trong production.
+- **Critical/risk evaluation:** chủ động tăng coverage cho slices high-risk, high-impact, khó, từng gây failure hoặc đặc biệt quan trọng.
+
+Ví dụ, destructive database migration chỉ chiếm 2% traffic nhưng failure có thể gây data loss. Critical slice này nên được over-sample đủ lớn thay vì chỉ giữ khoảng 2% cases. Khi đó, raw average trên eval dataset **không tự động là expected production pass rate**, vì evaluation distribution đã khác production distribution; cần báo cáo riêng slice results hoặc reweight theo production distribution cho mục tiêu ước lượng đó.
+
+### Kết hợp nhiều nguồn test cases
+
+Một dataset mạnh có thể kết hợp:
+
+- **Production cases:** đem lại realism, distribution và failure patterns thực tế.
+- **Curated cases:** chủ động bao phủ edge cases, scenarios quan trọng, known weaknesses và risks.
+- **Synthetic cases:** mở rộng variations hoặc lấp coverage gaps khi real examples chưa đủ.
+
+Synthetic cases hữu ích cho coverage nhưng không mặc nhiên có cùng realism hoặc distribution như production data.
+
+### Production failures trở thành regression coverage
+
+Một learning loop thực dụng là:
+
+**Production failure → xác định failure mode/root cause → regression test case → eval dataset/suite → evaluate future versions**
+
+Khi phù hợp, production failure nên trở thành regression case hoặc một sanitized equivalent. Vì known failures tích lũy theo thời gian, Eval Dataset không nhất thiết là artifact được tạo một lần rồi đóng băng.
+
+### Regression suite khác Holdout evaluation
+
+- **Regression/development cases** là known cases và known failure modes mà developers có thể inspect trong quá trình phát triển. Chúng kiểm tra behavior đã sửa không quay lại.
+- **Holdout evaluation** dùng cases không bị repeatedly optimized against, nên cung cấp evidence mạnh hơn về generalization tới tình huống chưa thấy.
+
+Nếu agent đạt 99% trên regression suite nhưng chỉ 62% trên holdout set, evidence cho thấy agent xử lý known cases tốt nhưng khả năng generalize vẫn đáng nghi ngờ.
+
+Việc liên tục xem eval failures rồi tối ưu trực tiếp trên cùng cases có thể gây **eval contamination/overfitting**. Score rất cao trên dataset đã repeatedly exposed không tự chứng minh general capability. Holdout cũng mất giá trị holdout nếu developers liên tục inspect và tối ưu theo nó; khi đó cần refresh hoặc rotate cases.
 
 ### Evaluator khác Metric
 
@@ -87,9 +135,9 @@ Không nên buộc một evaluator đo mọi quality dimension. Dùng compiler c
 
 ### Aggregate metrics không đủ cho release decision
 
-Overall score có thể che failure quan trọng. Hãy phân tích theo các **slices** phản ánh production, chẳng hạn task type, difficulty, risk level, language, repository size hoặc loại bug.
+Overall score có thể che failure quan trọng. Hãy phân tích theo các **slices** phản ánh task type, difficulty, risk level, language, repository size hoặc loại bug.
 
-Critical slices có thể cần threshold nghiêm ngặt hơn ordinary cases. Một Coding Agent đạt 95% overall nhưng thường xuyên bỏ sót authorization regression vẫn chưa đủ an toàn để release.
+Critical slices có thể cần threshold nghiêm ngặt hơn ordinary cases. Một Coding Agent có overall pass rate cao hơn vẫn có thể là lựa chọn production tệ hơn nếu nó yếu ở slice chiếm phần lớn workload thực tế hoặc thường xuyên bỏ sót authorization regression.
 
 ## Example
 
@@ -105,12 +153,15 @@ Agent có thể execute thành công, commit được patch và trả lời đ�
 
 Khi so sánh hai patches A và B, Pairwise Evaluation có thể chọn A vì rõ ràng và ít thay đổi thừa hơn. Quyết định release vẫn cần Pointwise gates: compiler pass, required tests pass, schema hợp lệ, latency trong threshold và rubric maintainability đạt mức tối thiểu. A thắng B không thay thế các gates này.
 
+Dataset có thể giữ production-like distribution để estimate expected fix rate, đồng thời duy trì một security-critical suite lớn hơn tỷ lệ xuất hiện thực tế. Hai views trả lời hai câu hỏi khác nhau; không trộn raw average của critical suite vào production estimate mà không điều chỉnh trọng số.
+
 ## When to Use
 
 - Trước khi so sánh prompt, model, context strategy hoặc agent implementation.
 - Khi cần release gate cho một AI feature hay Coding Agent.
 - Khi production failure có nhiều mức độ impact khác nhau.
 - Khi overall metric có vẻ tốt nhưng user reports hoặc critical cases vẫn thất bại.
+- Khi cần phân biệt tiến bộ trên known failures với khả năng generalize sang unseen cases.
 
 Với prototype rất sớm, eval suite có thể nhỏ; nhưng task, success criteria và risky cases vẫn phải được nói rõ trước khi tin vào kết quả.
 
@@ -120,6 +171,12 @@ Với prototype rất sớm, eval suite có thể nhỏ; nhưng task, success cr
 - **Chọn metric trước success criteria:** dễ tối ưu con số không đại diện cho user outcome.
 - **Dataset chỉ có happy paths:** bỏ qua edge cases và failures có impact lớn.
 - **Ép mọi task vào exact match:** đánh trượt các output khác wording hoặc implementation nhưng vẫn đúng.
+- **Sao chép production frequency một cách máy móc:** không tạo đủ evidence cho rare but catastrophic failures.
+- **Gọi raw average của oversampled dataset là production pass rate:** bỏ qua việc evaluation distribution đã khác production.
+- **Chỉ dùng một nguồn cases:** production data có thể thiếu intentional coverage, còn curated hoặc synthetic data có thể thiếu realism.
+- **Đóng băng dataset mãi mãi:** không biến production failures mới thành regression coverage phù hợp.
+- **Dùng regression score để kết luận generalization:** known cases không thay thế holdout evidence.
+- **Làm lộ holdout liên tục:** repeated inspection và optimization biến holdout thành development set trên thực tế.
 - **Dùng LLM judge như ground truth:** bỏ qua bias, variance và rubric ambiguity của chính evaluator.
 - **Dùng Pairwise winner như release approval:** nhầm “tốt hơn candidate còn lại” với “đủ tốt cho production”.
 - **Trộn method với evaluator:** coi Pointwise/Pairwise là alternatives của Human/LLM/checker dù chúng là hai dimensions khác nhau.
@@ -129,7 +186,7 @@ Với prototype rất sớm, eval suite có thể nhỏ; nhưng task, success cr
 
 ## Related Knowledge
 
-- Chưa có learning note riêng về `Evaluation Dataset & Test Cases`. Bước tiếp theo là thiết kế representative/common cases, edge cases, critical/adversarial cases và regression set trước khi đi sâu vào `Regression Eval`.
+- Chưa có learning note liên quan khác. `Evaluation Dataset & Test Cases` thuộc canonical note này vì nó nối trực tiếp success criteria với evaluators và slice analysis.
 
 ## Self-test
 
@@ -140,6 +197,9 @@ Với prototype rất sớm, eval suite có thể nhỏ; nhưng task, success cr
 5. Khi nào nên ưu tiên deterministic evaluator, và khi nào cần Human Evaluation hoặc calibrated LLM Judge?
 6. Kể tên ba bias quan trọng của LLM Judge và một cách giảm rủi ro xem Judge là ground truth.
 7. Vì sao overall score cao vẫn có thể chưa đủ để release?
+8. Vì sao rare but high-impact slice có thể cần over-sampling, và điều đó thay đổi cách diễn giải raw average thế nào?
+9. Regression suite và holdout set cung cấp hai loại evidence khác nhau ra sao?
+10. Ba nguồn cases nào có thể kết hợp để xây Eval Dataset, và synthetic cases có giới hạn gì?
 
 <details>
 <summary>Answers</summary>
@@ -151,5 +211,8 @@ Với prototype rất sớm, eval suite có thể nhỏ; nhưng task, success cr
 5. Dùng deterministic evaluator cho property đo trực tiếp được như compilation, tests, schema và latency; dùng Human Evaluation hoặc calibrated LLM Judge cho maintainability, relevance, clarity hoặc overall quality.
 6. Position bias, verbosity bias và style/self-preference bias. Validate hoặc calibrate Judge với human judgment phù hợp hay trusted evidence khác trên target task.
 7. Aggregate có thể che failures trong slice khó hoặc critical; các slice này có thể cần threshold nghiêm ngặt riêng.
+8. `Frequency != Importance`: rare catastrophic failures cần đủ samples để đánh giá đáng tin cậy. Khi over-sample chúng, dataset distribution khác production nên raw average không tự động là expected production pass rate.
+9. Regression suite chứng minh known behaviors và fixes không regress; holdout ít bị optimized against hơn nên cho evidence mạnh hơn về generalization. Holdout bị inspect lặp lại cũng có thể contaminated.
+10. Kết hợp production, curated và synthetic cases. Synthetic cases giúp mở rộng coverage nhưng không mặc nhiên phản ánh realism hay distribution của production.
 
 </details>

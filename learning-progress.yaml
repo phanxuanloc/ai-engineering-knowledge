@@ -10,6 +10,7 @@ topics:
     checkpoints:
       - evaluation-fundamentals
       - evaluation-methods-and-evaluators
+      - evaluation-dataset-and-test-cases
     checkpoint_progress:
       evaluation-fundamentals:
         status: understood
@@ -30,7 +31,20 @@ topics:
           - selected-deterministic-checks-for-directly-measurable-properties
           - identified-llm-judge-calibration-needs-and-key-biases
           - combined-deterministic-llm-and-sampled-human-evaluation-by-quality-dimension
-    next_checkpoint: evaluation-dataset-and-test-cases
+      evaluation-dataset-and-test-cases:
+        status: understood
+        note: docs/ai-fundamentals/evaluation-fundamentals.mdx
+        learned_at: 2026-08-13
+        evidence:
+          - recognized-open-ended-test-cases-can-use-success-criteria-and-constraints-instead-of-exact-output
+          - recognized-evaluation-datasets-need-meaningful-slices-beyond-aggregate-score
+          - corrected-initial-production-distribution-preference-by-distinguishing-frequency-from-importance
+          - selected-deliberate-oversampling-for-rare-high-risk-destructive-database-migrations
+          - selected-combined-production-curated-and-synthetic-dataset-sources
+          - identified-production-failures-as-regression-evaluation-cases
+          - identified-eval-contamination-from-repeated-optimization-against-the-same-cases
+          - interpreted-high-regression-and-low-holdout-performance-as-weak-generalization-evidence
+    next_checkpoint: evaluation-metrics-and-aggregation
     experiments: []
     prerequisites: []
     related: []
