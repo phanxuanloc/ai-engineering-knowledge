@@ -103,7 +103,7 @@ Nguyên tắc xuyên suốt: **Relevant context > More context**. Window lớn h
 - selection, budget và compact Working State.
 - raw evidence vs interpretation.
 - eviction và lifecycle qua nhiều model invocation.
-- minimal Context Manager v0 + controlled raw-context vs managed-context experiment đã hoàn thành learning evidence.
+- minimal Context Manager v0 + controlled experiment vẫn là applied evidence chưa hoàn thành.
 
 → [Practical Context Manager](./practical-context-manager.mdx)
 
@@ -116,14 +116,10 @@ Nguyên tắc xuyên suốt: **Relevant context > More context**. Window lớn h
 5. **Evidence ≠ Interpretation** — raw fact khác hypothesis/summary.
 6. **Useful ≠ Simultaneous** — useful cho task không đồng nghĩa phải tồn tại cùng lúc.
 
-## Completion Evidence
+## Completion Boundary
 
-Context Engineering đã hoàn thành ở mức `understood`: learner đã qua final review/self-test, hoàn thành Practical Context Manager simulator và controlled raw-context vs managed-context experiment. Evidence cho thấy learner có thể giải thích các distinction và decision rule xuyên suốt topic:
+Conceptual knowledge đã được hệ thống hóa nhưng việc restructure **không phải learning evidence mới**. `learning-progress.yaml` vẫn giữ status/confidence hiện tại. Applied evidence còn thiếu:
 
-- `Context Window` là model capacity; `Context` là information được supply; `Context Manager` là application/agent decision layer quản lý information đó;
-- retrieval tạo candidates, còn selection quyết định item nào thực sự vào context bằng nhiều signal thay vì chỉ retrieval score;
-- budget là maximum capacity, không phải quota; mục tiêu là minimum sufficient context;
-- managed context có thể dùng nhiều cumulative tokens hơn nhưng vẫn tốt hơn cho từng invocation nhờ context decision-specific, ít noise và peak-context pressure thấp hơn;
-- task lớn có thể được chia qua nhiều invocation, với goal, constraints, decisions, verified results và remaining work được preserve thay vì carry toàn bộ history.
-
-Mốc này là evidence của understanding, không tự động chứng minh khả năng vận hành một production Context Manager độc lập. Vì vậy progress không được nâng thành `applied` hoặc `mastered`.
+- implement minimal Context Manager v0;
+- controlled raw-context vs managed-context experiment;
+- final review + self-test trước khi cân nhắc nâng progress.
