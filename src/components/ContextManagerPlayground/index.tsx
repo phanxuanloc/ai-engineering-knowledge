@@ -1,234 +1,201 @@
-import {useMemo, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {
-  defaultContextItems,
-  selectContext,
-  type ContextItem,
-  type SelectionReason,
+  getUsagePercent,
+  lifecycleSteps,
+  type ContextItemSnapshot,
+  type ContextItemState,
 } from './contextManager';
 import styles from './styles.module.css';
 
-const reasonLabel: Record<SelectionReason, string> = {
-  mandatory: 'Pinned / mandatory',
-  selected: 'Selected for this decision',
-  stale: 'Rejected: stale',
-  'low-relevance': 'Rejected: low relevance',
-  'over-budget': 'Rejected: over budget',
+const stateLabel: Record<ContextItemState, string> = {
+  candidate: 'Candidate',
+  pinned: 'Pinned',
+  selected: 'Selected',
+  preserved: 'Preserved',
+  compressed: 'Compressed',
+  evicted: 'Evicted',
+  rejected: 'Rejected',
 };
 
-const stages = [
-  'Retrieve candidates',
-  'Pin mandatory context',
-  'Filter stale / irrelevant',
-  'Score and rank',
-  'Spend token budget',
-  'Assemble final context',
-];
-
-function formatPercent(value: number) {
-  return `${Math.round(value * 100)}%`;
+function ContextItem({item}: {item: ContextItemSnapshot}) {
+  return (
+    <article className={styles.contextItem} data-state={item.state}>
+      <div className={styles.itemMain}>
+        <div>
+          <strong>{item.label}</strong>
+          <span>{item.source}</span>
+        </div>
+        <div className={styles.itemMeta}>
+          <span data-state={item.state}>{stateLabel[item.state]}</span>
+          <b>{item.tokenCost.toLocaleString()} tok</b>
+        </div>
+      </div>
+      <p>{item.reason}</p>
+      {typeof item.score === 'number' && <small>selection score {item.score.toFixed(2)}</small>}
+    </article>
+  );
 }
 
 export default function ContextManagerPlayground() {
-  const [items, setItems] = useState<ContextItem[]>(defaultContextItems);
-  const [budget, setBudget] = useState(2500);
-  const [runVersion, setRunVersion] = useState(0);
-  const [activeStage, setActiveStage] = useState(stages.length - 1);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const step = lifecycleSteps[stepIndex];
+  const usage = getUsagePercent(step);
+  const freeTokens = Math.max(0, step.budget - step.usedTokens);
 
-  const result = useMemo(() => selectContext(items, budget), [items, budget, runVersion]);
+  useEffect(() => {
+    if (!playing) return;
+    if (stepIndex >= lifecycleSteps.length - 1) {
+      setPlaying(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setStepIndex((current) => current + 1), 1550);
+    return () => window.clearTimeout(timer);
+  }, [playing, stepIndex]);
 
-  const updateItem = (id: string, field: 'relevance' | 'freshness', value: number) => {
-    setItems((current) =>
-      current.map((item) => (item.id === id ? {...item, [field]: value} : item)),
-    );
-  };
-
-  const runSelection = () => {
-    setActiveStage(0);
-    setRunVersion((version) => version + 1);
-    stages.slice(1).forEach((_, index) => {
-      window.setTimeout(() => setActiveStage(index + 1), 180 * (index + 1));
-    });
-  };
+  const visibleGroups = useMemo(() => {
+    const active = step.items.filter((item) => ['pinned', 'selected', 'preserved', 'compressed'].includes(item.state));
+    const outside = step.items.filter((item) => !['pinned', 'selected', 'preserved', 'compressed'].includes(item.state));
+    return {active, outside};
+  }, [step]);
 
   const reset = () => {
-    setItems(defaultContextItems);
-    setBudget(2500);
-    setActiveStage(stages.length - 1);
-    setRunVersion((version) => version + 1);
+    setPlaying(false);
+    setStepIndex(0);
   };
 
-  const usage = Math.min(100, Math.round((result.usedTokens / budget) * 100));
+  const next = () => {
+    setPlaying(false);
+    setStepIndex((current) => Math.min(lifecycleSteps.length - 1, current + 1));
+  };
+
+  const previous = () => {
+    setPlaying(false);
+    setStepIndex((current) => Math.max(0, current - 1));
+  };
+
+  const togglePlay = () => {
+    if (stepIndex >= lifecycleSteps.length - 1) setStepIndex(0);
+    setPlaying((current) => !current);
+  };
 
   return (
-    <section className={styles.playground} aria-label="Interactive Context Manager v0 playground">
-      <div className={styles.header}>
+    <section className={styles.playground} aria-label="Context Manager lifecycle simulator">
+      <header className={styles.header}>
         <div>
-          <div className={styles.eyebrow}>Interactive lab · Context Manager v0</div>
-          <h3>Fix login 401</h3>
+          <div className={styles.eyebrow}>Interactive lab · Context lifecycle simulator</div>
+          <h3>Fix login 401 — watch context evolve</h3>
           <p>
-            Chỉnh budget, relevance hoặc freshness rồi chạy lại selection để xem context nào
-            thực sự được đưa vào model.
+            Đi xuyên suốt một coding task qua nhiều model invocation. Theo dõi item nào được retrieve,
+            giữ lại, compress hoặc evict và chuyện gì xảy ra khi Context Window gần đầy.
           </p>
         </div>
         <div className={styles.headerActions}>
-          <button type="button" className={styles.secondaryButton} onClick={reset}>
-            Reset
-          </button>
-          <button type="button" className={styles.primaryButton} onClick={runSelection}>
-            Run selection
+          <button type="button" className={styles.secondaryButton} onClick={reset}>Reset</button>
+          <button type="button" className={styles.primaryButton} onClick={togglePlay}>
+            {playing ? 'Pause' : stepIndex === lifecycleSteps.length - 1 ? 'Replay flow' : 'Play flow'}
           </button>
         </div>
-      </div>
+      </header>
 
-      <div className={styles.pipeline} aria-label="Context Manager selection pipeline">
-        {stages.map((stage, index) => (
-          <div
-            key={stage}
-            className={styles.stage}
-            data-state={index < activeStage ? 'done' : index === activeStage ? 'active' : 'idle'}>
+      <div className={styles.timeline} aria-label="Task lifecycle">
+        {lifecycleSteps.map((candidate, index) => (
+          <button
+            type="button"
+            key={candidate.id}
+            className={styles.timelineStep}
+            data-state={index < stepIndex ? 'done' : index === stepIndex ? 'active' : 'idle'}
+            onClick={() => { setPlaying(false); setStepIndex(index); }}>
             <span>{index + 1}</span>
-            <strong>{stage}</strong>
-          </div>
+            <strong>{candidate.phase.replace(/^\d+ · /, '')}</strong>
+          </button>
         ))}
       </div>
 
-      <div className={styles.controlsPanel}>
-        <label htmlFor="context-budget" className={styles.budgetLabel}>
-          <span>
-            Token budget <strong>{budget.toLocaleString()}</strong>
-          </span>
-          <span className={styles.muted}>Ceiling, not a quota</span>
-        </label>
-        <input
-          id="context-budget"
-          className={styles.range}
-          type="range"
-          min="1200"
-          max="3600"
-          step="100"
-          value={budget}
-          onChange={(event) => setBudget(Number(event.target.value))}
-        />
-        <div className={styles.usageTrack} aria-label={`${usage}% of token budget used`}>
-          <span style={{width: `${usage}%`}} />
+      <div className={styles.stepIntro}>
+        <div>
+          <div className={styles.eyebrow}>{step.phase}</div>
+          <h4>{step.decision}</h4>
+          <p>{step.narration}</p>
         </div>
+        <div className={styles.callBadge}>{step.call ?? step.action}</div>
+      </div>
+
+      <div className={styles.windowMeter} data-pressure={usage >= 85 ? 'high' : usage >= 65 ? 'medium' : 'normal'}>
+        <div className={styles.meterHeading}>
+          <div>
+            <span>Context Window</span>
+            <strong>{step.usedTokens.toLocaleString()} / {step.budget.toLocaleString()} tokens</strong>
+          </div>
+          <b>{usage}%</b>
+        </div>
+        <div className={styles.usageTrack}><span style={{width: `${usage}%`}} /></div>
         <div className={styles.usageMeta}>
-          <span>{result.usedTokens.toLocaleString()} used</span>
-          <span>{Math.max(0, budget - result.usedTokens).toLocaleString()} free</span>
+          <span>{freeTokens.toLocaleString()} tokens free</span>
+          <span>{usage >= 85 ? 'Budget pressure: action required' : 'Capacity available'}</span>
         </div>
       </div>
 
-      <div className={styles.grid}>
-        <div className={styles.candidates}>
-          <div className={styles.sectionHeading}>
-            <div>
-              <div className={styles.eyebrow}>Retrieval output</div>
-              <h4>Context candidates</h4>
-            </div>
-            <span className={styles.count}>{items.length} items</span>
-          </div>
-
-          <div className={styles.candidateList}>
-            {result.items.map((item) => (
-              <article key={item.id} className={styles.candidate} data-selected={item.selected}>
-                <div className={styles.candidateTop}>
-                  <div>
-                    <strong>{item.label}</strong>
-                    <span>{item.source}</span>
-                  </div>
-                  <div className={styles.badges}>
-                    {item.kind === 'mandatory' && <span data-kind="mandatory">Pinned</span>}
-                    <span>{item.tokenCost} tok</span>
-                    <span>score {item.score.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                {item.kind === 'selectable' ? (
-                  <div className={styles.signalGrid}>
-                    <label>
-                      <span>Relevance {formatPercent(item.relevance)}</span>
-                      <input
-                        className={styles.range}
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.05"
-                        value={item.relevance}
-                        onChange={(event) =>
-                          updateItem(item.id, 'relevance', Number(event.target.value))
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>Freshness {formatPercent(item.freshness)}</span>
-                      <input
-                        className={styles.range}
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.05"
-                        value={item.freshness}
-                        onChange={(event) =>
-                          updateItem(item.id, 'freshness', Number(event.target.value))
-                        }
-                      />
-                    </label>
-                  </div>
-                ) : (
-                  <p className={styles.lockedSignal}>Mandatory context bypasses competitive ranking.</p>
-                )}
-
-                <div className={styles.reason} data-reason={item.reason}>
-                  <span aria-hidden="true">{item.selected ? '✓' : '×'}</span>
-                  {reasonLabel[item.reason]}
-                </div>
-              </article>
-            ))}
-          </div>
+      {step.event && (
+        <div className={styles.event} data-tone={step.event.tone}>
+          <strong>{step.event.title}</strong>
+          <span>{step.event.detail}</span>
         </div>
+      )}
 
-        <aside className={styles.resultPanel} aria-live="polite">
+      <div className={styles.flowGrid}>
+        <section className={styles.contextColumn}>
           <div className={styles.sectionHeading}>
             <div>
-              <div className={styles.eyebrow}>Model input</div>
-              <h4>Final context</h4>
+              <div className={styles.eyebrow}>Inside the model input</div>
+              <h4>Context Window now</h4>
             </div>
-            <span className={styles.count}>{result.selected.length} selected</span>
+            <span className={styles.count}>{visibleGroups.active.length} active</span>
           </div>
-
-          <div className={styles.contextWindow}>
-            {result.selected.map((item) => (
-              <div key={item.id} className={styles.selectedItem}>
-                <div>
-                  <strong>{item.label}</strong>
-                  <span>{item.kind === 'mandatory' ? 'Pinned' : `score ${item.score.toFixed(2)}`}</span>
-                </div>
-                <b>{item.tokenCost}</b>
-              </div>
-            ))}
+          <div className={styles.itemList}>
+            {visibleGroups.active.map((item) => <ContextItem key={item.id} item={item} />)}
           </div>
+        </section>
 
-          <div className={styles.summary}>
+        <aside className={styles.stateColumn}>
+          <div className={styles.sectionHeading}>
             <div>
-              <span>Budget</span>
-              <strong>{budget.toLocaleString()}</strong>
-            </div>
-            <div>
-              <span>Used</span>
-              <strong>{result.usedTokens.toLocaleString()}</strong>
-            </div>
-            <div>
-              <span>Rejected</span>
-              <strong>{result.rejected.length}</strong>
+              <div className={styles.eyebrow}>Cross-invocation memory</div>
+              <h4>Working State</h4>
             </div>
           </div>
-
-          <p className={styles.lesson}>
-            Retrieval tạo candidates. Context Manager mới quyết định candidate nào đáng chiếm
-            Context Window cho current decision.
-          </p>
+          <ol className={styles.workingState}>
+            {step.workingState.map((entry) => <li key={entry}>{entry}</li>)}
+          </ol>
+          <div className={styles.arrowNote}>↓ feeds the next decision, not the whole history</div>
         </aside>
+
+        <section className={styles.outsideColumn}>
+          <div className={styles.sectionHeading}>
+            <div>
+              <div className={styles.eyebrow}>Outside current window</div>
+              <h4>Candidate / dropped context</h4>
+            </div>
+            <span className={styles.count}>{visibleGroups.outside.length} items</span>
+          </div>
+          {visibleGroups.outside.length > 0 ? (
+            <div className={styles.itemList}>
+              {visibleGroups.outside.map((item) => <ContextItem key={item.id} item={item} />)}
+            </div>
+          ) : (
+            <p className={styles.empty}>Không có item ngoài window ở bước này.</p>
+          )}
+        </section>
       </div>
+
+      <footer className={styles.controls}>
+        <button type="button" onClick={previous} disabled={stepIndex === 0}>← Previous</button>
+        <div>
+          <strong>{stepIndex + 1} / {lifecycleSteps.length}</strong>
+          <span>{step.action}</span>
+        </div>
+        <button type="button" onClick={next} disabled={stepIndex === lifecycleSteps.length - 1}>Next →</button>
+      </footer>
     </section>
   );
 }
