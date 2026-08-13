@@ -208,8 +208,16 @@ Lifecycle simulator làm mental model này dễ quan sát hơn selection demo v0
 <ExperimentCard status="in-progress" title="Context Manager lifecycle simulator">
   **Implemented:** deterministic lifecycle simulator cho scenario `Fix login 401`. Playground cho phép replay hoặc step-through toàn bộ flow; hiển thị Context Window usage xuyên suốt, Working State giữa các invocation, trạng thái từng Context Item và một budget-pressure checkpoint nơi context phải được preserve, compress, evict rồi re-assemble.
 
-  **Remaining:** chạy controlled `raw-context vs managed-context` experiment trên cùng task/model/tools và ghi lại token usage, irrelevant context, số vòng/tool call, evidence quality và khả năng tìm/verify root cause.
+  **Guided follow-up:** [Raw Context vs Managed Context A/B Experiment](./context-manager-ab-experiment.mdx) dùng cùng scenario để so trực quan model calls, total input, peak context và noise. Đây là teaching fixture giúp đọc trade-off, chưa phải benchmark model thật.
+
+  **Advanced evidence:** benchmark thật vẫn cần giữ cùng task/model/tools, chạy Raw và Managed thực tế rồi đo correctness, test pass rate, token usage và tool/model calls.
 </ExperimentCard>
+
+### Next experiment
+
+**[Open Raw Context vs Managed Context →](./context-manager-ab-experiment.mdx)**
+
+Đi tiếp sang guided experiment nếu bạn muốn nhìn cùng một bug dưới hai chiến lược context. Page này cố ý **không nằm trong sidebar** để sidebar chỉ giữ learning path chính; nó được mở đúng lúc từ Practical Context Manager.
 
 ## Related Knowledge
 
@@ -232,5 +240,5 @@ Lifecycle simulator làm mental model này dễ quan sát hơn selection demo v0
   {question: 'Working State nên giữ những gì?', answer: 'Goal, constraints, findings, decisions, changes made, unresolved questions và next actions.'},
   {question: 'Vì sao phải tách raw evidence khỏi interpretation?', answer: 'Để hypothesis/summary do model tạo không mất provenance rồi bị dùng như observed truth ở vòng sau.'},
   {question: 'Lifecycle simulator hiện chứng minh được gì?', answer: 'Nó cho thấy Context Manager phải quản lý context liên tục qua nhiều decision: preserve state, thay đổi Context Item theo invocation, phản ứng với budget pressure bằng compression/eviction và rebuild model input; chưa chứng minh managed context cải thiện outcome trên coding task thật.'},
-  {question: 'Điều gì còn thiếu trước khi Practical Context Manager hoàn tất?', answer: 'Controlled raw-context vs managed-context experiment với evidence/result thực tế.'},
+  {question: 'Guided A/B experiment chứng minh được gì?', answer: 'Nó giúp quan sát và hiểu trade-off Raw vs Managed về peak context, noise, số call và total token; vì số liệu là deterministic teaching fixture nên chưa chứng minh model thật sẽ tốt hơn.'},
 ]}/>
