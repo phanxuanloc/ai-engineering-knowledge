@@ -1,4 +1,27 @@
 topics:
+  evaluation:
+    title: Evaluation
+    category: AI Fundamentals
+    status: learning
+    note: docs/ai-fundamentals/evaluation-fundamentals.mdx
+    learned_at: 2026-08-13
+    last_reviewed: null
+    confidence: 2
+    checkpoints:
+      - evaluation-fundamentals
+    checkpoint_progress:
+      evaluation-fundamentals:
+        status: understood
+        note: docs/ai-fundamentals/evaluation-fundamentals.mdx
+        learned_at: 2026-08-13
+        evidence:
+          - explained-task-success-vs-execution-success
+          - designed-evaluation-from-success-criteria-through-slice-analysis
+          - distinguished-evaluators-from-metrics-and-selected-appropriate-judge-types
+    next_checkpoint: regression-eval
+    experiments: []
+    prerequisites: []
+    related: []
   context-engineering:
     title: Context Engineering
     category: AI Coding

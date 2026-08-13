@@ -4,6 +4,12 @@ const sidebars: SidebarsConfig = {
   knowledgeSidebar: [
     {
       type: 'category',
+      label: 'AI Fundamentals',
+      link: {type: 'doc', id: 'ai-fundamentals/index'},
+      items: ['ai-fundamentals/evaluation-fundamentals'],
+    },
+    {
+      type: 'category',
       label: 'AI Coding',
       link: {type: 'doc', id: 'ai-coding/index'},
       items: [

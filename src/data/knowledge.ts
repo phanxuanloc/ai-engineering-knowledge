@@ -7,7 +7,12 @@ export const featuredArticle = {
 };
 
 export const knowledgeAreas = [
-  {title: 'AI Fundamentals', description: 'Nền tảng để hiểu cách AI systems biểu diễn, suy luận và tạo đầu ra.', published: false},
+  {
+    title: 'AI Fundamentals',
+    description: 'Nền tảng để định nghĩa, đo lường và phân tích chất lượng của AI systems.',
+    href: '/docs/ai-fundamentals',
+    published: true,
+  },
   {title: 'AI Coding', description: 'Kỹ thuật sử dụng AI hiệu quả trong software development workflows.', href: '/docs/ai-coding', published: true},
   {title: 'Coding Agents', description: 'Agentic workflows dành cho khám phá, thay đổi và kiểm chứng software.', published: false},
   {title: 'AI Agents', description: 'Vòng lặp tự chủ kết hợp reasoning, tools, state và coordination.', published: false},

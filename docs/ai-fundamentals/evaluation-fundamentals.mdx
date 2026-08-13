@@ -1,0 +1,129 @@
+---
+title: Evaluation Fundamentals
+description: Nền tảng thiết kế evaluation cho AI systems từ task success đến evaluators, metrics và slice analysis.
+tags: [evaluation, evaluator, metrics, coding-agent]
+sidebar_position: 1
+---
+
+import {ImportantDistinction, Principle, TLDR} from '@site/src/components/Learning';
+
+# Evaluation Fundamentals
+
+## TL;DR
+
+<TLDR>
+
+Evaluation đo một AI system **thực hiện task tốt đến đâu**, không chỉ kiểm tra execution có hoàn tất hay không. Bắt đầu từ success criteria của task, xây dataset đại diện cho production, chọn evaluator phù hợp, tổng hợp thành metrics, rồi xem các failure theo slice thay vì chỉ nhìn overall score.
+
+</TLDR>
+
+<Principle label="Mental rule">
+  `Execution success != Task success`. Một Coding Agent chạy xong và tạo được patch chưa có nghĩa patch sửa đúng bug, không gây regression, an toàn và đủ tốt để release.
+</Principle>
+
+## Mental Model
+
+Thiết kế evaluation theo chuỗi:
+
+**Task → Success Criteria → Eval Dataset → Evaluators → Metrics → Slice Analysis**
+
+Chuỗi này buộc câu hỏi “score là bao nhiêu?” quay về đúng gốc: system đang làm task nào, “tốt” nghĩa là gì, test cases có giống production không, ai hoặc cơ chế nào phán xét output, và failure tập trung ở đâu.
+
+Vì vậy, ngoài **“AI đạt score bao nhiêu?”**, luôn hỏi thêm **“AI thất bại ở đâu?”**.
+
+## Core Concepts
+
+### Task success có nhiều quality dimensions
+
+Một output tốt có thể cần **correctness, relevance, completeness, safety, regression risk, performance, latency** hoặc **cost**. Không cần đo tất cả; chỉ chọn những dimensions có ý nghĩa với task và release decision.
+
+Ví dụ, một Coding Agent sửa bug cần ưu tiên correctness và regression risk. Với security fix, safety có thể là release gate. Với refactor trong hot path, performance và maintainability mới trở thành criteria quan trọng.
+
+### Eval Dataset phải đại diện cho production
+
+Eval Dataset nên chứa:
+
+- **common cases:** behavior thường gặp trong production;
+- **edge cases:** input hoặc state hiếm nhưng hợp lệ;
+- **critical/risky cases:** failure có impact lớn, như bypass authorization, data loss hoặc performance degradation nghiêm trọng.
+
+Nếu dataset chỉ gồm happy paths dễ, metric cao chủ yếu chứng minh system làm tốt trên happy paths dễ.
+
+AI tasks thường không có một exact expected output duy nhất. Hai patch khác nhau vẫn có thể cùng sửa đúng bug. Vì vậy, một eval case có thể định nghĩa **criteria/rubric** như “reproduce test phải pass, existing tests không regression, không mở security flaw mới” thay vì ép output khớp một answer cố định.
+
+### Evaluator khác Metric
+
+<ImportantDistinction title="Evaluator ≠ Metric">
+  **Evaluator** là mechanism phán xét một output. **Metric** là result hoặc measurement dùng để tóm tắt quality qua một hay nhiều eval cases.
+</ImportantDistinction>
+
+Ví dụ:
+
+- test runner là evaluator; test pass rate là metric;
+- compiler là evaluator; compile success rate là metric;
+- latency check là evaluator; p95 latency hoặc tỷ lệ vượt threshold là metric;
+- human reviewer là evaluator; rubric score trung bình là metric.
+
+Ưu tiên **deterministic code-based evaluators** khi property có thể được code kiểm tra đáng tin cậy: unit/integration tests, compilation, exact values, lint rules hoặc latency thresholds. Chúng thường repeatable và dễ debug hơn judgment-based evaluation.
+
+Dùng **Human Evaluation** hoặc **LLM-as-a-Judge** khi cần judgment về clarity, maintainability, relevance hoặc overall solution quality. `LLM-as-a-Judge` cũng có thể bias, không ổn định hoặc hiểu sai rubric; judge model mạnh hơn không tự biến kết quả của nó thành ground truth. Với decision quan trọng, cần rubric rõ, calibration và kết hợp evidence khác.
+
+### Aggregate metrics không đủ cho release decision
+
+Overall score có thể che failure quan trọng. Hãy phân tích theo các **slices** phản ánh production, chẳng hạn task type, difficulty, risk level, language, repository size hoặc loại bug.
+
+Critical slices có thể cần threshold nghiêm ngặt hơn ordinary cases. Một Coding Agent đạt 95% overall nhưng thường xuyên bỏ sót authorization regression vẫn chưa đủ an toàn để release.
+
+## Example
+
+Task: Coding Agent sửa một bug làm API trả sai status code.
+
+1. **Success Criteria:** reproduce test pass; existing tests không regression; patch không bypass authorization; latency không vượt threshold; code vẫn dễ maintain.
+2. **Eval Dataset:** các bug thông thường, malformed input, concurrent request edge case và security-critical authorization cases.
+3. **Evaluators:** test runner + compiler cho correctness, security checks cho risky behavior, latency benchmark cho performance, human hoặc calibrated LLM judge cho maintainability.
+4. **Metrics:** fix rate, regression rate, security-critical failure rate, p95 latency delta và rubric score cho code quality.
+5. **Slice Analysis:** tách kết quả theo bug type, difficulty và risk. Không để fix rate cao ở bug thường che security-critical failures.
+
+Agent có thể execute thành công, commit được patch và trả lời đầy đủ; nhưng nếu regression tests fail thì task vẫn thất bại.
+
+## When to Use
+
+- Trước khi so sánh prompt, model, context strategy hoặc agent implementation.
+- Khi cần release gate cho một AI feature hay Coding Agent.
+- Khi production failure có nhiều mức độ impact khác nhau.
+- Khi overall metric có vẻ tốt nhưng user reports hoặc critical cases vẫn thất bại.
+
+Với prototype rất sớm, eval suite có thể nhỏ; nhưng task, success criteria và risky cases vẫn phải được nói rõ trước khi tin vào kết quả.
+
+## Common Mistakes
+
+- **Đồng nhất execution với success:** tool calls hoàn tất hoặc agent trả output không chứng minh task đã được giải quyết.
+- **Chọn metric trước success criteria:** dễ tối ưu con số không đại diện cho user outcome.
+- **Dataset chỉ có happy paths:** bỏ qua edge cases và failures có impact lớn.
+- **Ép mọi task vào exact match:** đánh trượt các output khác wording hoặc implementation nhưng vẫn đúng.
+- **Dùng LLM judge như ground truth:** bỏ qua bias, variance và rubric ambiguity của chính evaluator.
+- **Chỉ nhìn aggregate:** để performance ở common cases che failure trong critical slices.
+- **Đo quá nhiều dimensions:** tăng cost và noise dù nhiều measurements không ảnh hưởng decision.
+
+## Related Knowledge
+
+- Chưa có learning note riêng về `Regression Eval`. Đây là bước tiếp theo để dùng baseline và eval suite xác định một thay đổi làm system tốt hơn hay phá behavior từng hoạt động.
+
+## Self-test
+
+1. Vì sao một Coding Agent chạy xong không đồng nghĩa task thành công?
+2. `Evaluator` và `Metric` khác nhau thế nào?
+3. Khi nào nên ưu tiên code-based evaluator, và khi nào cần Human Evaluation hoặc LLM-as-a-Judge?
+4. Vì sao overall score cao vẫn có thể chưa đủ để release?
+5. Hãy đề xuất một critical slice và threshold riêng cho agent sửa security bug.
+
+<details>
+<summary>Answers</summary>
+
+1. Execution chỉ xác nhận workflow hoàn tất; task success còn phụ thuộc criteria như fix đúng bug, không regression, an toàn và đáp ứng performance/cost cần thiết.
+2. Evaluator là cơ chế phán xét từng output; metric là measurement tóm tắt các kết quả evaluation.
+3. Dùng code khi property có thể kiểm tra reliably bằng tests, compilation, exact values hoặc thresholds; dùng human/LLM judgment cho clarity, relevance, maintainability hoặc solution quality.
+4. Aggregate có thể che failures trong slice khó hoặc critical; các slice này có thể cần threshold nghiêm ngặt riêng.
+5. Ví dụ slice `authorization bypass`: yêu cầu 100% security tests pass và không chấp nhận regression, dù overall fix rate của toàn suite cao.
+
+</details>
