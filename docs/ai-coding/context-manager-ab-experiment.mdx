@@ -72,4 +72,6 @@ Raw dùng ít cumulative token hơn vì chỉ có một call, nhưng call đó v
 
 Đây là **deterministic teaching fixture**. Các con số token và outcome được cố định để bạn học mental model, nên nó chưa chứng minh model thật sẽ có accuracy cao hơn khi dùng Managed Context.
 
+Trong phạm vi learning checkpoint, controlled comparison này đã hoàn thành: learner giải thích được vì sao `9.2k cumulative > 7.6k raw` vẫn có thể là lựa chọn tốt hơn khi mỗi invocation có context relevant cho current decision, ít noise hơn và peak context nằm trong capacity. Learner cũng xác định đúng rằng state cần carry forward là decisions, constraints, verified results và remaining work—not toàn bộ history.
+
 Một controlled benchmark thật sẽ giữ nguyên `task + model + tools + repository fixture`, chạy Raw và Managed nhiều lần, rồi đo root-cause correctness, test pass rate, peak context, cumulative tokens, irrelevant context và số tool/model call.

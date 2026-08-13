@@ -205,19 +205,19 @@ Lifecycle simulator làm mental model này dễ quan sát hơn selection demo v0
 
 ## My Experiment
 
-<ExperimentCard status="in-progress" title="Context Manager lifecycle simulator">
+<ExperimentCard status="completed" title="Context Manager lifecycle simulator và controlled comparison">
   **Implemented:** deterministic lifecycle simulator cho scenario `Fix login 401`. Playground cho phép replay hoặc step-through toàn bộ flow; hiển thị Context Window usage xuyên suốt, Working State giữa các invocation, trạng thái từng Context Item và một budget-pressure checkpoint nơi context phải được preserve, compress, evict rồi re-assemble.
 
-  **Guided follow-up:** [Raw Context vs Managed Context A/B Experiment](./context-manager-ab-experiment.mdx) dùng cùng scenario để so trực quan model calls, total input, peak context và noise. Đây là teaching fixture giúp đọc trade-off, chưa phải benchmark model thật.
+  **Completed comparison:** [Raw Context vs Managed Context A/B Experiment](./context-manager-ab-experiment.mdx) dùng cùng scenario để so trực quan model calls, total input, peak context và noise. Kết quả cho thấy managed context có thể dùng cumulative tokens cao hơn nhưng vẫn giữ từng invocation relevant hơn, ít noise hơn và giảm peak-context pressure. Đây là controlled teaching fixture, chưa phải benchmark model thật.
 
   **Advanced evidence:** benchmark thật vẫn cần giữ cùng task/model/tools, chạy Raw và Managed thực tế rồi đo correctness, test pass rate, token usage và tool/model calls.
 </ExperimentCard>
 
-### Next experiment
+### Experiment boundary
 
-**[Open Raw Context vs Managed Context →](./context-manager-ab-experiment.mdx)**
+**[Review Raw Context vs Managed Context →](./context-manager-ab-experiment.mdx)**
 
-Đi tiếp sang guided experiment nếu bạn muốn nhìn cùng một bug dưới hai chiến lược context. Page này cố ý **không nằm trong sidebar** để sidebar chỉ giữ learning path chính; nó được mở đúng lúc từ Practical Context Manager.
+Experiment đã hoàn thành checkpoint học tập bằng cách đặt cùng một bug dưới hai chiến lược context. Page này cố ý **không nằm trong sidebar** để sidebar chỉ giữ learning path chính; nó được mở đúng lúc từ Practical Context Manager.
 
 ## Related Knowledge
 

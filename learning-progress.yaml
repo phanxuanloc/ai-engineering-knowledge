@@ -2,10 +2,10 @@ topics:
   context-engineering:
     title: Context Engineering
     category: AI Coding
-    status: learning
+    status: understood
     note: docs/ai-coding/context-engineering.mdx
     learned_at: 2026-08-08
-    last_reviewed: null
+    last_reviewed: 2026-08-13
     confidence: 3
     checkpoints:
       - context-fundamentals
@@ -20,17 +20,22 @@ topics:
       - context-metrics-and-signals
       - context-security-and-trust-boundaries
       - context-learning-path-systematized
+      - practical-context-manager
+      - raw-context-vs-managed-context-experiment
+      - final-context-engineering-review-and-self-test
     checkpoint_progress:
       practical-context-manager:
-        status: learning
+        status: understood
         note: docs/ai-coding/practical-context-manager.mdx
         learned_at: 2026-08-12
         implemented:
           - minimal-context-manager-v0
-        remaining:
-          - run-controlled-raw-context-vs-managed-context-experiment
-    next_checkpoint: final-context-engineering-review-and-self-test
+          - practical-context-manager-simulator
+          - controlled-raw-context-vs-managed-context-experiment
+        remaining: []
+    next_checkpoint: null
     experiments:
       - context-manager-v0-playground
+      - raw-context-vs-managed-context-controlled-experiment
     prerequisites: []
     related: []
