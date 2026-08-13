@@ -1,0 +1,4 @@
+interface:
+  display_name: "Learning Checkpoint"
+  short_description: "Capture learned knowledge and advance progress"
+  default_prompt: "Use $learning-checkpoint to close the current learning checkpoint and capture only demonstrated knowledge."

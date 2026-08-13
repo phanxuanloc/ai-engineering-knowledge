@@ -68,6 +68,23 @@ Ví dụ:
 
 Dùng **Human Evaluation** hoặc **LLM-as-a-Judge** khi cần judgment về clarity, maintainability, relevance hoặc overall solution quality. `LLM-as-a-Judge` cũng có thể bias, không ổn định hoặc hiểu sai rubric; judge model mạnh hơn không tự biến kết quả của nó thành ground truth. Với decision quan trọng, cần rubric rõ, calibration và kết hợp evidence khác.
 
+### Evaluation method khác Evaluator
+
+**Pointwise / Pairwise** mô tả **cách evaluation được thực hiện**; **Human / LLM / deterministic programmatic checker** mô tả **ai hoặc cơ chế nào thực hiện evaluation**. Hai dimensions này độc lập với nhau: một Human reviewer hoặc `LLM-as-a-Judge` đều có thể chấm Pointwise hay Pairwise.
+
+- **Pointwise Evaluation — `GOOD?`:** chấm từng output độc lập theo rubric hoặc quality bar để quyết định nó có đủ tốt hay không.
+- **Pairwise Evaluation — `BETTER?`:** đặt hai candidates cạnh nhau để quyết định candidate nào tốt hơn.
+
+Pairwise chỉ cho biết relative preference. Nếu A tốt hơn B nhưng cả hai đều dưới production threshold, A vẫn chưa production-ready. Khi decision cần chứng minh cả improvement lẫn release quality, hãy kết hợp Pairwise để chọn candidate tốt hơn và Pointwise để kiểm tra winner có vượt absolute quality bar hay không.
+
+`LLM-as-a-Judge` không phải ground truth. Judge cần được validate hoặc calibrate với Human Evaluation phù hợp hay trusted evidence khác cho target task. Những failure modes quan trọng gồm:
+
+- **position bias:** thiên vị candidate theo vị trí trình bày;
+- **verbosity bias:** ưu tiên câu trả lời dài hơn dù không tốt hơn;
+- **style/self-preference bias:** ưu tiên style quen thuộc hoặc giống preference của chính judge model.
+
+Không nên buộc một evaluator đo mọi quality dimension. Dùng compiler cho compilation, test runner cho test correctness, validator cho schema/format và measurement hoặc benchmark cho latency. Dành Human Evaluation hoặc calibrated LLM Judge cho maintainability, relevance, clarity hay overall solution quality. Một evaluation system mạnh có thể kết hợp deterministic checks, LLM judgment và sampled Human Evaluation theo đúng thế mạnh của từng evaluator.
+
 ### Aggregate metrics không đủ cho release decision
 
 Overall score có thể che failure quan trọng. Hãy phân tích theo các **slices** phản ánh production, chẳng hạn task type, difficulty, risk level, language, repository size hoặc loại bug.
@@ -86,6 +103,8 @@ Task: Coding Agent sửa một bug làm API trả sai status code.
 
 Agent có thể execute thành công, commit được patch và trả lời đầy đủ; nhưng nếu regression tests fail thì task vẫn thất bại.
 
+Khi so sánh hai patches A và B, Pairwise Evaluation có thể chọn A vì rõ ràng và ít thay đổi thừa hơn. Quyết định release vẫn cần Pointwise gates: compiler pass, required tests pass, schema hợp lệ, latency trong threshold và rubric maintainability đạt mức tối thiểu. A thắng B không thay thế các gates này.
+
 ## When to Use
 
 - Trước khi so sánh prompt, model, context strategy hoặc agent implementation.
@@ -102,28 +121,35 @@ Với prototype rất sớm, eval suite có thể nhỏ; nhưng task, success cr
 - **Dataset chỉ có happy paths:** bỏ qua edge cases và failures có impact lớn.
 - **Ép mọi task vào exact match:** đánh trượt các output khác wording hoặc implementation nhưng vẫn đúng.
 - **Dùng LLM judge như ground truth:** bỏ qua bias, variance và rubric ambiguity của chính evaluator.
+- **Dùng Pairwise winner như release approval:** nhầm “tốt hơn candidate còn lại” với “đủ tốt cho production”.
+- **Trộn method với evaluator:** coi Pointwise/Pairwise là alternatives của Human/LLM/checker dù chúng là hai dimensions khác nhau.
+- **Dùng LLM cho property đo trực tiếp được:** tăng cost và variance cho compilation, tests, schema hoặc latency vốn có deterministic evaluator đáng tin cậy hơn.
 - **Chỉ nhìn aggregate:** để performance ở common cases che failure trong critical slices.
 - **Đo quá nhiều dimensions:** tăng cost và noise dù nhiều measurements không ảnh hưởng decision.
 
 ## Related Knowledge
 
-- Chưa có learning note riêng về `Regression Eval`. Đây là bước tiếp theo để dùng baseline và eval suite xác định một thay đổi làm system tốt hơn hay phá behavior từng hoạt động.
+- Chưa có learning note riêng về `Evaluation Dataset & Test Cases`. Bước tiếp theo là thiết kế representative/common cases, edge cases, critical/adversarial cases và regression set trước khi đi sâu vào `Regression Eval`.
 
 ## Self-test
 
 1. Vì sao một Coding Agent chạy xong không đồng nghĩa task thành công?
 2. `Evaluator` và `Metric` khác nhau thế nào?
-3. Khi nào nên ưu tiên code-based evaluator, và khi nào cần Human Evaluation hoặc LLM-as-a-Judge?
-4. Vì sao overall score cao vẫn có thể chưa đủ để release?
-5. Hãy đề xuất một critical slice và threshold riêng cho agent sửa security bug.
+3. Pointwise và Pairwise trả lời hai câu hỏi khác nhau nào? Vì sao Pairwise winner chưa chắc production-ready?
+4. `Evaluation method` và `Evaluator` là hai dimensions khác nhau như thế nào?
+5. Khi nào nên ưu tiên deterministic evaluator, và khi nào cần Human Evaluation hoặc calibrated LLM Judge?
+6. Kể tên ba bias quan trọng của LLM Judge và một cách giảm rủi ro xem Judge là ground truth.
+7. Vì sao overall score cao vẫn có thể chưa đủ để release?
 
 <details>
 <summary>Answers</summary>
 
 1. Execution chỉ xác nhận workflow hoàn tất; task success còn phụ thuộc criteria như fix đúng bug, không regression, an toàn và đáp ứng performance/cost cần thiết.
 2. Evaluator là cơ chế phán xét từng output; metric là measurement tóm tắt các kết quả evaluation.
-3. Dùng code khi property có thể kiểm tra reliably bằng tests, compilation, exact values hoặc thresholds; dùng human/LLM judgment cho clarity, relevance, maintainability hoặc solution quality.
-4. Aggregate có thể che failures trong slice khó hoặc critical; các slice này có thể cần threshold nghiêm ngặt riêng.
-5. Ví dụ slice `authorization bypass`: yêu cầu 100% security tests pass và không chấp nhận regression, dù overall fix rate của toàn suite cao.
+3. Pointwise hỏi một output có vượt rubric/quality bar hay không (`GOOD?`); Pairwise hỏi candidate nào tốt hơn (`BETTER?`). Winner vẫn có thể dưới absolute production threshold.
+4. Pointwise/Pairwise là cách chấm; Human/LLM/deterministic checker là người hoặc cơ chế chấm. Một evaluator có thể dùng cả hai methods.
+5. Dùng deterministic evaluator cho property đo trực tiếp được như compilation, tests, schema và latency; dùng Human Evaluation hoặc calibrated LLM Judge cho maintainability, relevance, clarity hoặc overall quality.
+6. Position bias, verbosity bias và style/self-preference bias. Validate hoặc calibrate Judge với human judgment phù hợp hay trusted evidence khác trên target task.
+7. Aggregate có thể che failures trong slice khó hoặc critical; các slice này có thể cần threshold nghiêm ngặt riêng.
 
 </details>

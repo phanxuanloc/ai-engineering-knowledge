@@ -6,9 +6,10 @@ topics:
     note: docs/ai-fundamentals/evaluation-fundamentals.mdx
     learned_at: 2026-08-13
     last_reviewed: null
-    confidence: 2
+    confidence: 3
     checkpoints:
       - evaluation-fundamentals
+      - evaluation-methods-and-evaluators
     checkpoint_progress:
       evaluation-fundamentals:
         status: understood
@@ -18,7 +19,18 @@ topics:
           - explained-task-success-vs-execution-success
           - designed-evaluation-from-success-criteria-through-slice-analysis
           - distinguished-evaluators-from-metrics-and-selected-appropriate-judge-types
-    next_checkpoint: regression-eval
+      evaluation-methods-and-evaluators:
+        status: understood
+        note: docs/ai-fundamentals/evaluation-fundamentals.mdx
+        learned_at: 2026-08-13
+        evidence:
+          - distinguished-pointwise-good-enough-from-pairwise-better
+          - explained-that-pairwise-winners-may-still-fail-an-absolute-quality-bar
+          - separated-evaluation-method-from-evaluator-type
+          - selected-deterministic-checks-for-directly-measurable-properties
+          - identified-llm-judge-calibration-needs-and-key-biases
+          - combined-deterministic-llm-and-sampled-human-evaluation-by-quality-dimension
+    next_checkpoint: evaluation-dataset-and-test-cases
     experiments: []
     prerequisites: []
     related: []
