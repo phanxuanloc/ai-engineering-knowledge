@@ -164,15 +164,17 @@ function select(items: ContextItem[], budget: number) {
 }
 ```
 
-### Interactive Context Manager v0
+### Interactive Context Lifecycle Simulator
 
-Playground dưới đây chạy đúng một policy deterministic, không gọi LLM và không dùng Vector Database. Mục tiêu là quan sát **cách Context Manager sử dụng signals và budget**, không phải mô phỏng trí thông minh của model.
+Playground dưới đây là một **deterministic lifecycle simulator** cho scenario `Fix login 401`. Nó không gọi LLM và không dùng Vector Database; mục tiêu là quan sát context thay đổi qua nhiều decision/model invocation thay vì chỉ nhìn một lần selection rồi nhận final result.
 
 <ContextManagerPlayground />
 
-Thử ba thao tác: giảm budget xuống gần `1,500`, tăng relevance của một item thấp, rồi giảm freshness của một item đang được chọn. Quan sát item nào bị loại và lý do thay đổi. Điểm cần nhìn thấy là retrieval vẫn có thể trả về tất cả candidates, nhưng Context Manager chỉ spend capacity cho một subset phù hợp current decision.
+Hãy bấm `Play flow` để xem toàn bộ task chạy xuyên suốt, hoặc dùng timeline / `Previous` / `Next` để dừng ở từng checkpoint. Ở mỗi bước, quan sát đồng thời ba vùng: **Context Window now**, **Working State** và **Candidate / dropped context**. Mỗi item mang trạng thái rõ ràng như `Candidate`, `Pinned`, `Selected`, `Preserved`, `Compressed`, `Evicted` hoặc `Rejected`, nên có thể theo dõi chính xác thông tin nào còn ở trong model input và vì sao thông tin khác đã ra ngoài window.
 
-Đây vẫn chỉ là v0. Production policy còn cần redundancy handling, trust/provenance, confidence calibration, per-type budget, compression và richer selection.
+Điểm quan trọng nhất nằm ở bước **Budget pressure**: Context Window tăng tới gần đầy, Context Manager không cố nhét thêm dữ liệu mà phải preserve state quan trọng, compress history/evidence phù hợp và evict item đã obsolete. Sau đó context được re-assemble cho decision tiếp theo với capacity được giải phóng nhưng root cause, constraint và decision quan trọng vẫn còn trong Working State.
+
+Đây vẫn là simulator có scenario cố định, chưa phải Context Manager production. Giá trị của nó là làm trực quan ba ý khó thấy trong v0 cũ: **context thay đổi theo thời gian**, **useful không có nghĩa simultaneous**, và **khi Context Window thiếu chỗ thì manager phải chủ động preserve / compress / evict / rebuild thay vì chỉ báo over-budget**.
 
 ## When to Use
 
@@ -199,12 +201,12 @@ Context Manager là responsibility của application/agent layer: nó quyết đ
 
 Practical unit là Context Item có metadata đủ để selection không phụ thuộc một retrieval score duy nhất. Pinned context giữ goal/critical constraints; working context thay đổi theo decision; evictable context được release khi superseded. Budget là ceiling, không phải quota phải fill.
 
-V0 đã biến mental model thành một implementation deterministic có thể inspect: thay relevance, freshness hoặc budget sẽ làm selected/rejected context đổi theo policy. Điều này chứng minh ownership của Context Manager ở application layer, nhưng **chưa chứng minh managed context tốt hơn raw context trong một coding task thật**.
+Lifecycle simulator làm mental model này dễ quan sát hơn selection demo v0: cùng một task được chia thành nhiều decision, context item thay đổi trạng thái qua từng invocation, Working State carry forward phần cần nhớ, và budget pressure buộc manager phải compress/evict rồi rebuild model input. Điều này chứng minh Context Manager không chỉ là bước ranking trước một LLM call mà là **một vòng đời quản lý context liên tục quanh toàn bộ agent task**. Tuy vậy, simulator vẫn chưa chứng minh managed context tốt hơn raw context trên một coding task thật.
 
 ## My Experiment
 
-<ExperimentCard status="in-progress" title="Context Manager v0">
-  **Implemented:** interactive deterministic Context Manager v0 cho scenario `Fix login 401`. Playground cho phép thay token budget, relevance và freshness; nó hiển thị pipeline selection, score, selected/rejected reasons và final Context Window.
+<ExperimentCard status="in-progress" title="Context Manager lifecycle simulator">
+  **Implemented:** deterministic lifecycle simulator cho scenario `Fix login 401`. Playground cho phép replay hoặc step-through toàn bộ flow; hiển thị Context Window usage xuyên suốt, Working State giữa các invocation, trạng thái từng Context Item và một budget-pressure checkpoint nơi context phải được preserve, compress, evict rồi re-assemble.
 
   **Remaining:** chạy controlled `raw-context vs managed-context` experiment trên cùng task/model/tools và ghi lại token usage, irrelevant context, số vòng/tool call, evidence quality và khả năng tìm/verify root cause.
 </ExperimentCard>
@@ -229,6 +231,6 @@ V0 đã biến mental model thành một implementation deterministic có thể 
   {question: 'Useful does not mean simultaneous nghĩa là gì?', answer: 'Information có thể hữu ích ở các giai đoạn khác nhau của task nhưng không cần cùng tồn tại trong một model invocation; agent preserve important state và rebuild context cho từng decision.'},
   {question: 'Working State nên giữ những gì?', answer: 'Goal, constraints, findings, decisions, changes made, unresolved questions và next actions.'},
   {question: 'Vì sao phải tách raw evidence khỏi interpretation?', answer: 'Để hypothesis/summary do model tạo không mất provenance rồi bị dùng như observed truth ở vòng sau.'},
-  {question: 'V0 hiện chứng minh được gì?', answer: 'Nó chứng minh selection/budget policy có thể được implement và inspect ở application layer; chưa chứng minh managed context cải thiện outcome trên coding task thật.'},
+  {question: 'Lifecycle simulator hiện chứng minh được gì?', answer: 'Nó cho thấy Context Manager phải quản lý context liên tục qua nhiều decision: preserve state, thay đổi Context Item theo invocation, phản ứng với budget pressure bằng compression/eviction và rebuild model input; chưa chứng minh managed context cải thiện outcome trên coding task thật.'},
   {question: 'Điều gì còn thiếu trước khi Practical Context Manager hoàn tất?', answer: 'Controlled raw-context vs managed-context experiment với evidence/result thực tế.'},
 ]}/>
