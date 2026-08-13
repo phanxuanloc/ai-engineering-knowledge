@@ -45,7 +45,7 @@ Hãy coi optimization như chuẩn bị một packet trước khi giao cho model
 
 ### Context Quality
 
-Một context tốt không chỉ cần relevant. Checklist đã học là:
+Một context tốt không chỉ cần relevant. Checklist đánh giá là:
 
 `Good Context = Relevant + Sufficient + Low Noise + Low Redundancy + Fresh + Correct`
 
@@ -147,22 +147,6 @@ Optimization đặc biệt quan trọng khi model cần ra **một quyết đị
 - **Keep stale evidence:** dùng test/log trước change như thể đó là current state.
 - **Mix authority:** để retrieved/untrusted text lẫn với instructions mà không có boundary.
 - **Lose provenance:** summary không còn cho biết fact đến từ đâu hoặc có phải inference không.
-
-## My Understanding
-
-Mental model đang dùng: **Context Window là cái bàn; optimization là chọn diện tích cho đúng tài liệu, rút gọn tài liệu khi an toàn, rồi xếp chúng sao cho model hiểu đúng quyết định hiện tại.** `Budget` là maximum capacity chứ không phải quota phải dùng hết.
-
-## My Experiment
-
-**Status:** Planned
-
-**Hypothesis:** Với cùng coding task, managed context có selection + budget + compact working state sẽ tạo decision ổn định hơn raw context gom nhiều file/log/history.
-
-**Setup:** So sánh raw-context baseline với minimal Context Manager v0 trong [Practical Context Manager](./practical-context-manager.mdx), giữ task và model cố định khi có thể.
-
-**Result:** Chưa thực hiện.
-
-**Conclusion:** Chưa có applied evidence; không suy diễn kết quả trước experiment.
 
 ## Related Knowledge
 

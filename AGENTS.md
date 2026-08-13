@@ -6,13 +6,13 @@ These instructions apply to the entire repository.
 
 ## Knowledge must come from learning
 
-- Public `/docs` pages exist to present AI Engineering knowledge that the learner has actually learned and intentionally captured. Repository maintenance procedures, system prompts, agent behavior, authoring instructions, and workflow documentation belong in `AGENTS.md`, repository metadata, configuration, or another appropriate non-public file—not in `/docs`.
+- Public `/docs` pages exist to present shareable AI Engineering knowledge that the learner has actually learned and intentionally captured. Personal progress, checkpoint status, confidence, incomplete learning plans, repository maintenance procedures, system prompts, agent behavior, authoring instructions, and workflow documentation belong in `learning-progress.yaml`, `AGENTS.md`, repository metadata, configuration, or another appropriate non-public file—not in `/docs`.
 - Never create a public knowledge page or a `learning-progress.yaml` entry merely because an agent needs internal instructions or repository workflow documentation. Operational usefulness is not learning evidence.
-- Do not infer that every file under `/docs` represents learned knowledge. Category landing pages, navigation files, and templates may be structural; learned status comes from actual learning evidence recorded in a canonical note and synchronized in `learning-progress.yaml`.
+- Do not infer that every file under `/docs` represents learned knowledge. Category landing pages, navigation files, and templates may be structural; learned status comes from actual learning evidence recorded in `learning-progress.yaml`.
 - Knowledge articles must only be created or expanded from actual learning, discussion, research, or experiments performed by the learner.
 - Do not pre-populate the knowledge base with generic AI-generated knowledge.
 - Treat a request to explain or brainstorm as discussion, not automatic permission to save a knowledge article. Save or update knowledge only when the learner asks to capture the learning outcome or the active learning workflow explicitly reaches that step.
-- Do not invent the learner's understanding, experiment hypothesis, observations, results, or mastery status. Record only what the learner actually expressed or performed; leave explicit gaps when those stages have not happened.
+- Do not invent the learner's understanding, experiment hypothesis, observations, results, or mastery status. Record learning state only in `learning-progress.yaml`. Public docs may present completed experiment setup, observations, results, and limitations when they are useful to readers, but must not expose personal checkpoint state.
 - Infrastructure documents, category metadata, and templates organize learning but do not count as learned knowledge.
 
 ## Guide broad topics as learning journeys
@@ -29,7 +29,7 @@ The default journey for a broad topic is: Broad Topic → Learning Map → Small
 
 ## Keep the learning index synchronized
 
-`learning-progress.yaml` is the machine-readable source of truth for the learner's current learning state. Canonical learning notes under `/docs` contain what was learned; the index records progress and evidence state for each real topic. Structural files under `/docs` are not learning evidence.
+`learning-progress.yaml` is the machine-readable and non-public source of truth for the learner's current learning state. Canonical learning notes under `/docs` contain shareable knowledge; the index records progress and evidence state for each real topic. Structural files under `/docs` are not learning evidence.
 
 - Read `learning-progress.yaml` before creating or meaningfully updating a learning note.
 - Add an entry only after an actual learning topic has a real note. An absent topic means “not learned yet.” Never add Learning Map or syllabus items, aspirational topics, suggested curricula, category placeholders, or system documentation.
@@ -54,7 +54,7 @@ The default journey for a broad topic is: Broad Topic → Learning Map → Small
 - Allowed `status` values are `learning`, `understood`, `applied`, and `mastered`.
 - Confidence uses this evidence scale: `1` = barely understand; `2` = basic understanding; `3` = can explain; `4` = can apply independently; `5` = can teach or design with it.
 - New entries normally begin at `status: learning`. Do not infer `understood`, `applied`, or `mastered` merely because a note exists or is detailed.
-- Base status and confidence changes on actual evidence from `My Understanding`, experiments, self-test results, reviews, discussion, or demonstrated application. Never fabricate evidence or promote progress automatically.
+- Base status and confidence changes on actual evidence from discussion, experiments, self-test results, reviews, or demonstrated application. Never fabricate evidence or promote progress automatically.
 - Set `learned_at` to the date of the first real learning session, not the file creation date when those differ. Change `last_reviewed` only after an actual review.
 - Keep arrays empty when there is no actual relationship or experiment to record. Do not pre-populate a curriculum.
 - A structural category `index.mdx` and `docs/_templates/learning-note.mdx` must never receive topic entries.
@@ -84,10 +84,8 @@ Start new learning notes from `docs/_templates/learning-note.mdx`. Every learnin
 4. `Example`
 5. `When to Use`
 6. `Common Mistakes`
-7. `My Understanding`
-8. `My Experiment`
-9. `Related Knowledge`
-10. `Self-test`
+7. `Related Knowledge`
+8. `Self-test`
 
 Category landing pages, navigation files, and templates are not learning notes and do not need this structure.
 
@@ -188,13 +186,12 @@ Use this principle: **Explain locally, link when learned, never generate unlearn
 - Updating an old article to add links or improve short explanations is a presentation and knowledge-connection improvement. It must not invent learning evidence, increase confidence automatically, change learning status automatically, or represent unlearned knowledge as learned.
 - Do not introduce or maintain a separate glossary system yet. Use concise local explanations and links between real learning notes until the knowledge base is large enough to justify a glossary.
 
-## Preserve personal learning state
+## Keep personal learning state private
 
-- `My Understanding` and `My Experiment` are owner-authored learning records. Never delete, overwrite, rewrite, or mark them complete merely to make an article look polished.
-- When updating an existing note, preserve those sections verbatim unless the user explicitly asks to change them.
-- Agents may append clearly labeled prompts, open questions, proposed experiments, or dated observations, but must distinguish those additions from the owner's words.
-- Preserve experiment status, results, surprises, and failed attempts. They are knowledge, not cleanup targets.
-- If consolidation moves a note, carry all personal learning state into the canonical article and identify its original context.
+- Store personal status, confidence, checkpoints, review dates, remaining learning work, and evidence references in `learning-progress.yaml`, not public `/docs` or `/blog` content.
+- Public articles should use reader-facing sections such as `Key Takeaways`, `Experiment`, `Results`, and `Limitations` only when they communicate reusable knowledge.
+- Do not publish `My Understanding`, `My Experiment`, planned/in-progress learning status, “what I still need to learn,” or references to `learning-progress.yaml`.
+- Preserve useful experiment setup, observations, failures, results, and limitations, but rewrite them as neutral technical knowledge rather than personal progress evidence.
 
 ## Maintain the knowledge graph
 
@@ -212,7 +209,7 @@ Before finishing a knowledge change:
 
 1. Re-read the edited notes for duplication and contradictions.
 2. Confirm the required headings and their order.
-3. Confirm personal sections were preserved.
+3. Confirm personal learning state appears only in `learning-progress.yaml`, while reusable experiment knowledge is preserved in reader-facing form.
 4. Check related links and update reciprocal or inbound links where appropriate.
 5. Confirm `learning-progress.yaml` matches the real notes and available learning evidence.
 6. Confirm public navigation exposes actual learned knowledge and does not publish internal repository instructions. Add a category to public navigation only when it contains intentionally captured learning or experiments.

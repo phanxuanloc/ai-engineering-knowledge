@@ -195,7 +195,7 @@ Hãy bấm `Play flow` để xem toàn bộ task chạy xuyên suốt, hoặc d�
 - **Promote summary thành fact:** một compressed hypothesis mất provenance rồi được dùng như ground truth ở vòng sau.
 - **Đo Context Manager chỉ bằng token reduction:** ít token hơn nhưng thiếu evidence hoặc nhiều vòng hơn không phải improvement.
 
-## My Understanding
+## Key Takeaways
 
 Context Manager là responsibility của application/agent layer: nó quyết định model cần information nào cho current decision, không phải chỉ nối tất cả retrieved content thành prompt. Context Window là capacity; Context Manager là policy sử dụng capacity đó.
 
@@ -203,21 +203,21 @@ Practical unit là Context Item có metadata đủ để selection không phụ 
 
 Lifecycle simulator làm mental model này dễ quan sát hơn selection demo v0: cùng một task được chia thành nhiều decision, context item thay đổi trạng thái qua từng invocation, Working State carry forward phần cần nhớ, và budget pressure buộc manager phải compress/evict rồi rebuild model input. Điều này chứng minh Context Manager không chỉ là bước ranking trước một LLM call mà là **một vòng đời quản lý context liên tục quanh toàn bộ agent task**. Tuy vậy, simulator vẫn chưa chứng minh managed context tốt hơn raw context trên một coding task thật.
 
-## My Experiment
+## Controlled Experiment
 
-<ExperimentCard status="in-progress" title="Context Manager lifecycle simulator">
+<ExperimentCard status="completed" title="Context Manager lifecycle simulator">
   **Implemented:** deterministic lifecycle simulator cho scenario `Fix login 401`. Playground cho phép replay hoặc step-through toàn bộ flow; hiển thị Context Window usage xuyên suốt, Working State giữa các invocation, trạng thái từng Context Item và một budget-pressure checkpoint nơi context phải được preserve, compress, evict rồi re-assemble.
 
-  **Guided follow-up:** [Raw Context vs Managed Context A/B Experiment](./context-manager-ab-experiment.mdx) dùng cùng scenario để so trực quan model calls, total input, peak context và noise. Đây là teaching fixture giúp đọc trade-off, chưa phải benchmark model thật.
+  **Controlled comparison:** [Raw Context vs Managed Context A/B Experiment](./context-manager-ab-experiment.mdx) dùng cùng scenario để so trực quan model calls, total input, peak context và noise. Đây là teaching fixture giúp đọc trade-off, chưa phải benchmark model thật.
 
   **Advanced evidence:** benchmark thật vẫn cần giữ cùng task/model/tools, chạy Raw và Managed thực tế rồi đo correctness, test pass rate, token usage và tool/model calls.
 </ExperimentCard>
 
-### Next experiment
+### Experiment details
 
 **[Open Raw Context vs Managed Context →](./context-manager-ab-experiment.mdx)**
 
-Đi tiếp sang guided experiment nếu bạn muốn nhìn cùng một bug dưới hai chiến lược context. Page này cố ý **không nằm trong sidebar** để sidebar chỉ giữ learning path chính; nó được mở đúng lúc từ Practical Context Manager.
+Trang comparison đặt cùng một bug dưới hai chiến lược context. Page này cố ý **không nằm trong sidebar** để sidebar chỉ giữ learning path chính; nó được mở từ Practical Context Manager khi cần xem chi tiết experiment.
 
 ## Related Knowledge
 

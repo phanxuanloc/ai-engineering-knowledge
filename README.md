@@ -42,7 +42,7 @@ npm run build
 
 ## How notes are organized
 
-Each note belongs to one topic directory under `docs/`. Start new notes by copying `docs/_templates/learning-note.mdx`; the template separates the takeaway, mental model, concepts, examples, practical guidance, personal understanding, experiments, related ideas, and a self-test.
+Each note belongs to one topic directory under `docs/`. Start new notes by copying `docs/_templates/learning-note.mdx`; the template separates the takeaway, mental model, concepts, examples, practical guidance, related ideas, and a self-test. Public notes contain reusable knowledge; personal progress and checkpoint evidence stay in `learning-progress.yaml`.
 
 Use a short, descriptive kebab-case `.mdx` filename and complete the front matter at the top. Category landing pages are named `index.mdx`, and each `_category_.json` controls its sidebar label and order. Write standard Markdown first; use `docs-diagram` to classify and validate visuals, genuine Excalidraw scenes and their optimized exports for conceptual explanations, and the shared read-only-but-navigable React Flow component for structured technical flows. Mermaid is reserved for rare, tiny relationships whose topology is the entire lesson. The complete visualization policy lives in `AGENTS.md`.
 
@@ -56,7 +56,7 @@ Agents must not pre-populate topics with generic generated explanations. A knowl
 
 Agents use the standard learning-note template, keep each concept in one primary location, and maintain useful relative links between related notes. When files move or concepts are consolidated, agents repair inbound links and add reciprocal links where they improve navigation.
 
-`My Understanding` and `My Experiment` are personal learning records. Agents preserve their existing text and experiment history unless explicitly asked to change them. They may append clearly labeled questions or proposals, but should never replace the owner's perspective with generated prose merely for consistency.
+Completed experiments may be published as neutral setup, results, and limitations when they help readers. Personal status, confidence, incomplete plans, and checkpoint evidence remain in `learning-progress.yaml` rather than public docs or blog posts.
 
 Every knowledge change ends with a duplication review, link check, structure check, and successful `npm run build`.
 

@@ -179,22 +179,6 @@ Với task đơn giản chỉ cần vài facts ổn định, không cần dựng
 - **Keep everything forever:** history/tool output chỉ append, không có eviction.
 - **Treat working state as truth:** summary/hypothesis được carry forward nhưng không còn raw evidence/provenance.
 
-## My Understanding
-
-Mental model đã chốt: **Context Window = cái bàn; Context = thứ đặt trên bàn; Context Engineering = chọn đúng thứ đặt lên bàn.** Với agent thực tế, Context Manager là lớp application quyết định thứ gì cần xuất hiện cho **current decision**, không phải cố giữ toàn bộ task trong một invocation.
-
-## My Experiment
-
-**Status:** Planned
-
-**Hypothesis:** Coding agent dùng context được select theo current decision + compact working state sẽ ít noise và dễ debug hơn baseline append raw context.
-
-**Setup:** Xây minimal Context Manager v0 và so sánh raw context vs managed context trong cùng một coding scenario.
-
-**Result:** Chưa thực hiện.
-
-**Conclusion:** Chưa có applied evidence; xem [Practical Context Manager](./practical-context-manager.mdx).
-
 ## Related Knowledge
 
 - [Context Engineering Map](./context-engineering-map.mdx) — canonical overview và learning path.

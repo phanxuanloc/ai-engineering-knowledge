@@ -13,7 +13,7 @@ import {ImportantDistinction, KeyInsight, Remember, TLDR} from '@site/src/compon
 
 <TLDR>
 
-Một Context Manager chỉ đáng tin khi ta thấy được **nó đã retrieve gì, select gì, bỏ gì, dùng bao nhiêu capacity, evidence có fresh không và context đến từ trust boundary nào**. `Context Operations` gom ba lớp đã học: observability để nhìn lifecycle, metrics/signals để so sánh behavior, và security/trust boundaries để không biến untrusted content thành authority.
+Một Context Manager chỉ đáng tin khi ta thấy được **nó đã retrieve gì, select gì, bỏ gì, dùng bao nhiêu capacity, evidence có fresh không và context đến từ trust boundary nào**. `Context Operations` gồm ba lớp: observability để nhìn lifecycle, metrics/signals để so sánh behavior, và security/trust boundaries để không biến untrusted content thành authority.
 
 </TLDR>
 
@@ -161,22 +161,6 @@ Ngay cả Context Manager v0 cũng nên log tối thiểu selected item ids/type
 - **Trust all retrieved text:** biến data thành instruction.
 - **Log everything:** tạo privacy/security risk chỉ để dễ debug.
 - **Treat summary as fact:** model-generated interpretation mất provenance nhưng được reuse như truth.
-
-## My Understanding
-
-Muốn Context Engineering thành engineering thật sự thì không thể chỉ “chọn context bằng cảm giác”. Cần trace được lifecycle, đo signal theo từng stage và giữ trust boundary để biết lỗi nằm ở context hay model. Output cuối không đủ để debug nguyên nhân.
-
-## My Experiment
-
-**Status:** Planned
-
-**Hypothesis:** Managed-context run có observability sẽ giúp giải thích rõ hơn vì sao một invocation tốt/xấu so với raw-context baseline.
-
-**Setup:** Trong experiment Practical Context Manager, record candidate ids, selected ids, token estimate, freshness/version, working-state change và outcome; không log secret/raw content không cần thiết.
-
-**Result:** Chưa thực hiện.
-
-**Conclusion:** Chưa có applied evidence.
 
 ## Related Knowledge
 
