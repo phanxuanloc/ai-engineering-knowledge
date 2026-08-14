@@ -17,14 +17,29 @@ export type LayoutResult<NodeType extends Node = Node> = {
 };
 
 const MIN_PRIMARY_PATH_GAP = 28;
+const EDGE_LABEL_HORIZONTAL_PADDING = 36;
+const EDGE_LABEL_ESTIMATED_CHARACTER_WIDTH = 6.4;
+const MAX_AUTOMATIC_LABEL_GAP = 180;
+
+function estimateEdgeLabelRankSpacing(edges: Edge[], direction: FlowDirection, requestedRankSpacing: number) {
+  if (direction !== 'LR') return requestedRankSpacing;
+  const longestLabel = edges.reduce((longest, edge) => {
+    const label = typeof edge.label === 'string' ? edge.label : '';
+    return label.length > longest.length ? label : longest;
+  }, '');
+  if (!longestLabel) return requestedRankSpacing;
+  const estimatedLabelWidth = longestLabel.length * EDGE_LABEL_ESTIMATED_CHARACTER_WIDTH + EDGE_LABEL_HORIZONTAL_PADDING;
+  return Math.max(requestedRankSpacing, Math.min(MAX_AUTOMATIC_LABEL_GAP, estimatedLabelWidth));
+}
 
 export function layoutWithDagre<NodeType extends Node>(
   nodes: NodeType[],
   edges: Edge[],
   {direction = 'TB', nodeSpacing = 48, rankSpacing = 52}: LayoutOptions = {},
 ): LayoutResult<NodeType> {
+  const effectiveRankSpacing = estimateEdgeLabelRankSpacing(edges, direction, rankSpacing);
   const graph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-  graph.setGraph({rankdir: direction, nodesep: nodeSpacing, ranksep: rankSpacing, marginx: 0, marginy: 0});
+  graph.setGraph({rankdir: direction, nodesep: nodeSpacing, ranksep: effectiveRankSpacing, marginx: 0, marginy: 0});
 
   for (const node of nodes) {
     graph.setNode(node.id, {width: node.width ?? 168, height: node.height ?? 76});
