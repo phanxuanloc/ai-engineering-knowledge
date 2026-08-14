@@ -83,6 +83,20 @@ type DocsNodeData = Omit<DiagramNode, 'id' | 'height'>;
 type DocsNode = Node<DocsNodeData, 'docs' | 'fit-spacer'>;
 type PacketEdgeData = {label?: string; pathType?: 'straight' | 'step' | 'smoothstep' | 'bezier'};
 
+const MOBILE_QUERY = '(max-width: 700px)';
+
+function useMobileDiagramLayout() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia(MOBILE_QUERY);
+    const sync = () => setMobile(query.matches);
+    sync();
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
+  return mobile;
+}
+
 function DocsFlowNode({data}: NodeProps<DocsNode>) {
   return (
     <div
@@ -147,6 +161,9 @@ export function ReactFlowDiagram({ariaLabel, background = false, caption, classN
   const canvasRef = useRef<HTMLDivElement>(null);
   const flowRef = useRef<ReactFlowInstance<DocsNode, Edge>>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const mobile = useMobileDiagramLayout();
+  const effectiveDirection: FlowDirection = mobile && direction === 'LR' ? 'TB' : direction;
+
   useEffect(() => {
     const updateFullscreen = () => setIsFullscreen(document.fullscreenElement === canvasRef.current);
     document.addEventListener('fullscreenchange', updateFullscreen);
@@ -173,20 +190,20 @@ export function ReactFlowDiagram({ariaLabel, background = false, caption, classN
           : route === 'feedback' ? {labelPlacement: edge.feedbackLabelPlacement} : undefined,
         label: edge.motion === 'packet' ? undefined : edge.label,
         markerEnd: {type: MarkerType.ArrowClosed, width: 16, height: 16},
-        sourceHandle: `source-${edge.sourceHandle ?? (route === 'feedback' ? (direction === 'TB' ? 'right' : 'bottom') : direction === 'TB' ? 'bottom' : 'right')}`,
-        targetHandle: `target-${edge.targetHandle ?? (route === 'feedback' ? (direction === 'TB' ? 'right' : 'bottom') : direction === 'TB' ? 'top' : 'left')}`,
+        sourceHandle: `source-${edge.sourceHandle ?? (route === 'feedback' ? (effectiveDirection === 'TB' ? 'right' : 'bottom') : effectiveDirection === 'TB' ? 'bottom' : 'right')}`,
+        targetHandle: `target-${edge.targetHandle ?? (route === 'feedback' ? (effectiveDirection === 'TB' ? 'right' : 'bottom') : effectiveDirection === 'TB' ? 'top' : 'left')}`,
         className: clsx(route === 'feedback' && styles.flowEdgeFeedback, route === 'secondary' && styles.flowEdgeSecondary, edge.dashed && styles.flowEdgeDashed),
         type,
         pathOptions: baseType === 'default' ? {curvature: 0.25} : undefined,
       };
     });
-  }, [direction, edges, primaryPath]);
+  }, [edges, effectiveDirection, primaryPath]);
 
   const layout = useMemo(() => layoutGraph<DocsNode>(nodes.map(({id, height: authoredHeight, ...data}) => {
     const width = resolveNodeWidth({id, height: authoredHeight, ...data});
     return {id, type: 'docs', data: {...data, width}, position: {x: 0, y: 0}, width, height: estimateNodeHeight({id, height: authoredHeight, ...data})};
-  }), flowEdges, {direction, layout: layoutMode, nodeSpacing, primaryPath, rankSpacing}), [direction, flowEdges, layoutMode, nodeSpacing, nodes, primaryPath, rankSpacing]);
-  useMemo(() => assertDiagramQuality({direction, edges, kind, nodes, primaryPath}, layout.nodes, layout.bounds), [direction, edges, kind, layout.bounds, layout.nodes, nodes, primaryPath]);
+  }), flowEdges, {direction: effectiveDirection, layout: layoutMode, nodeSpacing, primaryPath, rankSpacing}), [effectiveDirection, flowEdges, layoutMode, nodeSpacing, nodes, primaryPath, rankSpacing]);
+  useMemo(() => assertDiagramQuality({direction: effectiveDirection, edges, kind, nodes, primaryPath}, layout.nodes, layout.bounds), [effectiveDirection, edges, kind, layout.bounds, layout.nodes, nodes, primaryPath]);
   const hasFeedback = edges.some(({route}) => route === 'feedback');
   const viewportNodes = useMemo<DocsNode[]>(() => hasFeedback ? [...layout.nodes, {id: '__feedback-fit-spacer', type: 'fit-spacer', data: {label: ''}, position: {x: layout.bounds.width + 110, y: layout.bounds.height / 2}, width: 1, height: 1, selectable: false, draggable: false}] : layout.nodes, [hasFeedback, layout.bounds.height, layout.bounds.width, layout.nodes]);
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<DocsNode>(viewportNodes);
@@ -195,13 +212,15 @@ export function ReactFlowDiagram({ariaLabel, background = false, caption, classN
   const showMiniMap = minimap === true || (minimap === 'auto' && graphIsLarge);
   const showControls = controls ?? interactive;
   const draggable = nodesDraggable ?? false;
-  const canvasHeight = height ?? Math.min(900, Math.max(300, layout.bounds.height + 56));
-  const fitPadding = hasFeedback ? 0.08 : 0.1;
+  const canvasHeight = mobile
+    ? Math.min(900, Math.max(360, layout.bounds.height + 72))
+    : height ?? Math.min(900, Math.max(300, layout.bounds.height + 56));
+  const fitPadding = hasFeedback ? 0.08 : mobile ? 0.08 : 0.1;
 
   return (
     <figure className={clsx(styles.reactFlowFigure, className)} aria-label={ariaLabel}>
       <div className={styles.reactFlowCanvas} ref={canvasRef} style={{height: canvasHeight}}>
-        <ReactFlow aria-label={ariaLabel} colorMode="system" edges={flowEdges} elementsSelectable={false} fitView fitViewOptions={{padding: fitPadding, maxZoom: 1}} maxZoom={1.6} minZoom={0.35} nodes={flowNodes} nodesConnectable={false} nodesDraggable={draggable} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onInit={(instance) => { flowRef.current = instance; }} onNodesChange={onNodesChange} panOnDrag={interactive} preventScrolling={!interactive} proOptions={{hideAttribution: true}} zoomOnDoubleClick={interactive} zoomOnPinch={interactive} zoomOnScroll={interactive}>
+        <ReactFlow key={`${effectiveDirection}-${mobile ? 'mobile' : 'desktop'}`} aria-label={ariaLabel} colorMode="system" edges={flowEdges} elementsSelectable={false} fitView fitViewOptions={{padding: fitPadding, maxZoom: 1}} maxZoom={1.6} minZoom={mobile ? 0.25 : 0.35} nodes={flowNodes} nodesConnectable={false} nodesDraggable={draggable} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onInit={(instance) => { flowRef.current = instance; }} onNodesChange={onNodesChange} panOnDrag={interactive} preventScrolling={!interactive} proOptions={{hideAttribution: true}} zoomOnDoubleClick={interactive} zoomOnPinch={interactive} zoomOnScroll={interactive}>
           {background && <Background variant={BackgroundVariant.Dots} gap={22} size={1} />}
           {showControls && <Controls position="bottom-right" showInteractive={draggable} />}
           {showMiniMap && <MiniMap pannable zoomable position="top-right" />}
