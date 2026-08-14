@@ -7,7 +7,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'AI Engineering Knowledge',
   tagline: 'Learning notes, mental models và experiments thực tiễn để xây dựng AI systems',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/ai-engineering-mark.svg',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
@@ -65,7 +65,7 @@ const config: Config = {
       title: 'AI Engineering Knowledge',
       logo: {
         alt: 'AI Engineering Knowledge logo',
-        src: 'img/logo.svg',
+        src: 'img/ai-engineering-mark.svg',
       },
       items: [
         {
