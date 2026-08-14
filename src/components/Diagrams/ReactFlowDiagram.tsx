@@ -205,22 +205,34 @@ export function ReactFlowDiagram({ariaLabel, background = false, caption, classN
   }), flowEdges, {direction: effectiveDirection, layout: layoutMode, nodeSpacing, primaryPath, rankSpacing}), [effectiveDirection, flowEdges, layoutMode, nodeSpacing, nodes, primaryPath, rankSpacing]);
   useMemo(() => assertDiagramQuality({direction: effectiveDirection, edges, kind, nodes, primaryPath}, layout.nodes, layout.bounds), [effectiveDirection, edges, kind, layout.bounds, layout.nodes, nodes, primaryPath]);
   const hasFeedback = edges.some(({route}) => route === 'feedback');
+  const fitPadding = hasFeedback ? 0.08 : mobile ? 0.08 : 0.1;
   const viewportNodes = useMemo<DocsNode[]>(() => hasFeedback ? [...layout.nodes, {id: '__feedback-fit-spacer', type: 'fit-spacer', data: {label: ''}, position: {x: layout.bounds.width + 110, y: layout.bounds.height / 2}, width: 1, height: 1, selectable: false, draggable: false}] : layout.nodes, [hasFeedback, layout.bounds.height, layout.bounds.width, layout.nodes]);
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<DocsNode>(viewportNodes);
-  useEffect(() => setFlowNodes(viewportNodes), [setFlowNodes, viewportNodes]);
+  useEffect(() => {
+    setFlowNodes(viewportNodes);
+    let secondFrame = 0;
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => {
+        flowRef.current?.fitView({padding: fitPadding, maxZoom: 1, duration: 0});
+      });
+    });
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      if (secondFrame) cancelAnimationFrame(secondFrame);
+    };
+  }, [effectiveDirection, fitPadding, mobile, setFlowNodes, viewportNodes]);
   const graphIsLarge = nodes.length >= 15 || layout.bounds.width > 1600 || layout.bounds.height > 1400;
   const showMiniMap = minimap === true || (minimap === 'auto' && graphIsLarge);
   const showControls = controls ?? interactive;
   const draggable = nodesDraggable ?? false;
   const canvasHeight = mobile
-    ? Math.min(900, Math.max(360, layout.bounds.height + 72))
+    ? Math.min(960, Math.max(380, layout.bounds.height + 96))
     : height ?? Math.min(900, Math.max(300, layout.bounds.height + 56));
-  const fitPadding = hasFeedback ? 0.08 : mobile ? 0.08 : 0.1;
 
   return (
     <figure className={clsx(styles.reactFlowFigure, className)} aria-label={ariaLabel}>
       <div className={styles.reactFlowCanvas} ref={canvasRef} style={{height: canvasHeight}}>
-        <ReactFlow key={`${effectiveDirection}-${mobile ? 'mobile' : 'desktop'}`} aria-label={ariaLabel} colorMode="system" edges={flowEdges} elementsSelectable={false} fitView fitViewOptions={{padding: fitPadding, maxZoom: 1}} maxZoom={1.6} minZoom={mobile ? 0.25 : 0.35} nodes={flowNodes} nodesConnectable={false} nodesDraggable={draggable} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onInit={(instance) => { flowRef.current = instance; }} onNodesChange={onNodesChange} panOnDrag={interactive} preventScrolling={!interactive} proOptions={{hideAttribution: true}} zoomOnDoubleClick={interactive} zoomOnPinch={interactive} zoomOnScroll={interactive}>
+        <ReactFlow key={`${effectiveDirection}-${mobile ? 'mobile' : 'desktop'}`} aria-label={ariaLabel} colorMode="system" edges={flowEdges} elementsSelectable={false} fitView fitViewOptions={{padding: fitPadding, maxZoom: 1}} maxZoom={1.6} minZoom={mobile ? 0.4 : 0.35} nodes={flowNodes} nodesConnectable={false} nodesDraggable={draggable} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onInit={(instance) => { flowRef.current = instance; requestAnimationFrame(() => instance.fitView({padding: fitPadding, maxZoom: 1, duration: 0})); }} onNodesChange={onNodesChange} panOnDrag={interactive} preventScrolling={!interactive} proOptions={{hideAttribution: true}} zoomOnDoubleClick={interactive} zoomOnPinch={interactive} zoomOnScroll={interactive}>
           {background && <Background variant={BackgroundVariant.Dots} gap={22} size={1} />}
           {showControls && <Controls position="bottom-right" showInteractive={draggable} />}
           {showMiniMap && <MiniMap pannable zoomable position="top-right" />}
