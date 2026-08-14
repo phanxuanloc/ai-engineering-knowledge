@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -12,6 +12,7 @@ import {
   type EdgeProps,
   type Node,
   type NodeProps,
+  type ReactFlowInstance,
   type XYPosition,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -228,6 +229,7 @@ export function FlowExplainer({title, description, scenarios, stepDurationMs = 2
   const [scenarioId, setScenarioId] = useState(scenarios[0]?.id ?? '');
   const [stepIndex, setStepIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const flowRef = useRef<ReactFlowInstance<ExplainerNode, Edge>>(null);
   const mobile = useMobileLayout();
   const scenario = useMemo(() => scenarios.find((item) => item.id === scenarioId) ?? scenarios[0], [scenarioId, scenarios]);
   const step = scenario?.steps[stepIndex];
@@ -243,6 +245,18 @@ export function FlowExplainer({title, description, scenarios, stepDurationMs = 2
     }, step.durationMs ?? stepDurationMs);
     return () => window.clearTimeout(timer);
   }, [playing, scenario, step, stepDurationMs]);
+  useEffect(() => {
+    let secondFrame = 0;
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => {
+        flowRef.current?.fitView({padding: mobile ? 0.1 : 0.18, maxZoom: 1.04, duration: 0});
+      });
+    });
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      if (secondFrame) cancelAnimationFrame(secondFrame);
+    };
+  }, [mobile, scenarioId]);
 
   if (!scenario || !step) return null;
   const scenarioEdges = scenario.edges ?? inferEdges(scenario.nodes);
@@ -288,8 +302,9 @@ export function FlowExplainer({title, description, scenarios, stepDurationMs = 2
     }));
 
   const maxRow = Math.max(0, ...scenario.nodes.map((node) => node.row ?? 0));
+  const mobileContentHeight = Math.max(NODE_HEIGHT, Math.max(0, scenario.nodes.length - 1) * MOBILE_ROW_GAP + NODE_HEIGHT);
   const graphHeight = mobile
-    ? Math.min(780, Math.max(330, scenario.nodes.length * MOBILE_ROW_GAP))
+    ? Math.min(960, Math.max(360, mobileContentHeight + 104))
     : Math.max(270, Math.min(520, 270 + maxRow * 92));
   const progress = scenario.steps.length <= 1 ? 100 : (stepIndex / (scenario.steps.length - 1)) * 100;
   const next = () => { setPlaying(false); setStepIndex((current) => Math.min(current + 1, scenario.steps.length - 1)); };
@@ -314,7 +329,7 @@ export function FlowExplainer({title, description, scenarios, stepDurationMs = 2
       <div className={styles.stage}>
         <div className={styles.graphCanvas} style={{height: graphHeight}}>
           <div className={styles.scanline} aria-hidden="true" />
-          <ReactFlow key={`${scenario.id}-${mobile ? 'mobile' : 'desktop'}`} aria-label={`${title}: ${scenario.label}`} colorMode="system" edgeTypes={edgeTypes} edges={[...baseEdges, ...activeEdges]} elementsSelectable={false} fitView fitViewOptions={{padding: mobile ? 0.12 : 0.18, maxZoom: 1.04}} maxZoom={1.25} minZoom={mobile ? 0.65 : 0.5} nodes={graphNodes} nodesConnectable={false} nodesDraggable={false} nodeTypes={nodeTypes} panOnDrag={false} preventScrolling={false} proOptions={{hideAttribution: true}} zoomOnDoubleClick={false} zoomOnPinch={false} zoomOnScroll={false} />
+          <ReactFlow key={`${scenario.id}-${mobile ? 'mobile' : 'desktop'}`} aria-label={`${title}: ${scenario.label}`} colorMode="system" edgeTypes={edgeTypes} edges={[...baseEdges, ...activeEdges]} elementsSelectable={false} fitView fitViewOptions={{padding: mobile ? 0.1 : 0.18, maxZoom: 1.04}} maxZoom={1.25} minZoom={mobile ? 0.55 : 0.5} nodes={graphNodes} nodesConnectable={false} nodesDraggable={false} nodeTypes={nodeTypes} onInit={(instance) => { flowRef.current = instance; requestAnimationFrame(() => instance.fitView({padding: mobile ? 0.1 : 0.18, maxZoom: 1.04, duration: 0})); }} panOnDrag={false} preventScrolling={false} proOptions={{hideAttribution: true}} zoomOnDoubleClick={false} zoomOnPinch={false} zoomOnScroll={false} />
         </div>
         <aside className={styles.story} aria-live="polite">
           <div className={styles.stepMeta}><span>Event {String(stepIndex + 1).padStart(2, '0')}</span><span>{String(scenario.steps.length).padStart(2, '0')}</span></div>
