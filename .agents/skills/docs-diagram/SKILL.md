@@ -20,7 +20,29 @@ Use these four first-class visual modes:
 4. **Animated Chart / Quantitative Visual** → a shared chart component or the simplest existing charting stack.
    Use when the lesson is a metric, comparison, progression, distribution, latency, token usage, throughput, error rate, score, budget, or value changing over time.
 
-Do not collapse modes 2 and 3. A React Flow graph with every edge continuously animated is **not** automatically a good runtime explainer. If time, order, state, causality, direction reversal, retries, streaming, or intermediate states are part of the lesson, prefer a step-driven Visual Explainer.
+## Mandatory runtime-explainer gate
+
+**If a runtime behavior can be represented truthfully and readably with the shared Animated Flow Explainer, using only a static diagram is a failure.** This is a mandatory renderer-selection rule, not a stylistic preference.
+
+Before accepting any `workflow`, `sequence`, `data-flow`, `lifecycle`, request/response, streaming, retry, agent/tool, RAG, Context Engineering, queue/event, or state-transition visual, explicitly answer:
+
+> Can the important runtime behavior be taught truthfully with `FlowExplainer` using finite states/steps and grounded transitions?
+
+- **If yes:** use Animated Flow Explainer for the runtime story.
+- **If the same lesson also needs topology:** keep or add a Static React Flow view for **what connects to what**, and use Animated Flow Explainer for **what happens over time**.
+- **If no:** record the concrete reason before using a static-only representation. Valid reasons are limited to:
+  1. motion adds no learning value because time/order/state is not part of the lesson;
+  2. the current explainer cannot represent the topology/semantics without distortion or hiding important facts;
+  3. accessibility, performance, or rendering constraints would make the animated version materially worse than the static alternative.
+
+“Static is simpler”, “React Flow already exists”, “the article already has a diagram”, implementation convenience, or lack of initiative are **not** valid exceptions.
+
+Do not satisfy this gate by enabling perpetual packet animation on a static React Flow. Continuous edge motion is not a substitute for step/state semantics, direction changes, intermediate states, learner controls, or causal explanation.
+
+Do not collapse static topology and runtime explanation into one compromised visual when both teaching jobs are important. Prefer the pair:
+
+**Static React Flow = what connects to what**  
+**Animated Flow Explainer = what happens over time**
 
 ## Run the pipeline
 
@@ -28,7 +50,8 @@ Do not collapse modes 2 and 3. A React Flow graph with every edge continuously a
 2. State the 3–5 second teaching message and the evidence supporting every entity, relationship, state, and transition.
 3. Decide whether a visual materially improves comprehension. Keep normal MDX when prose is clearer.
 4. Classify as `mental-model`, `static-topology`, `runtime-behavior`, or `quantitative-change` before selecting a renderer.
-5. Define a bounded semantic spec before implementation:
+5. If runtime behavior exists, run the **Mandatory runtime-explainer gate** before implementing anything static.
+6. Define a bounded semantic spec before implementation:
    - stable IDs;
    - entities/nodes and roles;
    - relationships;
@@ -37,14 +60,14 @@ Do not collapse modes 2 and 3. A React Flow graph with every edge continuously a
    - timeline/step order when behavior matters;
    - metric and scale when charting;
    - mobile strategy and accessibility message.
-6. Select the renderer from the classification, not from library convenience.
-7. Reuse shared infrastructure. Article MDX should declare semantic data/story; shared components own layout, motion, controls, theme, and responsive behavior.
-8. Validate structural correctness, layout, routing, readability, animation semantics, reduced-motion behavior, mobile, light/dark themes, and actual visual output.
-9. Repair the diagnosed layer only. Regenerate the whole visual only when classification or semantic modeling is wrong.
+7. Select the renderer from the classification and mandatory gate, not from library convenience.
+8. Reuse shared infrastructure. Article MDX should declare semantic data/story; shared components own layout, motion, controls, theme, and responsive behavior.
+9. Validate structural correctness, layout, routing, readability, animation semantics, reduced-motion behavior, mobile, light/dark themes, and actual visual output.
+10. Repair the diagnosed layer only. Regenerate the whole visual only when classification or semantic modeling is wrong.
 
 ## Detect behavioral content automatically
 
-Treat these as strong signals that `visual-explainer` should be considered before a static diagram:
+Treat these as strong signals that the mandatory runtime-explainer gate applies:
 
 - words such as sends, receives, returns, retries, streams, emits, consumes, calls, waits, transitions, selects, filters, scores, evicts, compresses, chunks, retrieves, routes, propagates, acknowledges;
 - arrows whose meaning changes by step or direction;
@@ -52,7 +75,7 @@ Treat these as strong signals that `visual-explainer` should be considered befor
 - multiple messages over the same connection;
 - an important intermediate state that would otherwise be hidden in prose.
 
-For API communication, agent execution, Context Engineering, RAG, tool calling, queues/events, and streaming, actively test whether a runtime explainer would teach better than a static graph.
+For API communication, agent execution, Context Engineering, RAG, tool calling, queues/events, and streaming, assume the gate applies unless inspection shows the lesson is topology-only.
 
 ## Animation must encode meaning
 
@@ -86,6 +109,8 @@ Before finishing any visual work:
 
 - verify semantic truth against the note/source;
 - verify the first frame is understandable without interaction;
+- verify every behavioral visual passed the Mandatory runtime-explainer gate;
+- if a behavioral visual remains static-only, verify a valid exception is explicitly documented;
 - verify controls and keyboard focus;
 - verify mobile/narrow article width;
 - verify light and dark themes;
