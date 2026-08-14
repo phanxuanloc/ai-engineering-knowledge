@@ -24,11 +24,11 @@ Do not make the specialized skills compete: Excalidraw explains how to think abo
 
 Choose one React Flow mode:
 
-1. **Compact teaching flow:** few nodes; fit view; interaction only if useful; no MiniMap; dragging normally off.
-2. **Architecture/process flow:** automatic layout; pan/zoom; Controls; optional dragging; MiniMap only if navigation benefits.
+1. **Compact teaching flow:** few nodes; automatic fit; read-only by default; no MiniMap; fullscreen may be the only visible control.
+2. **Architecture/process flow:** automatic layout; pan/zoom only when inspection genuinely benefits; Controls when navigation is enabled; optional dragging only when spatial exploration teaches something; MiniMap only if navigation benefits.
 3. **Large interactive map:** automatic layout; draggable nodes; pan/zoom; Controls; MiniMap; consider groups, subflows, expansion, or toolbars.
 
-Use a **read-only but navigable** interaction model. Pan, zoom, fit view, and fullscreen are viewing tools and should remain available by default. Node dragging, selection, connection creation, deletion, and other topology editing stay disabled unless spatial exploration itself teaches the concept. These are learning diagrams, not workflow editors.
+Interaction must match the teaching job. A small static teaching diagram is a **read-only learning surface**, not an editor canvas: automatic `fitView` owns default framing; disable node dragging, canvas pan, scroll/pinch/double-click zoom, selection, and connection creation when the full graph can be shown readably without them. In that mode, keep only Fullscreen when a larger inspection surface is useful. Do not show `+ / − / fit` controls merely because React Flow provides them. Pan/zoom/Controls are appropriate only when graph size or exploration makes navigation materially useful.
 
 ## Inspect before changing
 
@@ -112,12 +112,14 @@ For `TB`, targets enter from top and sources leave from bottom. For `LR`, target
 
 ## Configure the viewport
 
-- Default to `fitView` with modest padding so the important graph is initially visible without clipping or giant margins.
-- Keep pan, zoom, fit view, and fullscreen available for inspecting the graph; show Controls whenever pan/zoom is enabled.
+- Default to automatic `fitView` with modest padding so the important graph is initially visible without clipping or giant margins. After responsive relayout or measured-node geometry changes, refit only after the final positions/bounds have settled; stale pre-layout framing is a bug.
+- For **compact teaching flows**, prefer a fully read-only canvas when the complete graph fits readably: no pan, no wheel/pinch/double-click zoom, no node dragging, and no `+ / − / fit` chrome. Fullscreen may remain as the single explicit inspection control. The reader should not need to repair framing manually.
+- For architecture/process or large maps where navigation is genuinely useful, enable pan/zoom deliberately and show matching Controls. Do not enable invisible pan/zoom gestures without discoverable navigation affordances.
 - Use `minimap="auto"`; show it for large canvases or roughly 15+ nodes, not tiny flows.
 - Use a subtle Background only when it aids orientation.
-- Allow dragging for exploratory architecture/maps; keep the initial automatic layout canonical. Disable it for small teaching flows when it adds no value.
-- On mobile, preserve readable node text and provide pan/zoom rather than shrinking the entire graph into illegibility.
+- Allow dragging only for exploratory architecture/maps where moving nodes adds learning value; keep the initial automatic layout canonical.
+- On mobile, **recompose first**. Do not preserve a desktop `LR` graph by shrinking it to unreadable text or by requiring pan/zoom when a semantic `TB`/stacked composition can show the whole teaching flow.
+- Mobile reflow must preserve topology semantics. A fan-out/fan-in may stack branch cards vertically, but sibling branches must remain connected to their real hub/parent and must never become a false sequential chain because of visual order.
 - Use site CSS variables and `colorMode="system"`; verify light and dark themes. Never encode meaning by color alone.
 
 Derive canvas size from computed graph bounds with intentional modest padding whenever practical. Do not use a large fixed height to disguise poor density or a narrow graph. Inspect fit-view zoom: the default view must keep normal labels and metadata readable. Controls must clear meaningful content. Mobile may use responsive widths/spacing or an alternate composition; it must not merely shrink a desktop graph until text becomes unreadable.
@@ -152,9 +154,9 @@ Before accepting a React Flow diagram, answer all of these:
 10. Does every labeled connector retain enough clear shaft around its label to read direction immediately?
 11. Are semantic node roles distinguishable before every label is read?
 12. Is the diagram taller or wider than its topology needs?
-13. Does `fitView` produce a useful default zoom?
-14. Does mobile remain readable rather than merely scaled down?
-15. Do controls clear graph content?
+13. Does automatic `fitView` produce a useful default zoom after final responsive geometry settles?
+14. Does mobile remain readable **and preserve topology semantics**, rather than merely scaling down or flattening branches into a false sequence?
+15. Does the interaction model match the teaching job—read-only/fullscreen-only for compact flows, navigable controls only when exploration is useful?
 16. Does the diagram teach structure better than plain text?
 
 If several answers fail, redesign the topology/composition instead of accumulating coordinate tweaks.
@@ -171,8 +173,9 @@ Before finishing, confirm:
 - no node content crossing its border, floating step metadata, metadata/title overlap, or long-text overflow at desktop or mobile width;
 - crossings are minimized and the main direction/branching/output are obvious;
 - sibling and rank spacing are consistent; node sizes fit readable content;
-- fitView has balanced padding without excessive empty canvas;
-- Controls, MiniMap, background, and dragging match the selected mode;
+- fitView has balanced padding without excessive empty canvas and is recalculated after final responsive geometry;
+- compact teaching flows do not expose unnecessary pan/zoom/drag/editor-like controls; fullscreen-only is valid when the complete graph fits automatically;
+- mobile reflow preserves authored relationships, including sibling branches and fan-out/fan-in;
 - desktop and narrow/mobile layouts work in the Docusaurus article column;
 - light and dark themes preserve contrast;
 - keyboard focus and `ariaLabel` are present; meaning does not depend on color;
@@ -180,4 +183,4 @@ Before finishing, confirm:
 
 On failure, repair locally in this order: semantic spec/ranks → affected node spacing/size → handle placement → edge type → label. Change one diagnosed control at a time; preserve unrelated nodes, edges, IDs, and copy. Split the view when density or topology is the real defect.
 
-Run the configured formatter/linter when present, `npm run typecheck`, and `npm run build`. Then inspect representative diagrams at desktop and mobile widths in light and dark themes; test fit, pan, zoom, Controls, dragging when enabled, and MiniMap when present. Compilation alone is not acceptance.
+Run the configured formatter/linter when present, `npm run typecheck`, and `npm run build`. Then inspect representative diagrams at desktop and mobile widths in light and dark themes; test the interaction model actually selected (automatic fit/fullscreen-only for compact teaching flows; pan/zoom/Controls only where navigation is enabled). Compilation alone is not acceptance.
