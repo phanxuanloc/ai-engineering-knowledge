@@ -6,6 +6,8 @@ sidebar_position: 2
 ---
 
 import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
+import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 # Git Workflows
 
@@ -25,6 +27,80 @@ Chọn workflow theo cách team tích hợp và release code, không chọn ch�
 - **GitHub Flow:** short feature branch -> Pull Request -> `main` -> deploy.
 - **GitLab Flow:** feature -> `main`, sau đó promote xuống environment branches hoặc backport xuống stable release branches khi cần.
 - **Trunk-Based Development:** thay đổi rất nhỏ, branch rất ngắn, merge liên tục vào trunk; feature chưa public thường được che bằng feature flag.
+
+### Watch each workflow move
+
+Bốn workflow có thể nhìn giống nhau nếu chỉ đọc tên branch. Khác biệt trở nên rõ hơn khi quan sát **một change thực sự di chuyển qua hệ thống**.
+
+<FlowExplainer
+  title="Git workflow — integration and release paths"
+  description="Chọn từng scenario để xem một change đi từ lúc phát triển đến integration/release như thế nào."
+  scenarios={[
+    {
+      id: 'git-flow',
+      label: 'Git Flow',
+      nodes: [
+        {id: 'feature', label: 'feature/*', detail: 'Isolated work', role: 'client'},
+        {id: 'develop', label: 'develop', detail: 'Integration branch', role: 'service'},
+        {id: 'release', label: 'release/*', detail: 'Freeze + stabilize', role: 'network'},
+        {id: 'main', label: 'main', detail: 'Production history', role: 'service'},
+      ],
+      steps: [
+        {title: '1 · Develop feature', from: 'feature', to: 'develop', message: 'merge feature', description: 'Feature được tạo từ develop và quay về develop khi hoàn thành.'},
+        {title: '2 · Cut release', from: 'develop', to: 'release', message: 'release/2.1.0', description: 'Khi đủ scope, team cắt release branch để freeze feature và bắt đầu stabilization.'},
+        {title: '3 · Ship release', from: 'release', to: 'main', message: 'v2.1.0', description: 'Release đã QA được merge vào main và thường được gắn Git tag.'},
+        {title: '4 · Bring fixes back', from: 'release', to: 'develop', message: 'release fixes', description: 'Bug fix sinh ra trong release branch phải quay lại develop để release sau không tái phát lỗi.'},
+      ],
+    },
+    {
+      id: 'github-flow',
+      label: 'GitHub Flow',
+      nodes: [
+        {id: 'branch', label: 'Feature Branch', detail: 'Short-lived change', role: 'client'},
+        {id: 'pr', label: 'Pull Request', detail: 'Review + CI', role: 'network'},
+        {id: 'main', label: 'main', detail: 'Always deployable', role: 'service'},
+        {id: 'prod', label: 'Production', detail: 'Deploy after merge', role: 'database'},
+      ],
+      steps: [
+        {title: '1 · Open change', from: 'branch', to: 'pr', message: 'PR', description: 'Thay đổi đi qua Pull Request để review và chạy CI.'},
+        {title: '2 · Integrate', from: 'pr', to: 'main', message: 'merge', description: 'PR pass thì merge trực tiếp vào main; không cần develop hoặc release branch bắt buộc.'},
+        {title: '3 · Deploy', from: 'main', to: 'prod', message: 'deploy', description: 'Main luôn deployable và có thể được deploy ngay sau merge.'},
+      ],
+    },
+    {
+      id: 'gitlab-flow',
+      label: 'GitLab Flow',
+      nodes: [
+        {id: 'feature', label: 'Feature Branch', detail: 'Change', role: 'client'},
+        {id: 'main', label: 'main', detail: 'Upstream', role: 'service'},
+        {id: 'staging', label: 'Staging', detail: 'Promoted candidate', role: 'network'},
+        {id: 'production', label: 'Production', detail: 'Downstream', role: 'database'},
+      ],
+      steps: [
+        {title: '1 · Integrate upstream', from: 'feature', to: 'main', message: 'merge', description: 'Feature được tích hợp vào main trước.'},
+        {title: '2 · Promote candidate', from: 'main', to: 'staging', message: 'promote', description: 'Code được promote xuống môi trường ổn định hơn để kiểm thử.'},
+        {title: '3 · Promote release', from: 'staging', to: 'production', message: 'release', description: 'Candidate đã pass được promote tiếp xuống production.'},
+      ],
+    },
+    {
+      id: 'trunk-based',
+      label: 'Trunk-Based',
+      nodes: [
+        {id: 'small-change', label: 'Tiny Change', detail: 'Hours, not weeks', role: 'client'},
+        {id: 'ci', label: 'CI + Review', detail: 'Fast feedback', role: 'network'},
+        {id: 'main', label: 'main / trunk', detail: 'Continuous integration', role: 'service'},
+        {id: 'flag', label: 'Feature Flag', detail: 'Release control', role: 'database'},
+      ],
+      steps: [
+        {title: '1 · Keep the change small', from: 'small-change', to: 'ci', message: 'small PR', description: 'Feature lớn được chia thành các thay đổi nhỏ để branch sống rất ngắn.'},
+        {title: '2 · Integrate continuously', from: 'ci', to: 'main', message: 'merge often', description: 'Code được tích hợp vào trunk nhiều lần thay vì giữ long-lived feature branch.'},
+        {title: '3 · Separate merge from release', from: 'main', to: 'flag', message: 'flag OFF', description: 'Code có thể đã ở main nhưng feature chưa public; feature flag kiểm soát thời điểm release.'},
+      ],
+    },
+  ]}
+/>
+
+**Visual takeaway:** Git Flow thêm các stage để quản lý release lifecycle; GitHub Flow rút gọn thành PR -> main; GitLab Flow có upstream -> downstream promotion khi cần; Trunk-Based tối ưu cho integration liên tục bằng các change rất nhỏ.
 
 ## Core Concepts
 
@@ -46,6 +122,37 @@ hotfix/*  : main    -> main + develop
 ```
 
 `release/*` dùng để freeze feature và stabilize một release trong khi `develop` có thể tiếp tục cho release sau. `hotfix/*` phải xuất phát từ production state trên `main`, không từ `develop`.
+
+### Git Flow hotfix path
+
+Hotfix là chỗ dễ nhầm nhất vì nó không bắt đầu từ `develop`. Production đang nằm trên `main`, nên hotfix phải xuất phát từ đúng production state rồi đưa fix trở lại cả production line lẫn development line.
+
+<FlowExplainer
+  title="Git Flow hotfix — production fix without losing it later"
+  description="Hotfix đi từ main vì main đại diện production state; sau khi fix, change phải quay về cả main và develop."
+  scenarios={[
+    {
+      id: 'hotfix',
+      label: 'Critical production bug',
+      nodes: [
+        {id: 'main-old', label: 'main', detail: 'v2.1.0 production', role: 'service'},
+        {id: 'hotfix', label: 'hotfix/auth-crash', detail: 'Urgent fix', role: 'network'},
+        {id: 'main-new', label: 'main', detail: 'v2.1.1', role: 'service', column: 2, row: 0},
+        {id: 'develop', label: 'develop', detail: 'v2.2 work continues', role: 'database', column: 2, row: 2},
+      ],
+      edges: [
+        {id: 'cut', source: 'main-old', target: 'hotfix'},
+        {id: 'prod', source: 'hotfix', target: 'main-new'},
+        {id: 'back', source: 'hotfix', target: 'develop'},
+      ],
+      steps: [
+        {title: '1 · Cut from production', edgeId: 'cut', from: 'main-old', to: 'hotfix', message: 'branch from main', description: 'Không branch từ develop vì develop có thể chứa code của release tương lai chưa sẵn sàng.'},
+        {title: '2 · Patch production', edgeId: 'prod', from: 'hotfix', to: 'main-new', message: 'v2.1.1', description: 'Hotfix được merge vào main để tạo patch release cho production.'},
+        {title: '3 · Preserve the fix', edgeId: 'back', from: 'hotfix', to: 'develop', message: 'merge back', description: 'Cùng fix phải quay về develop để v2.2 không vô tình tái xuất hiện bug cũ.'},
+      ],
+    },
+  ]}
+/>
 
 ### Merge strategy
 
@@ -87,15 +194,38 @@ Git tag nên liên kết được release với commit cụ thể; production ar
 
 Một team có `main` và shared `testing` branch. Nhiều feature 1, 2, 3 được merge vào `testing` để QA, nhưng sau đó chỉ feature 1 và 3 được merge riêng vào `main`.
 
-```text
-main
- ├── feature/1 ─┐
- ├── feature/2 ─┼──> testing
- └── feature/3 ─┘
+### Why the shared testing branch can lie
 
-QA: 1 pass, 2 không release, 3 pass
-Release: feature/1 + feature/3 -> main
-```
+Static topology ở đây trả lời **what was tested vs what will actually be released**.
+
+<ReactFlowDiagram
+  ariaLabel="Shared testing branch chứa feature 1, 2, 3 nhưng production chỉ release feature 1 và 3"
+  caption="QA pass trên testing không đảm bảo production pass nếu tổ hợp code release khác tổ hợp code đã test. Final release candidate nên phản ánh đúng tập feature sẽ lên production."
+  controls={false}
+  direction="LR"
+  fullscreen
+  height={420}
+  interactive={false}
+  kind="branch"
+  nodes={[
+    {id: 'main', eyebrow: 'BASE', label: 'main', detail: 'Production baseline', role: 'source', size: 'compact'},
+    {id: 'f1', eyebrow: 'FEATURE', label: 'Feature 1', detail: 'Will release', role: 'process', size: 'compact'},
+    {id: 'f2', eyebrow: 'FEATURE', label: 'Feature 2', detail: 'Will NOT release', role: 'constraint', size: 'compact'},
+    {id: 'f3', eyebrow: 'FEATURE', label: 'Feature 3', detail: 'Will release', role: 'process', size: 'compact'},
+    {id: 'testing', eyebrow: 'QA STATE', label: 'testing', detail: 'main + 1 + 2 + 3', role: 'state', emphasis: true, size: 'standard'},
+    {id: 'release', eyebrow: 'PROD STATE', label: 'Production candidate', detail: 'main + 1 + 3', role: 'output', size: 'standard'},
+  ]}
+  edges={[
+    {source: 'main', target: 'f1', label: 'branch', route: 'secondary'},
+    {source: 'main', target: 'f2', label: 'branch', route: 'secondary'},
+    {source: 'main', target: 'f3', label: 'branch', route: 'secondary'},
+    {source: 'f1', target: 'testing', label: 'merge', route: 'secondary'},
+    {source: 'f2', target: 'testing', label: 'merge', route: 'secondary'},
+    {source: 'f3', target: 'testing', label: 'merge', route: 'secondary'},
+    {source: 'f1', target: 'release', label: 'selected', route: 'primary'},
+    {source: 'f3', target: 'release', label: 'selected', route: 'primary'},
+  ]}
+/>
 
 Rủi ro là trạng thái đã test là `main + 1 + 2 + 3`, trong khi trạng thái release lại là `main + 1 + 3`. Nếu feature 1 hoặc 3 vô tình phụ thuộc vào feature 2, production có thể lỗi dù QA đã pass. Nguyên tắc an toàn hơn là final release candidate phải được test đúng với tổ hợp code sẽ release.
 
