@@ -48,9 +48,7 @@ body { letter-spacing:-.003em; }
     display:flex!important;
     visibility:visible!important;
     opacity:1!important;
-    position:relative;
-    z-index:2;
-    order:-1;
+    position:static;
     flex:0 0 44px;
     width:44px;
     height:44px;
