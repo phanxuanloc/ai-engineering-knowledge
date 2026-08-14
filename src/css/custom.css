@@ -43,9 +43,39 @@ body { letter-spacing:-.003em; }
   .navbar__brand { min-width:0; margin-right:.35rem; }
   .navbar__logo { flex:0 0 auto; }
   .navbar__title { overflow:hidden; max-width:min(58vw,19rem); text-overflow:ellipsis; white-space:nowrap; font-size:.9rem; }
-  .navbar__toggle { display:flex; flex:0 0 44px; width:44px; height:44px; align-items:center; justify-content:center; margin-right:.2rem; border-radius:10px; }
+
+  /* Keep Docusaurus' native mobile toggle reachable even when the brand is long. */
+  .navbar__toggle {
+    display:flex!important;
+    visibility:visible!important;
+    opacity:1!important;
+    position:relative;
+    z-index:2;
+    order:-1;
+    flex:0 0 44px;
+    width:44px;
+    height:44px;
+    align-items:center;
+    justify-content:center;
+    margin:0 .35rem 0 0;
+    padding:0;
+    border-radius:10px;
+    pointer-events:auto;
+  }
   .navbar__toggle:hover { background:var(--learning-hover); }
-  .navbar-sidebar { width:min(88vw,360px); background:var(--ifm-background-color); }
+
+  /* The brand may shrink; the navigation control may not. */
+  .navbar__brand { flex:1 1 auto; overflow:hidden; }
+  .navbar__items:not(.navbar__items--right) { flex:1 1 auto; overflow:hidden; }
+
+  /* Keep the native drawer above article/diagram surfaces. */
+  .navbar-sidebar {
+    width:min(88vw,360px);
+    max-width:100vw;
+    z-index:calc(var(--ifm-z-index-fixed) + 2);
+    background:var(--ifm-background-color);
+  }
+  .navbar-sidebar__backdrop { z-index:calc(var(--ifm-z-index-fixed) + 1); }
   .navbar-sidebar__brand { min-height:var(--ifm-navbar-height); padding:.55rem .75rem; border-bottom:1px solid var(--learning-border); }
   .navbar-sidebar__items { height:calc(100dvh - var(--ifm-navbar-height)); overflow-y:auto; overscroll-behavior:contain; }
   .navbar-sidebar .menu { padding:.8rem!important; }
