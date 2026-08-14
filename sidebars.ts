@@ -30,7 +30,10 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Software Engineering',
       link: {type: 'doc', id: 'software-engineering/index'},
-      items: ['software-engineering/api-communication-fundamentals'],
+      items: [
+        'software-engineering/api-communication-fundamentals',
+        'software-engineering/git-workflows',
+      ],
     },
   ],
 };
