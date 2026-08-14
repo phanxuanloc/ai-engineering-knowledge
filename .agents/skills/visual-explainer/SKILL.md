@@ -230,6 +230,20 @@ The first frame must fit a normal Docusaurus article column. On narrow screens:
 - prefer a vertical/stacked narrative over shrinking text;
 - avoid page-level horizontal overflow.
 
+### Preserve topology semantics during mobile reflow
+
+Responsive reflow may change **geometry**, but it must not change the **meaning of the graph**.
+
+- Never turn a real desktop fan-out/fan-in into a sequential mobile pipeline merely because a single vertical column is easy to fit. `GraphQL Server → Database / REST Service / gRPC Service` must still read as three sibling dependencies, not `Database → REST Service → gRPC Service`.
+- A simple linear scenario may use a single vertical event spine. A scenario with authored `row`/`column` structure, sibling branches, parallel transitions, or fan-out/fan-in requires topology-aware mobile composition.
+- For a narrow fan-out, prefer **hub + stacked branches**: keep the hub on the main spine, stack branch cards vertically for width, and offset/route each branch independently back to the hub. Visual stacking must not imply branch-to-branch edges.
+- Preserve authored edges and transition endpoints across breakpoints. Responsive layout must not infer new sequential relationships from node array order.
+- Edge labels/messages need their own branch lanes. Do not place several fan-out labels on one shared vertical trunk where they can collide with sibling cards or make edge ownership ambiguous.
+- Compute mobile canvas bounds from the final responsive node positions, including node height and breathing room. Do not estimate height from `nodes.length * gap` when branch offsets or multiple mobile lanes are present.
+- Run `fitView` only after the final responsive geometry is mounted/settled. `fitView` is framing, not a substitute for a valid mobile topology.
+
+`api-communication-fundamentals.mdx` GraphQL is the regression case: on mobile, `Database`, `REST Service`, and `gRPC Service` may be vertically stacked for readability, but all three must remain visually connected to `GraphQL Server` as sibling fan-out branches.
+
 ## Migration rule
 
 When editing an old learning note, inspect static or continuously animated diagrams for behavioral content. If the behavior can be represented truthfully by the shared Flow Explainer, migrate it in the same change.
@@ -251,6 +265,8 @@ Before accepting a Visual Explainer:
 - verify long node/message text remains bounded to the geometry used for routing, with full meaning recoverable from narrative/accessible text;
 - verify replay/reset and scenario switching are deterministic;
 - verify mobile has no page overflow or unreadably small labels;
+- verify mobile reflow preserves topology semantics: sibling branches remain siblings, fan-out/fan-in does not become a false sequential chain, and branch labels retain clear edge ownership;
+- verify mobile canvas bounds are derived from final responsive positions and the final geometry is fit only after responsive layout settles;
 - verify light/dark themes preserve contrast;
 - verify reduced motion retains all meaning;
 - verify controls are keyboard reachable;
