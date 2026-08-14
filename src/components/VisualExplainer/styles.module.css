@@ -40,7 +40,7 @@
 .baseEdge path { opacity: .34; }
 .activeEdgePath { stroke: var(--learning-active) !important; stroke-width: 2.35 !important; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--learning-active) 42%, transparent)); }
 .packetDot { fill: var(--learning-active); stroke: var(--diagram-surface); stroke-width: 2px; filter: drop-shadow(0 0 8px color-mix(in srgb, var(--learning-active) 82%, transparent)); pointer-events: none; }
-.message { position: absolute; z-index: 5; display: block; width: max-content; max-width: 132px; padding: .22rem .44rem; overflow: hidden; color: var(--learning-active); font-size: .62rem; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; background: color-mix(in srgb, var(--diagram-surface) 94%, transparent); border: 1px solid var(--learning-active-border); border-radius: 999px; box-shadow: 0 0 18px color-mix(in srgb, var(--learning-active) 10%, transparent), 0 6px 18px color-mix(in srgb, #000 7%, transparent); backdrop-filter: blur(8px); }
+.message { position: absolute; z-index: 5; display: block; width: max-content; max-width: 124px; padding: .22rem .44rem; overflow: hidden; color: var(--learning-active); font-size: .62rem; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; background: var(--diagram-surface); border: 1px solid var(--learning-active-border); border-radius: 999px; box-shadow: 0 0 0 5px var(--diagram-surface), 0 0 18px color-mix(in srgb, var(--learning-active) 10%, transparent); }
 .story { display: flex; min-width: 0; padding: 1.2rem 1.05rem 1rem; flex-direction: column; justify-content: center; background: linear-gradient(180deg, color-mix(in srgb, var(--learning-subtle-surface) 94%, transparent), color-mix(in srgb, var(--diagram-surface) 97%, transparent)); border-left: 1px solid color-mix(in srgb, var(--learning-border) 72%, transparent); }
 .stepMeta { display: flex; justify-content: space-between; margin-bottom: .65rem; color: var(--learning-active); font-size: .62rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .story strong { font-size: .98rem; line-height: 1.25; letter-spacing: -.01em; }
@@ -78,7 +78,7 @@
   .figure { margin-right: -.15rem; margin-left: -.15rem; border-radius: 14px; }
   .header { padding: .95rem .85rem .8rem; }
   .graphCanvas { min-height: 310px; }
-  .message { max-width: 104px; }
+  .message { max-width: 96px; }
   .timeline { padding: .75rem .8rem .85rem; }
   .eventRail { min-width: 230px; }
   .scrubber { overflow-x: auto; padding: .35rem .15rem; }
