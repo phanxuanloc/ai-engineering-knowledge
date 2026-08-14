@@ -124,6 +124,21 @@ Required behavior:
 9. **Mobile becomes a narrative composition.** Do not merely shrink a desktop graph until labels are unreadable.
 10. **Reduced motion keeps meaning.** Disable travel/glow while preserving active edge/node/state emphasis.
 
+## Layout, labels, and collision contract
+
+FlowExplainer uses a compact event-trace geometry, so text and connector layout must be bounded deliberately rather than allowed to expand unpredictably.
+
+- **Edge message labels belong on the connector.** For a normal transition, center the message at the edge midpoint. Do not move it far above/below the line merely to avoid a collision; that breaks the visual association between message and transition.
+- **Create visual clearance behind the label.** The label surface may mask the connector underneath so the line appears to pause through the text and continue on both sides. The arrow must remain visually readable as one connector.
+- **Spacing is the first collision fix.** If a centered message would touch either endpoint node, increase rank/column spacing or otherwise create a wider connector lane before considering label offset. Layout should make room for semantic content.
+- **Truncate graph labels, preserve full meaning elsewhere.** A long edge message may use bounded width plus ellipsis inside the graph because the full payload/message is repeated in the adjacent event narrative and may also be exposed through a title/accessible label. Do not let a pill overlap a node just to display every character inline.
+- **FlowExplainer node geometry is bounded.** Node title/detail text must stay inside the node and must not silently make the rendered DOM box larger than the geometry React Flow uses for routing. Use bounded lines/ellipsis for event-trace nodes; keep the full concept in surrounding narrative when needed.
+- **Static React Flow has a different text policy.** Content-aware node growth in `docs-react-flow` is valid because topology layout can recalculate around it. Do not copy that rule blindly into FlowExplainer when fixed event-trace geometry is what keeps motion/routing stable.
+- **No connector-label-node overlap at any inspected breakpoint.** Labels must not cover node borders, node text, arrowheads, packet paths, or unrelated connectors.
+- **Do not solve collisions by shrinking text below normal reading size.** Prefer more space, shorter graph labels, or a different composition.
+
+The acceptance example `gRPC Unary → GetPaymentRequest` in `api-communication-fundamentals.mdx` is a useful regression case: the message should appear centered in the connector lane between `Order Service` and `HTTP/2`, not inside either node and not detached far below the edge.
+
 ## Motion semantics
 
 Prefer:
@@ -232,6 +247,8 @@ Before accepting a Visual Explainer:
 - verify event playback and motion are synchronized;
 - verify parallel transitions do not falsely become sequential;
 - verify persistent state survives the intended events;
+- verify every message label is visually attached to its connector and does not collide with endpoint nodes, arrowheads, or other labels;
+- verify long node/message text remains bounded to the geometry used for routing, with full meaning recoverable from narrative/accessible text;
 - verify replay/reset and scenario switching are deterministic;
 - verify mobile has no page overflow or unreadably small labels;
 - verify light/dark themes preserve contrast;
