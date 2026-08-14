@@ -2,7 +2,7 @@
 
 A personal, practical knowledge base for learning AI engineering. It captures concise mental models, working examples, experiments, mistakes, and self-tests instead of collecting disconnected links.
 
-> **Knowledge learned: 2** — The repository contains knowledge captured from real learning sessions, alongside its infrastructure, category structure, and reusable template.
+> **Knowledge learned: 3** — The repository contains knowledge captured from real learning sessions, alongside its infrastructure, category structure, and reusable template.
 
 The site is built with [Docusaurus](https://docusaurus.io/) and TypeScript and is published to GitHub Pages at `https://phanxuanloc.github.io/ai-engineering-knowledge/`.
 
@@ -28,8 +28,9 @@ npm run build
 ├── learning-progress.yaml        # Machine-readable learning state
 ├── docs/                         # All knowledge notes
 │   ├── _templates/               # Reusable MDX authoring templates
-│   ├── ai-fundamentals/          # Empty until a real learning session
+│   ├── ai-fundamentals/          # AI fundamentals learned so far
 │   ├── ai-coding/                # AI-assisted software development knowledge
+│   ├── software-engineering/     # Software Engineering prerequisites for AI systems
 │   ├── coding-agents/            # Empty until a real learning session
 │   ├── ai-agents/                # Empty until a real learning session
 │   ├── rag/                      # Empty until a real learning session

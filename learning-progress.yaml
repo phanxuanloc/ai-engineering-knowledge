@@ -47,7 +47,8 @@ topics:
     next_checkpoint: evaluation-metrics-and-aggregation
     experiments: []
     prerequisites: []
-    related: []
+    related:
+      - api-communication
   context-engineering:
     title: Context Engineering
     category: AI Coding
@@ -88,3 +89,34 @@ topics:
       - raw-context-vs-managed-context-controlled-experiment
     prerequisites: []
     related: []
+  api-communication:
+    title: API Communication
+    category: Software Engineering
+    status: learning
+    note: docs/software-engineering/api-communication-fundamentals.mdx
+    learned_at: 2026-08-14
+    last_reviewed: null
+    confidence: 3
+    checkpoints:
+      - api-communication-fundamentals
+    checkpoint_progress:
+      api-communication-fundamentals:
+        status: understood
+        note: docs/software-engineering/api-communication-fundamentals.mdx
+        learned_at: 2026-08-14
+        evidence:
+          - distinguished-rest-resource-grpc-service-method-and-graphql-data-shape-mental-models
+          - selected-rest-grpc-and-graphql-by-communication-boundary-constraints
+          - applied-rest-path-query-body-and-http-method-semantics-in-scenarios
+          - distinguished-put-vs-patch-and-401-vs-403-and-selected-201-created
+          - explained-idempotency-and-idempotency-key-for-safe-payment-retries
+          - explained-proto-as-typed-contract-and-remote-call-failure-semantics
+          - recognized-protobuf-field-number-compatibility-and-additive-schema-evolution
+          - distinguished-unary-server-client-and-bidirectional-grpc-streaming
+          - distinguished-graphql-schema-resolver-query-and-mutation
+          - identified-graphql-n-plus-one-and-batching-as-a-mitigation-pattern
+    next_checkpoint: null
+    experiments: []
+    prerequisites: []
+    related:
+      - evaluation

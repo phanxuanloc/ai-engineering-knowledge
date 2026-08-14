@@ -1,0 +1,254 @@
+---
+title: API Communication Fundamentals
+description: Mental model thực dụng để phân biệt REST, gRPC và GraphQL và chọn đúng approach theo communication boundary.
+tags: [api, rest, grpc, graphql]
+---
+
+# API Communication Fundamentals
+
+## TL;DR
+
+API cho phép các phần mềm hoặc service giao tiếp với nhau. REST, gRPC và GraphQL không phải ba lựa chọn có một “kẻ thắng” tuyệt đối: REST thiên về **resource**, gRPC thiên về **service/method**, còn GraphQL thiên về **data shape mà client cần**.
+
+Điểm quan trọng nhất là chọn theo constraint của từng communication boundary. Một hệ thống hoàn toàn có thể dùng REST hoặc GraphQL ở client boundary và gRPC giữa các internal services.
+
+## Mental Model
+
+Có thể nhớ bằng ba câu hỏi:
+
+- **REST:** “Tôi đang thao tác resource nào?”
+- **gRPC:** “Tôi đang gọi method nào của service?”
+- **GraphQL:** “Client cần data shape nào?”
+
+Ví dụ cùng xoay quanh User và Order:
+
+```text
+REST:    GET /users/123/orders?status=PAID
+
+gRPC:    OrderService.GetOrders(...)
+
+GraphQL: user(id: "123") {
+           orders(status: PAID) {
+             id
+             total
+           }
+         }
+```
+
+Ba approach này có thể cùng tồn tại trong một architecture:
+
+```text
+Mobile
+  |
+  | GraphQL hoặc REST
+  v
+API Layer
+  |
+  | gRPC
+  v
+Internal Services
+```
+
+## Core Concepts
+
+### REST: Resource-oriented API
+
+REST thường dùng URL để biểu diễn resource và HTTP method để biểu diễn operation.
+
+```http
+GET    /orders/123
+POST   /orders
+PATCH  /orders/123
+DELETE /orders/123
+```
+
+Dùng HTTP + JSON không tự động biến một API thành RESTful. Ví dụ `POST /createOrder` hoặc `POST /getUser` thiên về action/RPC-style hơn vì action nằm ngay trong URL.
+
+Một mental model thực dụng cho request shape:
+
+- **Path** xác định resource hoặc scope cụ thể, ví dụ `/users/123/orders`.
+- **Query** dùng cho filter, sort, pagination hoặc option, ví dụ `?status=PAID&page=2`.
+- **Body** chứa data dùng để tạo hoặc thay đổi resource.
+
+`PUT` và `PATCH` cũng cần phân biệt: `PUT` mang replacement semantics, còn `PATCH` phù hợp khi chỉ cập nhật một phần resource.
+
+REST không cấm domain action. `POST /orders/123/cancel` có thể hợp lý khi `cancel` là một state transition cần giữ history, thay vì xóa Order khỏi hệ thống.
+
+### Idempotency
+
+Một operation là **idempotent** khi thực hiện cùng operation nhiều lần vẫn dẫn đến cùng final state như thực hiện một lần.
+
+Ví dụ `PUT /users/123` với cùng representation hoặc `DELETE /users/123` có thể giữ idempotent semantics. Response của lần gọi sau có thể khác, nhưng final state không đổi.
+
+`POST` không mặc định idempotent. Với payment, retry sau timeout có thể gây double charge nếu server coi mỗi request là operation mới. Một pattern phổ biến là gửi `Idempotency-Key` để server nhận diện retry của cùng một logical operation và không charge lại.
+
+### HTTP status code mental model
+
+Không cần học thuộc mọi status code ngay từ đầu. Có thể bắt đầu với family:
+
+- **2xx:** success.
+- **4xx:** request/client-side problem.
+- **5xx:** server-side problem.
+
+Một vài distinction quan trọng:
+
+- `201 Created`: tạo resource thành công.
+- `401 Unauthorized`: chưa authenticate được hoặc credential không hợp lệ.
+- `403 Forbidden`: đã biết caller là ai nhưng caller không có quyền thực hiện operation.
+
+### gRPC: Service/method-oriented RPC
+
+gRPC thường được mô hình hóa quanh service và RPC method:
+
+```proto
+service PaymentService {
+  rpc GetPayment(GetPaymentRequest)
+      returns (GetPaymentResponse);
+}
+```
+
+File `.proto` là shared contract. `service` và `rpc` định nghĩa operation; `message` định nghĩa typed request/response. Từ contract này có thể generate client/server code cho nhiều ngôn ngữ, ví dụ Java và Go.
+
+Một generated call có thể trông giống local method call:
+
+```java
+paymentClient.getPayment(request);
+```
+
+nhưng vẫn là remote call qua network. Vì vậy latency, timeout, service unavailable và network failure vẫn phải được xử lý như mọi distributed-system interaction khác.
+
+### Protobuf và schema evolution
+
+Trong Protobuf:
+
+```proto
+message Payment {
+  int64 id = 1;
+  string status = 2;
+}
+```
+
+`1` và `2` là field numbers/tags của wire contract, không phải default values. Không nên reuse một field number cũ cho field mang ý nghĩa khác.
+
+Additive change thường an toàn hơn breaking change. Khi field đã bị loại bỏ, có thể dùng `reserved` để tránh vô tình reuse number hoặc name cũ.
+
+### gRPC streaming
+
+gRPC hỗ trợ bốn interaction pattern cơ bản:
+
+- **Unary:** một request → một response.
+- **Server streaming:** một request → nhiều response.
+- **Client streaming:** nhiều request → một response.
+- **Bidirectional streaming:** nhiều request ↔ nhiều response.
+
+Ví dụ transcription service có thể dùng server streaming khi client gửi một request và server trả transcript chunks dần theo thời gian. Nếu client vừa upload audio chunks vừa nhận transcript chunks, bidirectional streaming có thể phù hợp hơn.
+
+gRPC thường chạy trên HTTP/2, nơi multiplexing và streaming hỗ trợ tốt các RPC workload.
+
+### GraphQL: Client-driven data shape
+
+GraphQL cho client mô tả chính xác fields và relationships nó cần:
+
+```graphql
+query {
+  user(id: "123") {
+    name
+    orders {
+      id
+      total
+    }
+  }
+}
+```
+
+**Schema** trả lời “client được phép hỏi gì?”, còn **Resolver** trả lời “field này lấy dữ liệu bằng cách nào?”. Resolver có thể đọc database, cache, gọi REST API hoặc gọi gRPC service.
+
+`Query` thường dùng cho read operation, còn `Mutation` dùng khi operation làm thay đổi data. Với mutation, client vẫn có thể chọn response fields muốn nhận lại.
+
+### N+1 trong GraphQL
+
+Một GraphQL request từ client không đồng nghĩa backend chỉ thực hiện một DB/service call.
+
+Ví dụ query 100 users rồi mỗi `orders` resolver lại query riêng có thể tạo:
+
+```text
+1 query lấy users
++ 100 query lấy orders
+= 101 queries
+```
+
+Đây là **N+1 problem**. Batching và DataLoader-style loading là những pattern thường dùng để giảm số lần data fetching lặp lại.
+
+GraphQL mang lại flexibility cho client nhưng cũng khiến backend phải quan tâm nhiều hơn tới resolver efficiency, query complexity, authorization và observability.
+
+## Example
+
+Giả sử một e-commerce system có ba communication boundary:
+
+1. **Public CRUD API** cho third-party developers, resource rõ ràng và muốn interface đơn giản → REST là default hợp lý.
+2. **Order Service → Payment Service**, Java ↔ Go, cần strongly typed contract và code generation → gRPC là lựa chọn tự nhiên.
+3. **Mobile Dashboard → API Layer**, mỗi màn hình cần data shape khác nhau và compose User, Order, Reward → GraphQL có lợi thế rõ ràng.
+
+Architecture có thể kết hợp:
+
+```text
+Mobile
+  |
+  | GraphQL
+  v
+API Layer
+  |\
+  | \ gRPC
+  |  \
+  v   v
+Order  Reward
+  |
+  | gRPC
+  v
+Payment
+```
+
+Không cần ép toàn hệ thống dùng cùng một API style.
+
+## When to Use
+
+- Chọn **REST** khi resource model rõ, CRUD/public API đơn giản, interoperability và ease of consumption quan trọng.
+- Chọn **gRPC** khi internal service-to-service communication cần typed contract, code generation, compact payload hoặc streaming.
+- Chọn **GraphQL** khi client cần flexible data shape hoặc compose data qua nhiều relationships/source.
+- Có thể kết hợp nhiều approach; boundary nào có constraint khác thì có thể có interface khác.
+
+## Common Mistakes
+
+- **“HTTP + JSON = REST”:** HTTP transport không tự động tạo ra resource-oriented design.
+- **“GraphQL luôn tốt hơn REST”:** với CRUD đơn giản, GraphQL có thể thêm complexity không cần thiết.
+- **“Một GraphQL request = một DB query”:** resolver layer vẫn có thể phát sinh nhiều query hoặc service call.
+- **“gRPC call giống local method nên reliability cũng giống local”:** gRPC vẫn là network call và phải xử lý distributed-system failures.
+- **Reuse Protobuf field numbers:** đổi ý nghĩa của tag đã deploy có thể phá wire compatibility.
+- **“Internal service thì luôn phải dùng gRPC”:** gRPC thường hợp với internal communication, nhưng decision vẫn phải dựa trên constraint thực tế.
+
+## Related Knowledge
+
+Hiện chưa có learning note khác trong repository cần làm canonical dependency cho checkpoint này. Đây là Software Engineering prerequisite hỗ trợ việc thiết kế AI services, tool APIs và distributed AI systems sau này.
+
+## Self-test
+
+1. Mental model ngắn nhất để phân biệt REST, gRPC và GraphQL là gì?
+2. Vì sao `POST /createOrder` dùng HTTP nhưng không phải ví dụ RESTful điển hình?
+3. Payment retry sau timeout có thể gây lỗi gì, và `Idempotency-Key` giúp như thế nào?
+4. Vì sao generated gRPC call vẫn cần timeout/retry/error handling?
+5. GraphQL Schema và Resolver khác nhau ở đâu?
+6. Một GraphQL request duy nhất có thể gây N+1 như thế nào?
+7. Với public CRUD API, internal typed microservices và flexible mobile dashboard, bạn sẽ chọn API style nào cho từng boundary?
+
+<details>
+<summary>Answers</summary>
+
+1. REST hỏi resource nào, gRPC hỏi service method nào, GraphQL hỏi client cần data shape nào.
+2. Vì action `createOrder` được encode trong URL; REST thường để URL biểu diễn resource và HTTP method biểu diễn operation.
+3. Client có thể retry và charge nhiều lần; cùng `Idempotency-Key` giúp server nhận ra cùng logical operation và không thực hiện charge lần nữa.
+4. Vì lời gọi vẫn đi qua network và có latency, timeout, network failure hoặc remote service unavailable.
+5. Schema định nghĩa client có thể query gì; Resolver định nghĩa dữ liệu cho field được lấy bằng cách nào.
+6. Một query lấy N parent records rồi resolver fetch child data riêng cho từng parent có thể tạo 1 + N backend calls.
+7. REST cho public CRUD, gRPC cho internal typed communication, GraphQL cho client cần flexible data composition.
+
+</details>
