@@ -81,6 +81,20 @@ const NODE_WIDTH = 164;
 const NODE_HEIGHT = 92;
 const COLUMN_GAP = 300;
 const ROW_GAP = 142;
+const MOBILE_ROW_GAP = 136;
+const MOBILE_QUERY = '(max-width: 700px)';
+
+function useMobileLayout() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia(MOBILE_QUERY);
+    const sync = () => setMobile(query.matches);
+    sync();
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
+  return mobile;
+}
 
 function ExplainerNodeView({data}: NodeProps<ExplainerNode>) {
   return (
@@ -137,7 +151,8 @@ function inferEdges(nodes: FlowExplainerNode[]): FlowExplainerEdge[] {
   return nodes.slice(1).map((node, index) => ({id: `${nodes[index].id}-${node.id}`, source: nodes[index].id, target: node.id}));
 }
 
-function resolvePosition(node: FlowExplainerNode, index: number): XYPosition {
+function resolvePosition(node: FlowExplainerNode, index: number, mobile: boolean): XYPosition {
+  if (mobile) return {x: 0, y: index * MOBILE_ROW_GAP};
   return {x: (node.column ?? index) * COLUMN_GAP, y: (node.row ?? 0) * ROW_GAP};
 }
 
@@ -213,6 +228,7 @@ export function FlowExplainer({title, description, scenarios, stepDurationMs = 2
   const [scenarioId, setScenarioId] = useState(scenarios[0]?.id ?? '');
   const [stepIndex, setStepIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const mobile = useMobileLayout();
   const scenario = useMemo(() => scenarios.find((item) => item.id === scenarioId) ?? scenarios[0], [scenarioId, scenarios]);
   const step = scenario?.steps[stepIndex];
 
@@ -230,7 +246,7 @@ export function FlowExplainer({title, description, scenarios, stepDurationMs = 2
 
   if (!scenario || !step) return null;
   const scenarioEdges = scenario.edges ?? inferEdges(scenario.nodes);
-  const positionById = new Map(scenario.nodes.map((node, index) => [node.id, resolvePosition(node, index)]));
+  const positionById = new Map(scenario.nodes.map((node, index) => [node.id, resolvePosition(node, index, mobile)]));
   const transitions = stepTransitions(step);
   const transitionNodeIds = transitions.flatMap((item) => [item.from, item.to]);
   const activeNodeIds = new Set([...(step.active ?? []), ...transitionNodeIds]);
@@ -240,7 +256,7 @@ export function FlowExplainer({title, description, scenarios, stepDurationMs = 2
     id: node.id,
     type: 'explainer',
     data: {...node, phase: activeNodeIds.has(node.id) ? 'active' : persistentNodeIds.has(node.id) ? 'persistent' : 'idle'},
-    position: resolvePosition(node, index),
+    position: resolvePosition(node, index, mobile),
     width: NODE_WIDTH,
     height: NODE_HEIGHT,
     draggable: false,
@@ -272,7 +288,9 @@ export function FlowExplainer({title, description, scenarios, stepDurationMs = 2
     }));
 
   const maxRow = Math.max(0, ...scenario.nodes.map((node) => node.row ?? 0));
-  const graphHeight = Math.max(270, Math.min(520, 270 + maxRow * 92));
+  const graphHeight = mobile
+    ? Math.min(780, Math.max(330, scenario.nodes.length * MOBILE_ROW_GAP))
+    : Math.max(270, Math.min(520, 270 + maxRow * 92));
   const progress = scenario.steps.length <= 1 ? 100 : (stepIndex / (scenario.steps.length - 1)) * 100;
   const next = () => { setPlaying(false); setStepIndex((current) => Math.min(current + 1, scenario.steps.length - 1)); };
   const previous = () => { setPlaying(false); setStepIndex((current) => Math.max(current - 1, 0)); };
@@ -296,7 +314,7 @@ export function FlowExplainer({title, description, scenarios, stepDurationMs = 2
       <div className={styles.stage}>
         <div className={styles.graphCanvas} style={{height: graphHeight}}>
           <div className={styles.scanline} aria-hidden="true" />
-          <ReactFlow aria-label={`${title}: ${scenario.label}`} colorMode="system" edgeTypes={edgeTypes} edges={[...baseEdges, ...activeEdges]} elementsSelectable={false} fitView fitViewOptions={{padding: 0.18, maxZoom: 1.04}} maxZoom={1.25} minZoom={0.5} nodes={graphNodes} nodesConnectable={false} nodesDraggable={false} nodeTypes={nodeTypes} panOnDrag={false} preventScrolling={false} proOptions={{hideAttribution: true}} zoomOnDoubleClick={false} zoomOnPinch={false} zoomOnScroll={false} />
+          <ReactFlow key={`${scenario.id}-${mobile ? 'mobile' : 'desktop'}`} aria-label={`${title}: ${scenario.label}`} colorMode="system" edgeTypes={edgeTypes} edges={[...baseEdges, ...activeEdges]} elementsSelectable={false} fitView fitViewOptions={{padding: mobile ? 0.12 : 0.18, maxZoom: 1.04}} maxZoom={1.25} minZoom={mobile ? 0.65 : 0.5} nodes={graphNodes} nodesConnectable={false} nodesDraggable={false} nodeTypes={nodeTypes} panOnDrag={false} preventScrolling={false} proOptions={{hideAttribution: true}} zoomOnDoubleClick={false} zoomOnPinch={false} zoomOnScroll={false} />
         </div>
         <aside className={styles.story} aria-live="polite">
           <div className={styles.stepMeta}><span>Event {String(stepIndex + 1).padStart(2, '0')}</span><span>{String(scenario.steps.length).padStart(2, '0')}</span></div>
