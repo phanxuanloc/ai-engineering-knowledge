@@ -79,7 +79,7 @@ type DirectedSegment = {id: string; source: string; target: string; message?: st
 
 const NODE_WIDTH = 164;
 const NODE_HEIGHT = 92;
-const COLUMN_GAP = 226;
+const COLUMN_GAP = 300;
 const ROW_GAP = 142;
 
 function ExplainerNodeView({data}: NodeProps<ExplainerNode>) {
@@ -105,8 +105,6 @@ function PacketEdge({id, sourceX, sourceY, targetX, targetY, sourcePosition, tar
     ? getBezierPath({sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, curvature: 0.24})
     : getSmoothStepPath({sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 16});
   const packetCount = data?.repeat ? 3 : 1;
-  const messageX = labelX + (horizontal ? 0 : 86);
-  const messageY = labelY + (horizontal ? 66 : 0);
 
   return (
     <>
@@ -122,7 +120,7 @@ function PacketEdge({id, sourceX, sourceY, targetX, targetY, sourcePosition, tar
           <span
             className={styles.message}
             title={data.message}
-            style={{transform: `translate(-50%, -50%) translate(${messageX}px, ${messageY}px)`}}
+            style={{transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`}}
           >
             {data.message}
           </span>
