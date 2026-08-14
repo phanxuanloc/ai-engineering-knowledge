@@ -18,16 +18,21 @@ export type LayoutResult<NodeType extends Node = Node> = {
 
 const MIN_PRIMARY_PATH_GAP = 28;
 const EDGE_LABEL_HORIZONTAL_PADDING = 36;
+const EDGE_LABEL_VERTICAL_CLEARANCE = 34;
 const EDGE_LABEL_ESTIMATED_CHARACTER_WIDTH = 6.4;
 const MAX_AUTOMATIC_LABEL_GAP = 180;
 
 function estimateEdgeLabelRankSpacing(edges: Edge[], direction: FlowDirection, requestedRankSpacing: number) {
-  if (direction !== 'LR') return requestedRankSpacing;
-  const longestLabel = edges.reduce((longest, edge) => {
-    const label = typeof edge.label === 'string' ? edge.label : '';
-    return label.length > longest.length ? label : longest;
-  }, '');
-  if (!longestLabel) return requestedRankSpacing;
+  const labels = edges.flatMap((edge) => typeof edge.label === 'string' && edge.label.trim() ? [edge.label.trim()] : []);
+  if (!labels.length) return requestedRankSpacing;
+
+  if (direction === 'TB') {
+    // A TB label sits in the vertical connector lane. Reserve a readable shaft above
+    // and below it instead of letting the label consume the entire inter-rank gap.
+    return Math.max(requestedRankSpacing, EDGE_LABEL_VERTICAL_CLEARANCE + 28);
+  }
+
+  const longestLabel = labels.reduce((longest, label) => label.length > longest.length ? label : longest, '');
   const estimatedLabelWidth = longestLabel.length * EDGE_LABEL_ESTIMATED_CHARACTER_WIDTH + EDGE_LABEL_HORIZONTAL_PADDING;
   return Math.max(requestedRankSpacing, Math.min(MAX_AUTOMATIC_LABEL_GAP, estimatedLabelWidth));
 }
