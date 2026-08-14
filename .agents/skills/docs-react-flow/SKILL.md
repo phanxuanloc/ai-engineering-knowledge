@@ -70,6 +70,20 @@ All visible node content is contained by default. Lay out step number/eyebrow, a
 - Do not default five or more meaningful stages to one horizontal row. Use a vertical spine, semantic ranks, or balanced branches.
 - Centralize `nodeSpacing`, `rankSpacing`, and viewport padding. Do not scatter coordinate patches or magic offsets.
 
+### Edge labels participate in layout
+
+Treat every visible edge label as geometry, not paint added after layout.
+
+- `LR`: reserve enough horizontal inter-rank clearance for the widest meaningful label plus breathing room before both endpoint cards.
+- `TB`: reserve enough vertical inter-rank clearance for the label plus a visible connector shaft above and below it; a label must never consume nearly the whole edge lane.
+- Keep ordinary relationship labels centered on and visually attached to their connector. Use an opaque diagram-surface background when needed so the line breaks cleanly behind the text.
+- No edge label may overlap a node border, node text, arrowhead, another label, an unrelated connector, or viewport controls.
+- Prefer short semantic labels (`gRPC`, `serialize + send`, `remote RPC`) and put explanatory sentences in prose/caption rather than on the edge.
+- Fix collisions in this order: remove redundant edge wording → increase shared rank/node spacing → improve routing/handles → split an over-dense graph. Do not use arbitrary per-edge x/y offsets, negative margins, or unreadably small text as collision fixes.
+- Changing node copy, edge copy, direction, node size, or spacing invalidates prior visual QA. Reinspect desktop and mobile after those changes.
+
+If the same label-collision pattern appears in more than one article, repair shared `layoutGraph`/edge infrastructure instead of adding article-local spacing hacks.
+
 ### Compose for topology and canvas utilization
 
 Choose composition from topology instead of forcing every graph through one shape:
@@ -134,13 +148,14 @@ Before accepting a React Flow diagram, answer all of these:
 6. Are there tiny hooks or S-curves caused by handle placement?
 7. Are feedback edges secondary and outside the main corridor?
 8. Do custom feedback edges and labels participate in the fitted viewport bounds rather than being clipped outside node-only bounds?
-9. Are edge labels visually attached to their own edges, with whole-loop labels centered over the clear middle return segment?
-10. Are semantic node roles distinguishable before every label is read?
-11. Is the diagram taller or wider than its topology needs?
-12. Does `fitView` produce a useful default zoom?
-13. Does mobile remain readable rather than merely scaled down?
-14. Do controls clear graph content?
-15. Does the diagram teach structure better than plain text?
+9. Are **all edge labels** visibly attached to their own edges and collision-free, with whole-loop labels centered over the clear middle return segment?
+10. Does every labeled connector retain enough clear shaft around its label to read direction immediately?
+11. Are semantic node roles distinguishable before every label is read?
+12. Is the diagram taller or wider than its topology needs?
+13. Does `fitView` produce a useful default zoom?
+14. Does mobile remain readable rather than merely scaled down?
+15. Do controls clear graph content?
+16. Does the diagram teach structure better than plain text?
 
 If several answers fail, redesign the topology/composition instead of accumulating coordinate tweaks.
 
@@ -151,6 +166,8 @@ Run the shared structural and layout validation built into `ReactFlowDiagram`, t
 Before finishing, confirm:
 
 - no node overlap, clipping, or edge through unrelated nodes;
+- no edge-label overlap with nodes, node text, arrowheads, unrelated connectors, other labels, or controls;
+- labeled edges retain a readable connector shaft before/after the label in the graph direction;
 - no node content crossing its border, floating step metadata, metadata/title overlap, or long-text overflow at desktop or mobile width;
 - crossings are minimized and the main direction/branching/output are obvious;
 - sibling and rank spacing are consistent; node sizes fit readable content;
