@@ -31,15 +31,30 @@
 .tab:focus-visible, .controls button:focus-visible, .dot:focus-visible { outline: 2px solid var(--learning-active); outline-offset: 2px; }
 
 .stage { padding: 1rem; }
-.flow { display: flex; align-items: center; justify-content: center; min-width: 0; padding: 1rem .25rem; }
-.segment { display: flex; min-width: 0; align-items: center; }
+.graphCanvas {
+  --xy-edge-stroke: color-mix(in srgb, var(--ifm-font-color-secondary) 38%, transparent);
+  --xy-edge-stroke-width: 1.35;
+  position: relative;
+  min-height: 250px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--learning-active) 7%, transparent), transparent 46%),
+    color-mix(in srgb, var(--learning-surface) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--learning-border) 92%, transparent);
+  border-radius: 11px;
+}
+.graphCanvas :global(.react-flow__pane) { cursor: default; }
+.graphCanvas :global(.react-flow__edge-text) { fill: var(--ifm-font-color-secondary); font-size: 10px; }
+.graphCanvas :global(.react-flow__edge-textbg) { fill: var(--diagram-surface); }
+.graphCanvas :global(.react-flow__node) { cursor: default; }
+
 .node {
   position: relative;
   display: flex;
-  width: 132px;
+  box-sizing: border-box;
+  width: 158px;
   min-height: 92px;
-  padding: .65rem .7rem;
-  flex: 0 0 auto;
+  padding: .68rem .75rem;
   flex-direction: column;
   gap: .2rem;
   justify-content: center;
@@ -48,6 +63,7 @@
   background: var(--learning-surface);
   border: 1px solid var(--learning-border);
   border-radius: 10px;
+  box-shadow: 0 8px 24px color-mix(in srgb, #000 7%, transparent);
   transition: opacity .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s ease;
 }
 .node > span { color: var(--ifm-font-color-secondary); font-size: .58rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -59,66 +75,39 @@
 .node_model, .node_tool { border-width: 2px; }
 .nodeActive {
   border-color: var(--learning-active-border);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--learning-active) 32%, transparent), 0 0 22px color-mix(in srgb, var(--learning-active) 16%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--learning-active) 34%, transparent), 0 0 25px color-mix(in srgb, var(--learning-active) 18%, transparent);
   transform: translateY(-2px);
   animation: nodePulse 1.45s ease-in-out infinite;
 }
+.handle { width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
-.edge {
-  position: relative;
-  width: clamp(48px, 8vw, 86px);
-  height: 2px;
-  margin: 0 .2rem;
-  flex: 0 0 auto;
-  background: color-mix(in srgb, var(--learning-border) 78%, transparent);
+.baseEdge path { opacity: .56; }
+.activeEdgePath {
+  stroke: var(--learning-active) !important;
+  stroke-width: 2.4 !important;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--learning-active) 50%, transparent));
 }
-.edge::after {
-  position: absolute;
-  top: 50%;
-  right: -1px;
-  width: 7px;
-  height: 7px;
-  content: '';
-  border-top: 1.5px solid var(--ifm-font-color-secondary);
-  border-right: 1.5px solid var(--ifm-font-color-secondary);
-  transform: translateY(-50%) rotate(45deg);
+.packetDot {
+  fill: var(--learning-active);
+  stroke: var(--diagram-surface);
+  stroke-width: 2px;
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--learning-active) 75%, transparent));
+  pointer-events: none;
 }
-.edgeActive {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--learning-active) 20%, transparent), var(--learning-active), color-mix(in srgb, var(--learning-active) 20%, transparent));
-  box-shadow: 0 0 12px color-mix(in srgb, var(--learning-active) 28%, transparent);
-}
-.edgeActive::after { border-color: var(--learning-active); }
-.edgeReverse::after { right: auto; left: -1px; transform: translateY(-50%) rotate(225deg); }
-.packet {
-  position: absolute;
-  z-index: 2;
-  top: 50%;
-  left: 0;
-  width: 8px;
-  height: 8px;
-  background: var(--learning-active);
-  border: 2px solid var(--diagram-surface);
-  border-radius: 50%;
-  box-shadow: -10px 0 10px color-mix(in srgb, var(--learning-active) 32%, transparent), 0 0 13px color-mix(in srgb, var(--learning-active) 65%, transparent);
-  transform: translate(-50%, -50%);
-  animation: packetTravel 1.25s ease-in-out infinite;
-}
-.edgeReverse .packet { animation-name: packetTravelReverse; }
-.packetRepeat { box-shadow: -13px 0 12px color-mix(in srgb, var(--learning-active) 45%, transparent), 0 0 15px color-mix(in srgb, var(--learning-active) 70%, transparent); }
 .message {
   position: absolute;
-  bottom: .55rem;
-  left: 50%;
-  max-width: 120px;
-  padding: .16rem .34rem;
+  z-index: 5;
+  max-width: 160px;
+  padding: .18rem .38rem;
   color: var(--learning-active);
   font-size: .62rem;
-  font-weight: 700;
+  font-weight: 750;
   white-space: nowrap;
-  background: color-mix(in srgb, var(--diagram-surface) 94%, transparent);
+  pointer-events: none;
+  background: color-mix(in srgb, var(--diagram-surface) 95%, transparent);
   border: 1px solid var(--learning-active-border);
   border-radius: 999px;
-  transform: translateX(-50%);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--learning-active) 12%, transparent);
 }
 
 .story {
@@ -140,29 +129,18 @@
 .dot { display: grid; width: 27px; height: 27px; padding: 0; place-items: center; font-size: .66rem; border-radius: 50%; }
 .dotActive { color: var(--diagram-surface); background: var(--learning-active); border-color: var(--learning-active); box-shadow: 0 0 13px color-mix(in srgb, var(--learning-active) 32%, transparent); }
 
-@keyframes packetTravel { from { left: 0; opacity: .2; } 12% { opacity: 1; } 88% { opacity: 1; } to { left: 100%; opacity: .2; } }
-@keyframes packetTravelReverse { from { left: 100%; opacity: .2; } 12% { opacity: 1; } 88% { opacity: 1; } to { left: 0; opacity: .2; } }
 @keyframes nodePulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.08); } }
 
 @media (prefers-reduced-motion: reduce) {
   .node, .nodeActive { transition: none; animation: none; transform: none; }
-  .packet { left: 50%; animation: none; }
+  .packetDot { display: none; }
 }
 
 @media (max-width: 760px) {
   .header { align-items: stretch; flex-direction: column; }
   .tabs { justify-content: flex-start; }
-  .flow { align-items: stretch; flex-direction: column; gap: 0; }
-  .segment { flex-direction: column; }
-  .node { width: min(100%, 260px); }
-  .edge { width: 2px; height: 54px; margin: .1rem 0; }
-  .edge::after { top: auto; right: 50%; bottom: -1px; transform: translateX(50%) rotate(135deg); }
-  .edgeReverse::after { top: -1px; right: 50%; bottom: auto; left: auto; transform: translateX(50%) rotate(-45deg); }
-  .packet { top: 0; left: 50%; animation: packetTravelVertical 1.25s ease-in-out infinite; }
-  .edgeReverse .packet { animation-name: packetTravelVerticalReverse; }
-  .message { bottom: auto; left: .7rem; top: 50%; transform: translateY(-50%); }
+  .stage { padding: .75rem; }
+  .graphCanvas { min-height: 300px; }
+  .message { max-width: 112px; white-space: normal; text-align: center; }
   .dots { width: 100%; margin-left: 0; overflow-x: auto; padding-top: .2rem; }
 }
-
-@keyframes packetTravelVertical { from { top: 0; opacity: .2; } 12% { opacity: 1; } 88% { opacity: 1; } to { top: 100%; opacity: .2; } }
-@keyframes packetTravelVerticalReverse { from { top: 100%; opacity: .2; } 12% { opacity: 1; } 88% { opacity: 1; } to { top: 0; opacity: .2; } }
