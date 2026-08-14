@@ -11,6 +11,27 @@ metadata:
 
 This repository-local skill turns runtime behavior into inspectable learning stories. It adapts `nicobailon/visual-explainer` principles to site-native React/MDX and extends them with a canonical **Flow Explainer** pattern.
 
+## Mandatory use rule
+
+When the concept includes runtime behavior and the shared `FlowExplainer` can represent that behavior truthfully and readably, **use it**. Static-only treatment is not acceptable in that case.
+
+This requirement applies especially to request/response, streaming, retries, state transitions, agent/tool execution, RAG, Context Engineering, queue/event processing, token/chunk/message movement, and lifecycle behavior.
+
+A static React Flow may still appear beside the explainer when topology itself is also a teaching goal. In that pairing:
+
+- Static React Flow answers **what connects to what**.
+- Animated Flow Explainer answers **what happens over time**.
+
+Do not replace a real runtime explainer with perpetual animated edges on React Flow. Ambient motion does not satisfy this rule.
+
+A static-only exception is valid only when:
+
+1. time/order/state is not actually part of the lesson;
+2. the current explainer would distort or hide important topology/semantics;
+3. accessibility, performance, or rendering constraints make the animated version materially worse.
+
+If an exception is used, state the reason in the implementation/review notes. Implementation convenience is not an exception.
+
 ## First-class use cases
 
 Use this skill for:
@@ -33,6 +54,7 @@ Author the learning story as semantic scenarios and steps, not CSS animation ins
 
 - stable scenario ID and label;
 - ordered entities/nodes with semantic roles;
+- explicit edges when topology is not a simple linear sequence;
 - a finite ordered list of steps;
 - for each step: active node(s), active connection/message, packet/token label when useful, and a one-sentence explanation;
 - deterministic initial/reset state.
@@ -119,7 +141,7 @@ The first frame must fit a normal Docusaurus article column. On narrow screens, 
 
 ## Migration rule for existing docs
 
-When editing an old learning note, actively inspect static or continuously animated diagrams for behavioral content. Migrate when the diagram is trying to explain execution rather than topology.
+When editing an old learning note, actively inspect static or continuously animated diagrams for behavioral content. **If the behavior can be represented truthfully by the shared Animated Flow Explainer, migrate it in the same change.** Do not leave a static-only runtime explanation merely because it already exists.
 
 High-priority migration targets include API communication, Context Manager/Context Engineering flows, RAG pipelines, agent loops, tool calls, streaming, retry/lifecycle examples, and evaluation pipelines with changing metrics.
 
@@ -127,8 +149,10 @@ Do not rewrite a clear static architecture solely to add motion. Keep the topolo
 
 ## Validation
 
-Before accepting a Visual Explainer:
+Before accepting a Visual Explainer or behavioral visual:
 
+- explicitly confirm the Mandatory use rule was evaluated;
+- if runtime behavior remains static-only, confirm a valid exception is documented;
 - every step maps to a real concept in surrounding prose;
 - current state and direction are obvious within 3–5 seconds;
 - replay/reset are deterministic;
