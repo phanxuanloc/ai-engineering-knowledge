@@ -141,8 +141,10 @@ topics:
           - selected-workflows-for-mobile-saas-and-multi-version-enterprise-scenarios
           - distinguished-github-flow-pr-workflow-from-trunk-based-integration-discipline
           - selected-squash-rebase-fast-forward-cherry-pick-revert-and-reset-for-appropriate-history-scenarios
-          - explained-protected-main-ci-merge-queue-feature-flags-and-backward-compatible-changes
-          - applied-semantic-versioning-and-release-traceability-concepts
+          - applied-interactive-rebase-fixup-amend-restore-stash-reflog-fetch-upstream-and-force-with-lease-mental-models
+          - explained-protected-main-pr-ci-main-ci-merge-queue-feature-flags-and-backward-compatible-expand-contract-changes
+          - distinguished-git-revert-from-deployment-rollback-and-selected-roll-forward-when-safer
+          - applied-semantic-versioning-pre-release-tags-conventional-commits-and-release-traceability-concepts
           - identified-tested-state-vs-released-state-risk-in-a-shared-testing-branch-workflow
     next_checkpoint: null
     experiments: []
