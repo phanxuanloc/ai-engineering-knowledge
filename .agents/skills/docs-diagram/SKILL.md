@@ -81,17 +81,33 @@ For API communication, agent execution, Context Engineering, RAG, tool calling, 
 
 Animation is allowed only when motion teaches behavior. A good explainer normally has:
 
-- a finite sequence of named steps;
-- one clearly active state at a time;
+- a finite sequence of named events;
+- one clearly active state or meaningful parallel event group at a time;
 - active nodes that pulse/highlight subtly;
 - active edges that become visually dominant while unrelated edges fade;
 - packet/token/chunk motion with restrained glow/trail when movement itself matters;
-- a short caption explaining the current step;
-- `Play`, `Pause`, `Step`, and `Replay` when the sequence is inspectable;
+- a short narrative explaining the current event;
+- play/pause, previous/next, replay, and direct event selection when the sequence is inspectable;
 - deterministic reset state;
 - `prefers-reduced-motion` support.
 
-Never animate all edges forever just to make a page feel alive. Continuous ambient motion is secondary to step semantics.
+Never animate all edges forever just to make a page feel alive. Continuous ambient motion is secondary to event semantics.
+
+## Runtime layout and label gate
+
+For `FlowExplainer`, runtime readability includes geometry—not only whether motion exists.
+
+Before accepting the explainer:
+
+- edge message labels should remain visually attached to their connector, normally centered in the connector lane;
+- a connector may be visually masked behind the label so the line does not cross the text;
+- if a centered message collides with an endpoint node, **increase spacing or shorten the graph label first** rather than pushing the message far away from the connector;
+- long graph labels may be truncated when their full value is available in the event narrative/accessible text;
+- bounded FlowExplainer node text must remain inside the geometry used for routing; do not allow DOM content growth to silently invalidate node bounds;
+- no label may overlap node borders/text, arrowheads, packet paths, or unrelated connectors;
+- do not make text unreadably small to rescue an over-dense layout.
+
+Keep this distinction clear: static React Flow can use content-aware node sizing and recalculate topology around it; FlowExplainer may deliberately use compact bounded event-node geometry to preserve stable motion and routing.
 
 ## AI-technical aesthetic
 
@@ -115,7 +131,9 @@ Before finishing any visual work:
 - verify mobile/narrow article width;
 - verify light and dark themes;
 - verify reduced-motion behavior;
-- verify no clipping or horizontal overflow;
+- verify no clipping or page-level horizontal overflow;
 - verify animation reveals causality rather than decoration;
+- for FlowExplainer, verify edge labels stay attached to connectors and remain collision-free at inspected breakpoints;
+- for FlowExplainer, verify node text and visible DOM bounds match the geometry used for routing;
 - run `npm run typecheck`, `npm run build`, and `git diff --check` when execution access is available;
 - never claim visual review passed unless the rendered result was actually inspected.
