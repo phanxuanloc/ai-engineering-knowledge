@@ -6,15 +6,29 @@ The site presents verified learning, not a generic documentation catalog. Visual
 
 Use `.mdx` for every knowledge article and start from `docs/_templates/learning-note.mdx`. Prefer ordinary Markdown for prose and use the semantic components exported by `src/components/Learning` when visual hierarchy adds learning value. Keep `My Understanding` and `My Experiment` as owner-authored records.
 
-## Diagram decisions
+## Visual decisions
 
-- Start with `.agents/skills/docs-diagram/SKILL.md`: decide whether visualization adds value, classify the communication intent, define grounded semantic content and a primary path, then validate the result.
-- Conceptual mental model or analogy → Excalidraw when a visual materially helps.
-- Structured flow, pipeline, architecture, or directed graph → shared React Flow infrastructure.
-- Two to four short lines already explain it → ordinary MDX.
-- Tiny relationships whose topology is the entire lesson → Mermaid as a rare exception, never the default.
+Start with `.agents/skills/docs-diagram/SKILL.md` and classify the teaching job before choosing technology:
 
-Important diagrams must remain understandable from their initial view and work cleanly on narrow screens. React Flow diagrams are read-only but navigable: topology editing stays locked while pan, zoom, fit view, and fullscreen support inspection. Follow `.agents/skills/docs-excalidraw/SKILL.md` for mental models and `.agents/skills/docs-react-flow/SKILL.md` for structured graphs; keep rendering, geometry, and interaction in shared infrastructure rather than article-level boilerplate. Prefer one primary view with progressive disclosure, deterministic layout from stable semantic input, layered quality gates, actual visual review, and targeted repair over whole-diagram regeneration.
+- **Mental model / conceptual sketch** → Excalidraw.
+- **Static flow / system topology** → React Flow.
+- **Runtime behavior over time** → Visual Explainer / Flow Explainer.
+- **Quantitative change** → chart visualization.
+- **Two to four short lines already explain it** → ordinary MDX.
+
+The key distinction is **structure vs behavior**. React Flow answers “what connects to what?”. Flow Explainer answers “what happens next?”. Do not animate every React Flow edge merely to make a page feel alive. When request/response, streaming, retries, events, messages, tokens, chunks, tool calls, selection, filtering, or state transitions are part of the lesson, prefer a finite step-driven explainer with visible current state.
+
+Important visuals must remain understandable from their initial view and work cleanly on narrow screens. Keep rendering, geometry, animation, controls, theme, and responsive behavior in shared infrastructure rather than article-level boilerplate. Article MDX should declare semantic graph/story data.
+
+### AI-technical aesthetic
+
+The site can look slightly AI-native: technical, precise, dark-mode friendly, and alive. Use a restrained glow/trail for active packets or tokens, a subtle pulse for active computation, luminous focus/active edges, compact step/status indicators, and smooth state transitions when they encode meaning.
+
+Do not turn the site into a cyberpunk dashboard. Avoid rainbow neon, heavy glassmorphism, decorative particles, excessive gradients, or constant animation. Inactive content should stay calm. The intended feeling is **watching a real system execute**, not watching decoration.
+
+### Runtime explainer controls
+
+Finite runtime stories should normally expose `Play`, `Pause`, `Step`, and `Replay`, show the current step, and provide a one-sentence explanation of the current state. Scenario tabs are preferred for related variants such as REST / gRPC Unary / gRPC Streaming / GraphQL. Respect `prefers-reduced-motion`; motion may disappear but semantic emphasis must remain.
 
 ## Learning state
 
