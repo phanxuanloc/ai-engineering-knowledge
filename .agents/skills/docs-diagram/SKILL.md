@@ -93,6 +93,23 @@ Animation is allowed only when motion teaches behavior. A good explainer normall
 
 Never animate all edges forever just to make a page feel alive. Continuous ambient motion is secondary to event semantics.
 
+## Static React Flow label-clearance gate
+
+Treat every visible edge label as **layout geometry**, not decoration painted after layout.
+
+Before accepting a static React Flow diagram:
+
+- reserve enough rank/node spacing for the longest meaningful edge labels at the current direction and breakpoint;
+- keep labels visually attached to their own connector and inside the clear gap between endpoint nodes whenever possible;
+- no edge label may overlap node borders, node text, arrowheads, another label, or an unrelated connector;
+- for `LR`, horizontal rank spacing must account for label width; for `TB`, inspect sibling/branch lanes because label width can collide laterally even when vertical rank spacing is sufficient;
+- when a label does not fit, repair in this order: **shorten redundant wording → increase shared spacing/layout clearance → improve routing/handle placement → split an over-dense view**;
+- do **not** fix recurring collisions with arbitrary per-edge `x/y` offsets, negative margins, transforms, tiny font sizes, or by pushing the label so far from the connector that ownership becomes ambiguous;
+- opaque label backgrounds may create a clean visual break in the connector, but masking a line does not excuse insufficient node clearance;
+- validate the actual render at desktop and narrow/mobile widths after changing labels, node copy, node width, direction, or spacing.
+
+Shared layout infrastructure should solve repeated label-clearance problems automatically when practical. Article authors should not need coordinate patches for ordinary labeled edges.
+
 ## Runtime layout and label gate
 
 For `FlowExplainer`, runtime readability includes geometry—not only whether motion exists.
@@ -133,6 +150,7 @@ Before finishing any visual work:
 - verify reduced-motion behavior;
 - verify no clipping or page-level horizontal overflow;
 - verify animation reveals causality rather than decoration;
+- for static React Flow, verify every visible edge label has clear ownership and collision-free node/arrow/label clearance at inspected breakpoints;
 - for FlowExplainer, verify edge labels stay attached to connectors and remain collision-free at inspected breakpoints;
 - for FlowExplainer, verify node text and visible DOM bounds match the geometry used for routing;
 - run `npm run typecheck`, `npm run build`, and `git diff --check` when execution access is available;
