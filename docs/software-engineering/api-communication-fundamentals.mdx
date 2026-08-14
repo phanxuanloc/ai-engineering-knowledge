@@ -123,7 +123,7 @@ Runtime explainer phía trên trả lời **what happens over time**. Static top
   caption="Client-facing boundary tối ưu cho consumer: REST hoặc GraphQL. Bên trong system, service-to-service boundary có thể dùng gRPC cho typed RPC contract."
   controls={false}
   direction="LR"
-  fullscreen={false}
+  fullscreen
   height={390}
   kind="architecture"
   nodeSpacing={58}
@@ -221,7 +221,9 @@ nhưng vẫn là remote call qua network. Vì vậy latency, timeout, service un
 <ReactFlowDiagram
   ariaLabel="Generated gRPC method call vẫn là remote network call"
   caption="Generated stub làm call site trông local, nhưng network boundary vẫn tồn tại. Runtime request/response đã được minh họa bằng Flow Explainer phía trên."
+  controls={false}
   direction="TB"
+  fullscreen
   kind="data-flow"
   primaryPath={['order-service', 'generated-stub', 'network', 'payment-service']}
   rankSpacing={64}
