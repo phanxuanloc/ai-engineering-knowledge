@@ -119,28 +119,34 @@ Có thể nhớ bằng ba câu hỏi:
 Runtime explainer phía trên trả lời **what happens over time**. Static topology dưới đây trả lời một câu hỏi khác: **what connects to what**.
 
 <ReactFlowDiagram
-  ariaLabel="REST, GraphQL và gRPC cùng tồn tại ở các communication boundary khác nhau"
-  caption="Một system không cần chọn đúng một API style. Client boundary và internal service boundary có thể tối ưu theo constraint riêng."
-  direction="TB"
+  ariaLabel="Client-facing REST/GraphQL boundaries và internal gRPC boundaries trong cùng một system"
+  caption="Client-facing boundary tối ưu cho consumer: REST hoặc GraphQL. Bên trong system, service-to-service boundary có thể dùng gRPC cho typed RPC contract."
+  controls={false}
+  direction="LR"
+  fullscreen={false}
+  height={390}
   kind="architecture"
+  nodeSpacing={58}
   primaryPath={['mobile', 'api-layer', 'order', 'payment']}
-  rankSpacing={78}
+  rankSpacing={72}
   nodes={[
-    {id: 'mobile', label: 'Mobile / Web', detail: 'Flexible client needs', role: 'source'},
-    {id: 'third-party', label: 'Third-party Client', detail: 'Public CRUD consumer', role: 'source'},
-    {id: 'api-layer', label: 'API Layer', detail: 'GraphQL hoặc REST boundary', role: 'process', emphasis: true},
-    {id: 'order', label: 'Order Service', detail: 'Internal service', role: 'process'},
-    {id: 'reward', label: 'Reward Service', detail: 'Internal service', role: 'process'},
-    {id: 'payment', label: 'Payment Service', detail: 'Typed RPC contract', role: 'output'},
+    {id: 'mobile', eyebrow: 'CLIENT', label: 'Mobile / Web', detail: 'Flexible data needs', role: 'source', size: 'compact'},
+    {id: 'third-party', eyebrow: 'CLIENT', label: 'Third-party Client', detail: 'Public CRUD consumer', role: 'source', size: 'compact'},
+    {id: 'api-layer', eyebrow: 'CLIENT BOUNDARY', label: 'API Layer', detail: 'REST hoặc GraphQL', role: 'process', emphasis: true, size: 'standard'},
+    {id: 'order', eyebrow: 'INTERNAL', label: 'Order Service', detail: 'Service-to-service', role: 'process', size: 'compact'},
+    {id: 'reward', eyebrow: 'INTERNAL', label: 'Reward Service', detail: 'Service-to-service', role: 'process', size: 'compact'},
+    {id: 'payment', eyebrow: 'INTERNAL', label: 'Payment Service', detail: 'Typed RPC contract', role: 'output', size: 'compact'},
   ]}
   edges={[
-    {source: 'mobile', target: 'api-layer', label: 'GraphQL / REST', route: 'primary'},
-    {source: 'third-party', target: 'api-layer', label: 'REST', route: 'secondary'},
-    {source: 'api-layer', target: 'order', label: 'gRPC', route: 'primary'},
-    {source: 'api-layer', target: 'reward', label: 'gRPC', route: 'secondary'},
-    {source: 'order', target: 'payment', label: 'gRPC', route: 'primary'},
+    {source: 'mobile', target: 'api-layer', label: 'REST / GraphQL', route: 'primary', type: 'straight'},
+    {source: 'third-party', target: 'api-layer', label: 'REST', route: 'secondary', type: 'straight'},
+    {source: 'api-layer', target: 'order', label: 'gRPC', route: 'primary', type: 'straight'},
+    {source: 'api-layer', target: 'reward', label: 'gRPC', route: 'secondary', type: 'straight'},
+    {source: 'order', target: 'payment', label: 'gRPC', route: 'primary', type: 'straight'},
   ]}
 />
+
+**Visual takeaway:** cùng một system có thể có hai communication zones: **client-facing → REST / GraphQL** và **internal service-to-service → gRPC**. API style được chọn theo boundary, không phải chọn một protocol duy nhất cho toàn hệ thống.
 
 Không dùng latency/throughput/payload chart ở bài fundamentals này vì chưa có benchmark thật. Quantitative visual chỉ nên xuất hiện khi có deterministic hoặc measured data phù hợp.
 
