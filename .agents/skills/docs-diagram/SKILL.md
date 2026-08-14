@@ -59,7 +59,8 @@ Do not collapse static topology and runtime explanation into one compromised vis
    - primary path;
    - timeline/step order when behavior matters;
    - metric and scale when charting;
-   - mobile strategy and accessibility message.
+   - **desktop composition and mobile composition separately**;
+   - accessibility message.
 7. Select the renderer from the classification and mandatory gate, not from library convenience.
 8. Reuse shared infrastructure. Article MDX should declare semantic data/story; shared components own layout, motion, controls, theme, and responsive behavior.
 9. Validate structural correctness, layout, routing, readability, animation semantics, reduced-motion behavior, mobile, light/dark themes, and actual visual output.
@@ -92,6 +93,30 @@ Animation is allowed only when motion teaches behavior. A good explainer normall
 - `prefers-reduced-motion` support.
 
 Never animate all edges forever just to make a page feel alive. Continuous ambient motion is secondary to event semantics.
+
+## Mobile-first visual contract
+
+A visual is not accepted until its **mobile composition is intentional**. `fitView`, browser scaling, or clipping a desktop canvas are not mobile strategies.
+
+For every diagram, FlowExplainer, or chart, decide before implementation what happens around a 360–430px article width.
+
+- **Prefer recomposition over shrinking.** A desktop `LR` graph should normally become a `TB`/vertical composition on narrow screens when semantics survive the change. Runtime explainers should prefer a vertical event spine or stacked narrative rather than scaling a long horizontal trace to tiny text.
+- **Do not preserve desktop coordinates blindly.** Fixed horizontal gaps that look good on desktop must not force mobile zoom below readable size or push nodes outside the first frame.
+- **No silent clipping.** Nodes, labels, arrowheads, legends, axes, tooltips, controls, and active packets must stay reachable. Page-level horizontal overflow is a failure.
+- **Horizontal scrolling is a fallback, not the default.** Use an internal scroll/pan viewport only when topology genuinely depends on horizontal spatial relationships that would be distorted by reflow. The first frame must still explain how to inspect the rest.
+- **Fixed height is not authoritative on mobile.** Recompute canvas height from the mobile layout so a desktop height prop does not crop a vertical reflow.
+- **Controls must not cover learning content.** Compact, move, or hide nonessential controls on narrow screens; maintain touch targets of roughly 44px where controls remain important.
+- **Text stays normal reading size.** Do not solve mobile by shrinking node/axis/legend text until it technically fits.
+
+For charts specifically:
+- use responsive width; never rely on a fixed desktop plot width;
+- keep category labels readable rather than clipping or auto-skipping the labels that carry the lesson;
+- for many categories, prefer a vertical list / horizontal-bar presentation on mobile when that improves label readability;
+- wrap or relocate legends instead of letting them steal plot width;
+- keep axes, units, and tooltip values accessible; if an axis becomes unreadable, change composition or label density deliberately rather than simply scaling the entire chart down;
+- mobile animation must preserve the metric story and must not require hover-only interaction.
+
+Mobile acceptance must inspect at least one narrow viewport representative of ~375px and one wider phone viewport around ~430px whenever execution/render access is available.
 
 ## Static React Flow label-clearance gate
 
@@ -145,7 +170,7 @@ Before finishing any visual work:
 - verify every behavioral visual passed the Mandatory runtime-explainer gate;
 - if a behavioral visual remains static-only, verify a valid exception is explicitly documented;
 - verify controls and keyboard focus;
-- verify mobile/narrow article width;
+- verify mobile/narrow article width with an intentional mobile composition, not only scaled desktop output;
 - verify light and dark themes;
 - verify reduced-motion behavior;
 - verify no clipping or page-level horizontal overflow;
@@ -153,5 +178,6 @@ Before finishing any visual work:
 - for static React Flow, verify every visible edge label has clear ownership and collision-free node/arrow/label clearance at inspected breakpoints;
 - for FlowExplainer, verify edge labels stay attached to connectors and remain collision-free at inspected breakpoints;
 - for FlowExplainer, verify node text and visible DOM bounds match the geometry used for routing;
+- for charts, verify axes/category labels/legend remain readable on mobile and no essential information depends on hover;
 - run `npm run typecheck`, `npm run build`, and `git diff --check` when execution access is available;
 - never claim visual review passed unless the rendered result was actually inspected.
