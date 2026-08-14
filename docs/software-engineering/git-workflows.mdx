@@ -1,0 +1,139 @@
+---
+title: Git Workflows
+description: Mental model và trade-off để chọn Git Flow, GitHub Flow, GitLab Flow hoặc Trunk-Based Development.
+tags: [git, branching, workflow, ci-cd]
+sidebar_position: 2
+---
+
+import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
+
+# Git Workflows
+
+## TL;DR
+
+<TLDR>
+Git workflow không chỉ là cách đặt tên branch. Điểm quan trọng là nơi code được tích hợp, branch sống bao lâu, release được hình thành thế nào, và CI/CD bảo vệ `main` ra sao. Git Flow thiên về release lifecycle; GitHub Flow thiên về Pull Request; GitLab Flow thêm upstream/environment hoặc stable release lines; Trunk-Based Development nhấn mạnh integration liên tục vào trunk.
+</TLDR>
+
+## Mental Model
+
+<Principle label="Decision rule">
+Chọn workflow theo cách team tích hợp và release code, không chọn chỉ vì tên branch quen thuộc.
+</Principle>
+
+- **Git Flow:** `feature/* -> develop -> release/* -> main`; production hotfix đi từ `main` rồi quay về cả `main` và `develop`.
+- **GitHub Flow:** short feature branch -> Pull Request -> `main` -> deploy.
+- **GitLab Flow:** feature -> `main`, sau đó promote xuống environment branches hoặc backport xuống stable release branches khi cần.
+- **Trunk-Based Development:** thay đổi rất nhỏ, branch rất ngắn, merge liên tục vào trunk; feature chưa public thường được che bằng feature flag.
+
+## Core Concepts
+
+<Comparison
+  items={[
+    {title: 'Git Flow', description: 'Có develop, release/*, hotfix/*; phù hợp release cycle và stabilization rõ ràng.'},
+    {title: 'GitHub Flow', description: 'Branch + PR + main; đơn giản, PR-centric và phù hợp web/app có CI/CD.'},
+    {title: 'GitLab Flow', description: 'Main là upstream; có thể promote theo environment hoặc maintain stable release branches.'},
+    {title: 'Trunk-Based', description: 'Integration rất thường xuyên; branch cực ngắn, thay đổi nhỏ, main luôn xanh.'},
+  ]}
+/>
+
+### Git Flow branch rules
+
+```text
+feature/* : develop -> develop
+release/* : develop -> main + develop
+hotfix/*  : main    -> main + develop
+```
+
+`release/*` dùng để freeze feature và stabilize một release trong khi `develop` có thể tiếp tục cho release sau. `hotfix/*` phải xuất phát từ production state trên `main`, không từ `develop`.
+
+### Merge strategy
+
+- **Squash merge:** gom một PR nhiều commit tạm thành một commit logic sạch trên `main`.
+- **Rebase + merge:** giữ các commit có ý nghĩa nhưng vẫn tạo history tuyến tính.
+- **Merge commit:** giữ topology của branch và merge event.
+- **Fast-forward:** chỉ di chuyển branch pointer khi history chưa phân nhánh.
+- **Cherry-pick:** lấy một commit cụ thể sang branch khác, hữu ích cho backport fix.
+
+### Rewrite vs preserve history
+
+- Local/private history chưa public có thể dùng `rebase`, `amend`, `reset` hoặc interactive rebase.
+- Shared history đã public nên ưu tiên `revert` thay vì reset/force-push.
+- Sau rebase trên branch cá nhân đã push, ưu tiên `git push --force-with-lease` thay vì `--force`.
+
+### CI/CD and release safety
+
+Một workflow tốt thường nối thành:
+
+```text
+branch -> PR -> CI -> review -> main -> CI -> deploy
+```
+
+Protected `main`, required checks và merge queue giúp giữ integration state an toàn. Feature lớn không nhất thiết cần branch lớn; có thể chia thành nhiều atomic change và dùng feature flag hoặc backward-compatible change để merge sớm.
+
+### Versioning and release traceability
+
+Semantic Versioning:
+
+```text
+fix      -> PATCH
+feat     -> MINOR
+breaking -> MAJOR
+```
+
+Git tag nên liên kết được release với commit cụ thể; production artifact nên trace được về Git tag/commit SHA thay vì chỉ dựa vào mutable tag như `latest`.
+
+## Example
+
+Một team có `main` và shared `testing` branch. Nhiều feature 1, 2, 3 được merge vào `testing` để QA, nhưng sau đó chỉ feature 1 và 3 được merge riêng vào `main`.
+
+```text
+main
+ ├── feature/1 ─┐
+ ├── feature/2 ─┼──> testing
+ └── feature/3 ─┘
+
+QA: 1 pass, 2 không release, 3 pass
+Release: feature/1 + feature/3 -> main
+```
+
+Rủi ro là trạng thái đã test là `main + 1 + 2 + 3`, trong khi trạng thái release lại là `main + 1 + 3`. Nếu feature 1 hoặc 3 vô tình phụ thuộc vào feature 2, production có thể lỗi dù QA đã pass. Nguyên tắc an toàn hơn là final release candidate phải được test đúng với tổ hợp code sẽ release.
+
+## When to Use
+
+- **Git Flow:** mobile/app hoặc sản phẩm có release cycle, feature freeze, QA stabilization và hotfix độc lập.
+- **GitHub Flow:** team nhỏ hoặc vừa, PR-centric, `main` luôn deployable, branch thường sống ngắn.
+- **GitLab Flow:** cần promotion qua environment hoặc maintain nhiều stable release lines nhưng không muốn `develop`.
+- **Trunk-Based:** deploy rất thường xuyên, automated tests mạnh, feature flags tốt và team muốn integration sớm nhất có thể.
+
+GitHub Flow và Trunk-Based không loại trừ nhau: một team có thể dùng GitHub Flow cho PR workflow nhưng áp dụng Trunk-Based discipline cho integration.
+
+## Common Mistakes
+
+- Nghĩ branch name quyết định workflow; thực tế integration point và branch lifetime quan trọng hơn.
+- Giữ feature branch nhiều tuần trong một team muốn Trunk-Based Development.
+- Rebase hoặc force-push shared `main` thay vì dùng `revert`.
+- Test một tổ hợp trên shared testing branch nhưng release một tổ hợp khác mà không có final validation.
+- Merge hotfix của Git Flow chỉ vào `main` mà quên đưa fix trở lại `develop`.
+- Dùng `release/*` cho mọi deploy dù sản phẩm deploy liên tục và không maintain release line riêng.
+
+## Related Knowledge
+
+- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — cùng thuộc nền tảng Software Engineering; API compatibility và backward-compatible evolution giúp các thay đổi nhỏ có thể được merge/deploy an toàn hơn.
+
+## Self-test
+
+1. `feature/*`, `release/*`, `hotfix/*` trong Git Flow được tạo từ đâu và merge về đâu?
+2. GitHub Flow khác Trunk-Based Development ở điểm bản chất nào?
+3. Vì sao `testing = main + feature1 + feature2 + feature3` nhưng production chỉ release `feature1 + feature3` có thể nguy hiểm?
+4. Khi nào GitLab Flow với stable branches phù hợp hơn Git Flow?
+
+<details>
+<summary>Answers</summary>
+
+1. Feature: `develop -> develop`; release: `develop -> main + develop`; hotfix: `main -> main + develop`.
+2. GitHub Flow chủ yếu mô tả branch/PR workflow; Trunk-Based nhấn mạnh integration rất thường xuyên, branch cực ngắn và thay đổi nhỏ, thường kết hợp feature flags.
+3. Vì trạng thái được QA test khác trạng thái thực sự release; dependency hoặc interaction với feature 2 có thể làm kết quả production khác.
+4. Khi `main` là newest upstream và sản phẩm phải maintain nhiều stable release lines hoặc promote code qua environment mà không cần `develop`.
+
+</details>
