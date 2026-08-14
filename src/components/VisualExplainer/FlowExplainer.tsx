@@ -89,8 +89,8 @@ function ExplainerNodeView({data}: NodeProps<ExplainerNode>) {
         <Handle className={styles.handle} id={`target-${position}`} key={`target-${position}`} position={position} type="target" />
       ))}
       <span>{data.role ?? 'service'}</span>
-      <strong>{data.label}</strong>
-      {data.detail && <small>{data.detail}</small>}
+      <strong title={data.label}>{data.label}</strong>
+      {data.detail && <small title={data.detail}>{data.detail}</small>}
       <i aria-hidden="true" className={styles.nodeSignal} />
       {[Position.Top, Position.Right, Position.Bottom, Position.Left].map((position) => (
         <Handle className={styles.handle} id={`source-${position}`} key={`source-${position}`} position={position} type="source" />
@@ -105,6 +105,8 @@ function PacketEdge({id, sourceX, sourceY, targetX, targetY, sourcePosition, tar
     ? getBezierPath({sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, curvature: 0.24})
     : getSmoothStepPath({sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 16});
   const packetCount = data?.repeat ? 3 : 1;
+  const messageX = labelX + (horizontal ? 0 : 86);
+  const messageY = labelY + (horizontal ? 66 : 0);
 
   return (
     <>
@@ -117,7 +119,13 @@ function PacketEdge({id, sourceX, sourceY, targetX, targetY, sourcePosition, tar
       ))}
       {data?.message && (
         <EdgeLabelRenderer>
-          <span className={styles.message} style={{transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`}}>{data.message}</span>
+          <span
+            className={styles.message}
+            title={data.message}
+            style={{transform: `translate(-50%, -50%) translate(${messageX}px, ${messageY}px)`}}
+          >
+            {data.message}
+          </span>
         </EdgeLabelRenderer>
       )}
     </>
