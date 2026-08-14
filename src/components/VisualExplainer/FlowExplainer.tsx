@@ -12,6 +12,7 @@ import {
   type EdgeProps,
   type Node,
   type NodeProps,
+  type XYPosition,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import clsx from 'clsx';
@@ -62,6 +63,7 @@ export type FlowExplainerProps = {
 type ExplainerNodeData = FlowExplainerNode & {active: boolean};
 type ExplainerNode = Node<ExplainerNodeData, 'explainer'>;
 type PacketEdgeData = {message?: string; repeat?: boolean};
+type DirectedSegment = {id: string; source: string; target: string};
 
 const NODE_WIDTH = 158;
 const NODE_HEIGHT = 92;
@@ -142,20 +144,16 @@ function inferEdges(nodes: FlowExplainerNode[]): FlowExplainerEdge[] {
   }));
 }
 
-function resolvePosition(node: FlowExplainerNode, index: number) {
+function resolvePosition(node: FlowExplainerNode, index: number): XYPosition {
   return {
     x: (node.column ?? index) * COLUMN_GAP,
     y: (node.row ?? 0) * ROW_GAP,
   };
 }
 
-function closestHandle(source: FlowExplainerNode, target: FlowExplainerNode) {
-  const sourceColumn = source.column ?? 0;
-  const targetColumn = target.column ?? 0;
-  const sourceRow = source.row ?? 0;
-  const targetRow = target.row ?? 0;
-  const dx = targetColumn - sourceColumn;
-  const dy = targetRow - sourceRow;
+function closestHandle(source: XYPosition, target: XYPosition) {
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
 
   if (Math.abs(dx) >= Math.abs(dy)) {
     return dx >= 0
@@ -166,6 +164,63 @@ function closestHandle(source: FlowExplainerNode, target: FlowExplainerNode) {
   return dy >= 0
     ? {sourceHandle: `source-${Position.Bottom}`, targetHandle: `target-${Position.Top}`}
     : {sourceHandle: `source-${Position.Top}`, targetHandle: `target-${Position.Bottom}`};
+}
+
+function directSegment(step: FlowExplainerStep, edges: FlowExplainerEdge[]): DirectedSegment[] | undefined {
+  if (step.edgeId) {
+    const edge = edges.find((item) => item.id === step.edgeId);
+    if (!edge) return undefined;
+    if (step.from === edge.target && step.to === edge.source) {
+      return [{id: edge.id, source: edge.target, target: edge.source}];
+    }
+    return [{id: edge.id, source: edge.source, target: edge.target}];
+  }
+
+  if (!step.from || !step.to) return undefined;
+  const forward = edges.find((edge) => edge.source === step.from && edge.target === step.to);
+  if (forward) return [{id: forward.id, source: forward.source, target: forward.target}];
+  const reverse = edges.find((edge) => edge.source === step.to && edge.target === step.from);
+  if (reverse) return [{id: reverse.id, source: step.from, target: step.to}];
+  return undefined;
+}
+
+function shortestPath(step: FlowExplainerStep, edges: FlowExplainerEdge[]): DirectedSegment[] {
+  const direct = directSegment(step, edges);
+  if (direct) return direct;
+  if (!step.from || !step.to) return [];
+
+  const adjacency = new Map<string, Array<{next: string; edge: FlowExplainerEdge}>>();
+  for (const edge of edges) {
+    adjacency.set(edge.source, [...(adjacency.get(edge.source) ?? []), {next: edge.target, edge}]);
+    adjacency.set(edge.target, [...(adjacency.get(edge.target) ?? []), {next: edge.source, edge}]);
+  }
+
+  const queue: string[] = [step.from];
+  const visited = new Set([step.from]);
+  const previous = new Map<string, {node: string; edge: FlowExplainerEdge}>();
+
+  while (queue.length) {
+    const current = queue.shift()!;
+    if (current === step.to) break;
+    for (const candidate of adjacency.get(current) ?? []) {
+      if (visited.has(candidate.next)) continue;
+      visited.add(candidate.next);
+      previous.set(candidate.next, {node: current, edge: candidate.edge});
+      queue.push(candidate.next);
+    }
+  }
+
+  if (!visited.has(step.to)) return [{id: `${step.from}-${step.to}`, source: step.from, target: step.to}];
+
+  const reversed: DirectedSegment[] = [];
+  let cursor = step.to;
+  while (cursor !== step.from) {
+    const entry = previous.get(cursor);
+    if (!entry) break;
+    reversed.push({id: entry.edge.id, source: entry.node, target: cursor});
+    cursor = entry.node;
+  }
+  return reversed.reverse();
 }
 
 export function FlowExplainer({title, description, scenarios, stepDurationMs = 1800}: FlowExplainerProps) {
@@ -201,7 +256,7 @@ export function FlowExplainer({title, description, scenarios, stepDurationMs = 1
   if (!scenario || !step) return null;
 
   const scenarioEdges = scenario.edges ?? inferEdges(scenario.nodes);
-  const nodeById = new Map(scenario.nodes.map((node) => [node.id, node]));
+  const positionById = new Map(scenario.nodes.map((node, index) => [node.id, resolvePosition(node, index)]));
   const activeNodeIds = new Set([...(step.active ?? []), step.from, step.to].filter(Boolean));
 
   const graphNodes: ExplainerNode[] = scenario.nodes.map((node, index) => ({
@@ -215,45 +270,34 @@ export function FlowExplainer({title, description, scenarios, stepDurationMs = 1
     selectable: false,
   }));
 
-  const baseEdges: Edge[] = scenarioEdges.map((edge) => {
-    const source = nodeById.get(edge.source)!;
-    const target = nodeById.get(edge.target)!;
-    const handles = closestHandle(source, target);
-    return {
-      id: `base-${edge.id}`,
-      source: edge.source,
-      target: edge.target,
-      ...handles,
-      markerEnd: {type: MarkerType.ArrowClosed, width: 14, height: 14},
-      className: styles.baseEdge,
-      type: 'smoothstep',
-      label: edge.label,
-    };
-  });
+  const baseEdges: Edge[] = scenarioEdges.map((edge) => ({
+    id: `base-${edge.id}`,
+    source: edge.source,
+    target: edge.target,
+    ...closestHandle(positionById.get(edge.source)!, positionById.get(edge.target)!),
+    markerEnd: {type: MarkerType.ArrowClosed, width: 14, height: 14},
+    className: styles.baseEdge,
+    type: 'smoothstep',
+    label: edge.label,
+  }));
 
-  const activeEdgeDefinition = step.edgeId
-    ? scenarioEdges.find((edge) => edge.id === step.edgeId)
-    : step.from && step.to
-      ? {id: `${step.from}-${step.to}`, source: step.from, target: step.to}
-      : undefined;
+  const segments = shortestPath(step, scenarioEdges);
+  const activeEdges: Edge[] = segments
+    .filter((segment) => positionById.has(segment.source) && positionById.has(segment.target))
+    .map((segment, index) => ({
+      id: `active-${segment.id}-${stepIndex}-${index}`,
+      source: segment.source,
+      target: segment.target,
+      ...closestHandle(positionById.get(segment.source)!, positionById.get(segment.target)!),
+      markerEnd: {type: MarkerType.ArrowClosed, width: 16, height: 16},
+      type: 'packet',
+      data: {
+        message: index === Math.floor((segments.length - 1) / 2) ? step.message : undefined,
+        repeat: step.repeat,
+      },
+    }));
 
-  const activeEdge: Edge | undefined = activeEdgeDefinition && nodeById.has(activeEdgeDefinition.source) && nodeById.has(activeEdgeDefinition.target)
-    ? (() => {
-      const source = nodeById.get(activeEdgeDefinition.source)!;
-      const target = nodeById.get(activeEdgeDefinition.target)!;
-      return {
-        id: `active-${activeEdgeDefinition.id}-${stepIndex}`,
-        source: activeEdgeDefinition.source,
-        target: activeEdgeDefinition.target,
-        ...closestHandle(source, target),
-        markerEnd: {type: MarkerType.ArrowClosed, width: 16, height: 16},
-        type: 'packet',
-        data: {message: step.message, repeat: step.repeat},
-      };
-    })()
-    : undefined;
-
-  const graphEdges = activeEdge ? [...baseEdges, activeEdge] : baseEdges;
+  const graphEdges = [...baseEdges, ...activeEdges];
   const maxRow = Math.max(0, ...scenario.nodes.map((node) => node.row ?? 0));
   const graphHeight = Math.max(250, Math.min(520, 250 + maxRow * 100));
 
