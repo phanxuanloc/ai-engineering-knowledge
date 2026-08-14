@@ -4,6 +4,9 @@ description: Mental model thực dụng để phân biệt REST, gRPC và GraphQ
 tags: [api, rest, grpc, graphql]
 ---
 
+import {Comparison} from '@site/src/components/Learning';
+import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+
 # API Communication Fundamentals
 
 ## TL;DR
@@ -16,38 +19,78 @@ API cho phép các phần mềm hoặc service giao tiếp với nhau. REST, gRP
 
 Có thể nhớ bằng ba câu hỏi:
 
-- **REST:** “Tôi đang thao tác resource nào?”
-- **gRPC:** “Tôi đang gọi method nào của service?”
-- **GraphQL:** “Client cần data shape nào?”
+<Comparison
+  items={[
+    {
+      title: 'REST → Resource',
+      description: '“Tôi đang thao tác resource nào?” Ví dụ: GET /users/123/orders?status=PAID',
+    },
+    {
+      title: 'gRPC → Service / Method',
+      description: '“Tôi đang gọi method nào của service?” Ví dụ: OrderService.GetOrders(...)',
+    },
+    {
+      title: 'GraphQL → Data Shape',
+      description: '“Client cần những field và relationship nào?” Ví dụ: user { orders { id total } }',
+    },
+  ]}
+/>
 
-Ví dụ cùng xoay quanh User và Order:
+Ba mental model này không loại trừ nhau. Chúng trả lời những câu hỏi khác nhau ở những communication boundary khác nhau.
 
-```text
-REST:    GET /users/123/orders?status=PAID
-
-gRPC:    OrderService.GetOrders(...)
-
-GraphQL: user(id: "123") {
-           orders(status: PAID) {
-             id
-             total
-           }
-         }
-```
-
-Ba approach này có thể cùng tồn tại trong một architecture:
-
-```text
-Mobile
-  |
-  | GraphQL hoặc REST
-  v
-API Layer
-  |
-  | gRPC
-  v
-Internal Services
-```
+<ReactFlowDiagram
+  ariaLabel="REST, GraphQL và gRPC cùng tồn tại ở các communication boundary khác nhau"
+  caption="Một system không cần chọn đúng một API style: client boundary và internal service boundary có thể tối ưu theo constraint riêng."
+  direction="TB"
+  kind="architecture"
+  primaryPath={['mobile', 'api-layer', 'order', 'payment']}
+  nodes={[
+    {
+      id: 'mobile',
+      label: 'Mobile / Web',
+      detail: 'Client cần interface phù hợp với UI và consumer',
+      role: 'source',
+    },
+    {
+      id: 'third-party',
+      label: 'Third-party Client',
+      detail: 'Public CRUD consumer',
+      role: 'source',
+    },
+    {
+      id: 'api-layer',
+      label: 'API Layer',
+      detail: 'Có thể expose GraphQL hoặc REST',
+      role: 'process',
+      emphasis: true,
+    },
+    {
+      id: 'order',
+      label: 'Order Service',
+      detail: 'Internal service boundary',
+      role: 'process',
+    },
+    {
+      id: 'reward',
+      label: 'Reward Service',
+      detail: 'Internal service boundary',
+      role: 'process',
+    },
+    {
+      id: 'payment',
+      label: 'Payment Service',
+      detail: 'Typed RPC contract',
+      role: 'output',
+    },
+  ]}
+  edges={[
+    {source: 'mobile', target: 'api-layer', label: 'GraphQL / REST', route: 'primary'},
+    {source: 'third-party', target: 'api-layer', label: 'REST', route: 'secondary'},
+    {source: 'api-layer', target: 'order', label: 'gRPC', route: 'primary'},
+    {source: 'api-layer', target: 'reward', label: 'gRPC', route: 'secondary'},
+    {source: 'order', target: 'payment', label: 'gRPC', route: 'primary'},
+  ]}
+/>
 
 ## Core Concepts
 
@@ -116,6 +159,46 @@ paymentClient.getPayment(request);
 ```
 
 nhưng vẫn là remote call qua network. Vì vậy latency, timeout, service unavailable và network failure vẫn phải được xử lý như mọi distributed-system interaction khác.
+
+<ReactFlowDiagram
+  ariaLabel="Generated gRPC method call vẫn là remote network call"
+  caption="Generated stub làm call site trông như method call, nhưng boundary qua network vẫn có latency, timeout và failure modes của distributed system."
+  direction="LR"
+  kind="data-flow"
+  primaryPath={['order-service', 'generated-stub', 'network', 'payment-service']}
+  nodes={[
+    {
+      id: 'order-service',
+      label: 'Order Service',
+      detail: 'Java caller',
+      role: 'source',
+    },
+    {
+      id: 'generated-stub',
+      label: 'Generated gRPC Stub',
+      detail: 'paymentClient.getPayment(request)',
+      role: 'process',
+      emphasis: true,
+    },
+    {
+      id: 'network',
+      label: 'Network Boundary',
+      detail: 'Latency · timeout · unavailable',
+      role: 'constraint',
+    },
+    {
+      id: 'payment-service',
+      label: 'Payment Service',
+      detail: 'Go server implementation',
+      role: 'output',
+    },
+  ]}
+  edges={[
+    {source: 'order-service', target: 'generated-stub', route: 'primary'},
+    {source: 'generated-stub', target: 'network', label: 'serialize + send', route: 'primary'},
+    {source: 'network', target: 'payment-service', label: 'remote RPC', route: 'primary'},
+  ]}
+/>
 
 ### Protobuf và schema evolution
 
@@ -189,26 +272,7 @@ Giả sử một e-commerce system có ba communication boundary:
 2. **Order Service → Payment Service**, Java ↔ Go, cần strongly typed contract và code generation → gRPC là lựa chọn tự nhiên.
 3. **Mobile Dashboard → API Layer**, mỗi màn hình cần data shape khác nhau và compose User, Order, Reward → GraphQL có lợi thế rõ ràng.
 
-Architecture có thể kết hợp:
-
-```text
-Mobile
-  |
-  | GraphQL
-  v
-API Layer
-  |\
-  | \ gRPC
-  |  \
-  v   v
-Order  Reward
-  |
-  | gRPC
-  v
-Payment
-```
-
-Không cần ép toàn hệ thống dùng cùng một API style.
+Không cần ép toàn hệ thống dùng cùng một API style. Diagram ở phần Mental Model cho thấy mỗi boundary có thể dùng interface phù hợp với constraint riêng.
 
 ## When to Use
 
