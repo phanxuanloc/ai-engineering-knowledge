@@ -101,10 +101,15 @@ A visual is not accepted until its **mobile composition is intentional**. `fitVi
 For every diagram, FlowExplainer, or chart, decide before implementation what happens around a 360–430px article width.
 
 - **Prefer recomposition over shrinking.** A desktop `LR` graph should normally become a `TB`/vertical composition on narrow screens when semantics survive the change. Runtime explainers should prefer a vertical event spine or stacked narrative rather than scaling a long horizontal trace to tiny text.
+- **Reflow geometry, never semantics.** Responsive layout may change direction, spacing, stacking, or lanes, but must preserve the authored graph relationships. Never turn sibling branches, parallel calls, or fan-out/fan-in into a false sequential chain just because a one-column layout is convenient.
+- **Linear vs branching mobile composition is a deliberate choice.** A genuinely linear scenario may use one vertical spine. A branching scenario should use a topology-aware mobile form such as hub + stacked branches, balanced lanes, or another composition where each branch remains visibly owned by its real parent/hub.
+- **Preserve authored edges across breakpoints.** Node array order is not topology. Do not infer mobile edges from visual stacking order, and do not make vertically adjacent branch cards look connected unless an authored relationship exists.
+- **Branch labels need independent ownership.** Fan-out labels/messages must stay attached to their own connector lanes and must not share a vertical label corridor that collides with sibling nodes or implies a common sequential edge.
 - **Do not preserve desktop coordinates blindly.** Fixed horizontal gaps that look good on desktop must not force mobile zoom below readable size or push nodes outside the first frame.
 - **No silent clipping.** Nodes, labels, arrowheads, legends, axes, tooltips, controls, and active packets must stay reachable. Page-level horizontal overflow is a failure.
 - **Horizontal scrolling is a fallback, not the default.** Use an internal scroll/pan viewport only when topology genuinely depends on horizontal spatial relationships that would be distorted by reflow. The first frame must still explain how to inspect the rest.
-- **Fixed height is not authoritative on mobile.** Recompute canvas height from the mobile layout so a desktop height prop does not crop a vertical reflow.
+- **Fixed height is not authoritative on mobile.** Recompute canvas height from the final responsive node bounds—including node height, branch offsets, and breathing room—so a desktop height or `nodes.length * gap` estimate cannot crop a reflowed graph.
+- **Fit only after responsive layout settles.** `fitView` frames valid geometry; it must not be used to compensate for invalid responsive topology or stale pre-reflow positions.
 - **Controls must not cover learning content.** Compact, move, or hide nonessential controls on narrow screens; maintain touch targets of roughly 44px where controls remain important.
 - **Text stays normal reading size.** Do not solve mobile by shrinking node/axis/legend text until it technically fits.
 
@@ -117,6 +122,8 @@ For charts specifically:
 - mobile animation must preserve the metric story and must not require hover-only interaction.
 
 Mobile acceptance must inspect at least one narrow viewport representative of ~375px and one wider phone viewport around ~430px whenever execution/render access is available.
+
+`api-communication-fundamentals.mdx` GraphQL is a canonical mobile regression case: `Database`, `REST Service`, and `gRPC Service` may stack vertically, but they must remain three sibling branches from `GraphQL Server`; the responsive composition must never read as `Database → REST Service → gRPC Service`.
 
 ## Static React Flow label-clearance gate
 
@@ -171,6 +178,8 @@ Before finishing any visual work:
 - if a behavioral visual remains static-only, verify a valid exception is explicitly documented;
 - verify controls and keyboard focus;
 - verify mobile/narrow article width with an intentional mobile composition, not only scaled desktop output;
+- verify mobile reflow preserves authored topology: linear stays linear, sibling branches stay siblings, and fan-out/fan-in never becomes a false sequential chain;
+- verify responsive canvas bounds come from final node positions and `fitView` runs only after responsive geometry settles;
 - verify light and dark themes;
 - verify reduced-motion behavior;
 - verify no clipping or page-level horizontal overflow;
