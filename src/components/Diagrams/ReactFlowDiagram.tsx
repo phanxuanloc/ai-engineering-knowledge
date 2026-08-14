@@ -3,13 +3,19 @@ import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   Background,
   BackgroundVariant,
+  BaseEdge,
   Controls,
+  EdgeLabelRenderer,
+  getBezierPath,
+  getSmoothStepPath,
+  getStraightPath,
   Handle,
   MarkerType,
   MiniMap,
   Position,
   ReactFlow,
   type Edge,
+  type EdgeProps,
   type Node,
   type NodeProps,
   type ReactFlowInstance,
@@ -45,6 +51,7 @@ export type DiagramEdge = {
   label?: string;
   dashed?: boolean;
   feedbackLabelPlacement?: 'endpoint' | 'outer';
+  motion?: 'packet';
   route?: 'primary' | 'secondary' | 'feedback';
   sourceHandle?: 'top' | 'right' | 'bottom' | 'left';
   targetHandle?: 'top' | 'right' | 'bottom' | 'left';
@@ -74,8 +81,9 @@ export type ReactFlowDiagramProps = {
 
 type DocsNodeData = Omit<DiagramNode, 'id' | 'height'>;
 type DocsNode = Node<DocsNodeData, 'docs' | 'fit-spacer'>;
+type PacketEdgeData = {label?: string; pathType?: 'straight' | 'step' | 'smoothstep' | 'bezier'};
 
-function DocsFlowNode({data, sourcePosition = Position.Bottom, targetPosition = Position.Top}: NodeProps<DocsNode>) {
+function DocsFlowNode({data}: NodeProps<DocsNode>) {
   return (
     <div
       className={clsx(styles.flowNode, styles[`flowNode_${data.role ?? 'state'}`], data.emphasis && styles.flowNodeEmphasis)}
@@ -93,56 +101,49 @@ function DocsFlowNode({data, sourcePosition = Position.Bottom, targetPosition = 
   );
 }
 
-function FitSpacerNode() {
-  return null;
+function PacketEdge({id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, style, data}: EdgeProps<Edge<PacketEdgeData>>) {
+  const pathType = data?.pathType ?? 'smoothstep';
+  const [path, labelX, labelY] = pathType === 'straight'
+    ? getStraightPath({sourceX, sourceY, targetX, targetY})
+    : pathType === 'bezier'
+      ? getBezierPath({sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition})
+      : getSmoothStepPath({sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition});
+
+  return (
+    <>
+      <BaseEdge id={id} markerEnd={markerEnd} path={path} style={style} />
+      <circle className={styles.packetDot} r="4.5">
+        <animateMotion dur="2.4s" path={path} repeatCount="indefinite" />
+      </circle>
+      {data?.label && (
+        <EdgeLabelRenderer>
+          <span className={styles.packetEdgeLabel} style={{transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`}}>
+            {data.label}
+          </span>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
 }
+
+function FitSpacerNode() { return null; }
 
 const nodeTypes = {docs: DocsFlowNode, 'fit-spacer': FitSpacerNode};
-const edgeTypes = {feedback: FeedbackEdge};
+const edgeTypes = {feedback: FeedbackEdge, packet: PacketEdge};
 
-const NODE_WIDTHS: Record<DiagramNodeSize, number> = {
-  compact: 180,
-  standard: 240,
-  wide: 340,
-};
-
-function resolveNodeWidth(node: DiagramNode) {
-  return node.width ?? NODE_WIDTHS[node.size ?? 'standard'];
-}
-
+const NODE_WIDTHS: Record<DiagramNodeSize, number> = {compact: 180, standard: 240, wide: 340};
+function resolveNodeWidth(node: DiagramNode) { return node.width ?? NODE_WIDTHS[node.size ?? 'standard']; }
 function estimateNodeHeight(node: DiagramNode) {
   const width = resolveNodeWidth(node);
   const usableTextWidth = Math.max(72, width - 26);
   const estimatedCharactersPerLine = Math.max(12, Math.floor(usableTextWidth / 6.4));
   const detailLines = node.detail ? Math.max(1, Math.ceil(node.detail.length / estimatedCharactersPerLine)) : 0;
   const itemRows = node.items ? Math.ceil(node.items.length / 2) : 0;
-  const contentHeight = 54
-    + (node.eyebrow ? 17 : 0)
-    + detailLines * 16
-    + (itemRows ? itemRows * 34 + 8 : 0);
+  const contentHeight = 54 + (node.eyebrow ? 17 : 0) + detailLines * 16 + (itemRows ? itemRows * 34 + 8 : 0);
   return Math.max(node.height ?? 0, contentHeight);
 }
 
-export function ReactFlowDiagram({
-  ariaLabel,
-  background = false,
-  caption,
-  className,
-  controls,
-  direction = 'TB',
-  edges,
-  fullscreen = true,
-  height,
-  interactive = true,
-  kind = 'workflow',
-  layout: layoutMode = 'dagre',
-  minimap = 'auto',
-  nodeSpacing,
-  nodes,
-  nodesDraggable,
-  primaryPath,
-  rankSpacing,
-}: ReactFlowDiagramProps) {
+export function ReactFlowDiagram({ariaLabel, background = false, caption, className, controls, direction = 'TB', edges, fullscreen = true, height, interactive = true, kind = 'workflow', layout: layoutMode = 'dagre', minimap = 'auto', nodeSpacing, nodes, nodesDraggable, primaryPath, rankSpacing}: ReactFlowDiagramProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const flowRef = useRef<ReactFlowInstance<DocsNode, Edge>>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -161,60 +162,35 @@ export function ReactFlowDiagram({
     const primaryPairs = new Set(primaryPath?.slice(1).map((target, index) => `${primaryPath[index]}->${target}`) ?? []);
     return edges.map((edge, index) => {
       const route = edge.route ?? (primaryPairs.has(`${edge.source}->${edge.target}`) ? 'primary' : undefined);
-      const type = route === 'feedback'
-        ? 'feedback'
-        : edge.type === 'bezier'
-          ? 'default'
-          : edge.type ?? (route === 'primary' ? 'straight' : 'smoothstep');
+      const baseType = route === 'feedback' ? 'feedback' : edge.type === 'bezier' ? 'default' : edge.type ?? (route === 'primary' ? 'straight' : 'smoothstep');
+      const type = edge.motion === 'packet' ? 'packet' : baseType;
       return {
         id: `${edge.source}-${edge.target}-${index}`,
         source: edge.source,
         target: edge.target,
-        data: route === 'feedback' ? {labelPlacement: edge.feedbackLabelPlacement} : undefined,
-        label: edge.label,
+        data: edge.motion === 'packet'
+          ? {label: edge.label, pathType: baseType === 'default' ? 'bezier' : baseType}
+          : route === 'feedback' ? {labelPlacement: edge.feedbackLabelPlacement} : undefined,
+        label: edge.motion === 'packet' ? undefined : edge.label,
         markerEnd: {type: MarkerType.ArrowClosed, width: 16, height: 16},
         sourceHandle: `source-${edge.sourceHandle ?? (route === 'feedback' ? (direction === 'TB' ? 'right' : 'bottom') : direction === 'TB' ? 'bottom' : 'right')}`,
         targetHandle: `target-${edge.targetHandle ?? (route === 'feedback' ? (direction === 'TB' ? 'right' : 'bottom') : direction === 'TB' ? 'top' : 'left')}`,
-        className: clsx(
-          route === 'feedback' && styles.flowEdgeFeedback,
-          route === 'secondary' && styles.flowEdgeSecondary,
-          edge.dashed && styles.flowEdgeDashed,
-        ),
+        className: clsx(route === 'feedback' && styles.flowEdgeFeedback, route === 'secondary' && styles.flowEdgeSecondary, edge.dashed && styles.flowEdgeDashed),
         type,
-        pathOptions: type === 'default' ? {curvature: 0.25} : undefined,
+        pathOptions: baseType === 'default' ? {curvature: 0.25} : undefined,
       };
     });
   }, [direction, edges, primaryPath]);
 
   const layout = useMemo(() => layoutGraph<DocsNode>(nodes.map(({id, height: authoredHeight, ...data}) => {
     const width = resolveNodeWidth({id, height: authoredHeight, ...data});
-    return {
-      id,
-      type: 'docs',
-      data: {...data, width},
-      position: {x: 0, y: 0},
-      width,
-      height: estimateNodeHeight({id, height: authoredHeight, ...data}),
-    };
+    return {id, type: 'docs', data: {...data, width}, position: {x: 0, y: 0}, width, height: estimateNodeHeight({id, height: authoredHeight, ...data})};
   }), flowEdges, {direction, layout: layoutMode, nodeSpacing, primaryPath, rankSpacing}), [direction, flowEdges, layoutMode, nodeSpacing, nodes, primaryPath, rankSpacing]);
   useMemo(() => assertDiagramQuality({direction, edges, kind, nodes, primaryPath}, layout.nodes, layout.bounds), [direction, edges, kind, layout.bounds, layout.nodes, nodes, primaryPath]);
   const hasFeedback = edges.some(({route}) => route === 'feedback');
-  const viewportNodes = useMemo<DocsNode[]>(() => hasFeedback ? [
-    ...layout.nodes,
-    {
-      id: '__feedback-fit-spacer',
-      type: 'fit-spacer',
-      data: {label: ''},
-      position: {x: layout.bounds.width + 110, y: layout.bounds.height / 2},
-      width: 1,
-      height: 1,
-      selectable: false,
-      draggable: false,
-    },
-  ] : layout.nodes, [hasFeedback, layout.bounds.height, layout.bounds.width, layout.nodes]);
+  const viewportNodes = useMemo<DocsNode[]>(() => hasFeedback ? [...layout.nodes, {id: '__feedback-fit-spacer', type: 'fit-spacer', data: {label: ''}, position: {x: layout.bounds.width + 110, y: layout.bounds.height / 2}, width: 1, height: 1, selectable: false, draggable: false}] : layout.nodes, [hasFeedback, layout.bounds.height, layout.bounds.width, layout.nodes]);
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<DocsNode>(viewportNodes);
   useEffect(() => setFlowNodes(viewportNodes), [setFlowNodes, viewportNodes]);
-
   const graphIsLarge = nodes.length >= 15 || layout.bounds.width > 1600 || layout.bounds.height > 1400;
   const showMiniMap = minimap === true || (minimap === 'auto' && graphIsLarge);
   const showControls = controls ?? interactive;
@@ -225,44 +201,12 @@ export function ReactFlowDiagram({
   return (
     <figure className={clsx(styles.reactFlowFigure, className)} aria-label={ariaLabel}>
       <div className={styles.reactFlowCanvas} ref={canvasRef} style={{height: canvasHeight}}>
-        <ReactFlow
-          aria-label={ariaLabel}
-          colorMode="system"
-          edges={flowEdges}
-          elementsSelectable={false}
-          fitView
-          fitViewOptions={{padding: fitPadding, maxZoom: 1}}
-          maxZoom={1.6}
-          minZoom={0.35}
-          nodes={flowNodes}
-          nodesConnectable={false}
-          nodesDraggable={draggable}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onInit={(instance) => { flowRef.current = instance; }}
-          onNodesChange={onNodesChange}
-          panOnDrag={interactive}
-          preventScrolling={!interactive}
-          proOptions={{hideAttribution: true}}
-          zoomOnDoubleClick={interactive}
-          zoomOnPinch={interactive}
-          zoomOnScroll={interactive}
-        >
+        <ReactFlow aria-label={ariaLabel} colorMode="system" edges={flowEdges} elementsSelectable={false} fitView fitViewOptions={{padding: fitPadding, maxZoom: 1}} maxZoom={1.6} minZoom={0.35} nodes={flowNodes} nodesConnectable={false} nodesDraggable={draggable} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onInit={(instance) => { flowRef.current = instance; }} onNodesChange={onNodesChange} panOnDrag={interactive} preventScrolling={!interactive} proOptions={{hideAttribution: true}} zoomOnDoubleClick={interactive} zoomOnPinch={interactive} zoomOnScroll={interactive}>
           {background && <Background variant={BackgroundVariant.Dots} gap={22} size={1} />}
           {showControls && <Controls position="bottom-right" showInteractive={draggable} />}
           {showMiniMap && <MiniMap pannable zoomable position="top-right" />}
         </ReactFlow>
-        {fullscreen && (
-          <button
-            aria-label={isFullscreen ? 'Exit fullscreen diagram' : 'View diagram fullscreen'}
-            className={styles.fullscreenButton}
-            onClick={toggleFullscreen}
-            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-            type="button"
-          >
-            {isFullscreen ? '↙' : '↗'}
-          </button>
-        )}
+        {fullscreen && <button aria-label={isFullscreen ? 'Exit fullscreen diagram' : 'View diagram fullscreen'} className={styles.fullscreenButton} onClick={toggleFullscreen} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'} type="button">{isFullscreen ? '↙' : '↗'}</button>}
       </div>
       {caption && <figcaption>{caption}</figcaption>}
     </figure>
