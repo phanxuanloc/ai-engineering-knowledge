@@ -44,7 +44,6 @@ body { letter-spacing:-.003em; }
   .navbar__logo { flex:0 0 auto; }
   .navbar__title { overflow:hidden; max-width:min(58vw,19rem); text-overflow:ellipsis; white-space:nowrap; font-size:.9rem; }
 
-  /* Keep Docusaurus' native mobile toggle reachable even when the brand is long. */
   .navbar__toggle {
     display:flex!important;
     visibility:visible!important;
@@ -63,15 +62,38 @@ body { letter-spacing:-.003em; }
     pointer-events:auto;
   }
   .navbar__toggle:hover { background:var(--learning-hover); }
-
-  /* Only constrain the top bar. Docusaurus owns the mobile drawer width,
-     two-panel slide transition and close-on-navigation behavior. */
   .navbar__inner > .navbar__items:not(.navbar__items--right) { flex:1 1 auto; overflow:hidden; }
 
-  /* Style the native full-height drawer without changing its layout geometry. */
-  .navbar-sidebar { background:var(--ifm-background-color); }
+  /* Custom single-panel mobile sidebar: never keep Docs in an off-screen sibling panel. */
+  .navbar-sidebar--single-panel { width:min(94vw,400px); background:var(--ifm-background-color); }
+  .navbar-sidebar__items--single-panel {
+    display:block!important;
+    width:100%!important;
+    height:calc(100dvh - var(--ifm-navbar-height));
+    overflow-y:auto;
+    overflow-x:hidden;
+    transform:none!important;
+    transition:none!important;
+    overscroll-behavior:contain;
+  }
+  .navbar-sidebar__items--single-panel > .navbar-sidebar__item {
+    width:100%!important;
+    min-width:0;
+    height:auto;
+    padding:.8rem!important;
+  }
   .navbar-sidebar__brand { min-height:var(--ifm-navbar-height); padding:.55rem .75rem; border-bottom:1px solid var(--learning-border); }
-  .navbar-sidebar .menu { padding:.8rem!important; }
+  .navbar-sidebar__back {
+    width:100%;
+    min-height:44px;
+    margin:0 0 .65rem;
+    padding:.6rem .7rem;
+    border-radius:9px;
+    text-align:left;
+    font-weight:650;
+  }
+  .navbar-sidebar__back:hover { background:var(--learning-hover); }
+  .navbar-sidebar .menu { padding:0!important; }
   .navbar-sidebar .menu__link,
   .navbar-sidebar .navbar__link {
     min-height:44px;
@@ -89,6 +111,7 @@ body { letter-spacing:-.003em; }
   .navbar { padding-inline:.45rem; }
   .navbar__title { max-width:47vw; font-size:.84rem; }
   .navbar__logo { height:1.55rem; }
+  .navbar-sidebar--single-panel { width:100vw; }
 }
 
 @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; } }
