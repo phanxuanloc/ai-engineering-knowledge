@@ -19,76 +19,35 @@ API cho phép các phần mềm hoặc service giao tiếp với nhau. REST, gRP
 
 Có thể nhớ bằng ba câu hỏi:
 
-<Comparison
-  items={[
-    {
-      title: 'REST → Resource',
-      description: '“Tôi đang thao tác resource nào?” Ví dụ: GET /users/123/orders?status=PAID',
-    },
-    {
-      title: 'gRPC → Service / Method',
-      description: '“Tôi đang gọi method nào của service?” Ví dụ: OrderService.GetOrders(...)',
-    },
-    {
-      title: 'GraphQL → Data Shape',
-      description: '“Client cần những field và relationship nào?” Ví dụ: user { orders { id total } }',
-    },
-  ]}
-/>
+<Comparison items={[
+  {title: 'REST → Resource', description: '“Tôi đang thao tác resource nào?” Ví dụ: GET /users/123/orders?status=PAID'},
+  {title: 'gRPC → Service / Method', description: '“Tôi đang gọi method nào của service?” Ví dụ: OrderService.GetOrders(...)'},
+  {title: 'GraphQL → Data Shape', description: '“Client cần những field và relationship nào?” Ví dụ: user { orders { id total } }'},
+]} />
 
-Ba mental model này không loại trừ nhau. Chúng trả lời những câu hỏi khác nhau ở những communication boundary khác nhau.
+Ba mental model này không loại trừ nhau. Chúng trả lời những câu hỏi khác nhau ở những communication boundary khác nhau. Các chấm chuyển động trên diagram biểu diễn request/message đi qua từng boundary; animation tự tắt khi hệ điều hành bật `prefers-reduced-motion`.
 
 <ReactFlowDiagram
   ariaLabel="REST, GraphQL và gRPC cùng tồn tại ở các communication boundary khác nhau"
-  caption="Một system không cần chọn đúng một API style: client boundary và internal service boundary có thể tối ưu theo constraint riêng."
+  caption="Theo dõi packet để thấy cùng một request path có thể đi qua GraphQL/REST ở client boundary rồi gRPC giữa internal services."
   direction="TB"
   kind="architecture"
   primaryPath={['mobile', 'api-layer', 'order', 'payment']}
+  rankSpacing={78}
   nodes={[
-    {
-      id: 'mobile',
-      label: 'Mobile / Web',
-      detail: 'Client cần interface phù hợp với UI và consumer',
-      role: 'source',
-    },
-    {
-      id: 'third-party',
-      label: 'Third-party Client',
-      detail: 'Public CRUD consumer',
-      role: 'source',
-    },
-    {
-      id: 'api-layer',
-      label: 'API Layer',
-      detail: 'Có thể expose GraphQL hoặc REST',
-      role: 'process',
-      emphasis: true,
-    },
-    {
-      id: 'order',
-      label: 'Order Service',
-      detail: 'Internal service boundary',
-      role: 'process',
-    },
-    {
-      id: 'reward',
-      label: 'Reward Service',
-      detail: 'Internal service boundary',
-      role: 'process',
-    },
-    {
-      id: 'payment',
-      label: 'Payment Service',
-      detail: 'Typed RPC contract',
-      role: 'output',
-    },
+    {id: 'mobile', label: 'Mobile / Web', detail: 'Client-facing consumer', role: 'source'},
+    {id: 'third-party', label: 'Third-party Client', detail: 'Public CRUD consumer', role: 'source'},
+    {id: 'api-layer', label: 'API Layer', detail: 'GraphQL hoặc REST boundary', role: 'process', emphasis: true},
+    {id: 'order', label: 'Order Service', detail: 'Internal service', role: 'process'},
+    {id: 'reward', label: 'Reward Service', detail: 'Internal service', role: 'process'},
+    {id: 'payment', label: 'Payment Service', detail: 'Typed RPC contract', role: 'output'},
   ]}
   edges={[
-    {source: 'mobile', target: 'api-layer', label: 'GraphQL / REST', route: 'primary'},
-    {source: 'third-party', target: 'api-layer', label: 'REST', route: 'secondary'},
-    {source: 'api-layer', target: 'order', label: 'gRPC', route: 'primary'},
-    {source: 'api-layer', target: 'reward', label: 'gRPC', route: 'secondary'},
-    {source: 'order', target: 'payment', label: 'gRPC', route: 'primary'},
+    {source: 'mobile', target: 'api-layer', label: 'GraphQL / REST', route: 'primary', motion: 'packet'},
+    {source: 'third-party', target: 'api-layer', label: 'REST', route: 'secondary', motion: 'packet'},
+    {source: 'api-layer', target: 'order', label: 'gRPC', route: 'primary', motion: 'packet'},
+    {source: 'api-layer', target: 'reward', label: 'gRPC', route: 'secondary', motion: 'packet'},
+    {source: 'order', target: 'payment', label: 'gRPC', route: 'primary', motion: 'packet'},
   ]}
 />
 
@@ -162,41 +121,21 @@ nhưng vẫn là remote call qua network. Vì vậy latency, timeout, service un
 
 <ReactFlowDiagram
   ariaLabel="Generated gRPC method call vẫn là remote network call"
-  caption="Generated stub làm call site trông như method call, nhưng boundary qua network vẫn có latency, timeout và failure modes của distributed system."
-  direction="LR"
+  caption="Packet đi qua generated stub và network boundary: call site trông local nhưng execution vẫn là distributed."
+  direction="TB"
   kind="data-flow"
   primaryPath={['order-service', 'generated-stub', 'network', 'payment-service']}
+  rankSpacing={64}
   nodes={[
-    {
-      id: 'order-service',
-      label: 'Order Service',
-      detail: 'Java caller',
-      role: 'source',
-    },
-    {
-      id: 'generated-stub',
-      label: 'Generated gRPC Stub',
-      detail: 'paymentClient.getPayment(request)',
-      role: 'process',
-      emphasis: true,
-    },
-    {
-      id: 'network',
-      label: 'Network Boundary',
-      detail: 'Latency · timeout · unavailable',
-      role: 'constraint',
-    },
-    {
-      id: 'payment-service',
-      label: 'Payment Service',
-      detail: 'Go server implementation',
-      role: 'output',
-    },
+    {id: 'order-service', label: 'Order Service', detail: 'Java caller', role: 'source'},
+    {id: 'generated-stub', label: 'Generated gRPC Stub', detail: 'paymentClient.getPayment(request)', role: 'process', emphasis: true},
+    {id: 'network', label: 'Network Boundary', detail: 'Latency · timeout · unavailable', role: 'constraint'},
+    {id: 'payment-service', label: 'Payment Service', detail: 'Go server implementation', role: 'output'},
   ]}
   edges={[
-    {source: 'order-service', target: 'generated-stub', route: 'primary'},
-    {source: 'generated-stub', target: 'network', label: 'serialize + send', route: 'primary'},
-    {source: 'network', target: 'payment-service', label: 'remote RPC', route: 'primary'},
+    {source: 'order-service', target: 'generated-stub', label: 'method call', route: 'primary', motion: 'packet'},
+    {source: 'generated-stub', target: 'network', label: 'serialize + send', route: 'primary', motion: 'packet'},
+    {source: 'network', target: 'payment-service', label: 'remote RPC', route: 'primary', motion: 'packet'},
   ]}
 />
 
