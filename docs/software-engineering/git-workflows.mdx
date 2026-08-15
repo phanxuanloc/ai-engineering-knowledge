@@ -171,16 +171,16 @@ hotfix/*  : main    -> main + develop
     {id: 'decision', eyebrow: 'INTEGRATION', label: 'Choose history strategy', detail: 'What should main remember?', role: 'decision', emphasis: true, size: 'standard'},
     {id: 'squash', eyebrow: 'OPTION', label: 'Squash', detail: 'A+B+C -> S', role: 'process', size: 'compact'},
     {id: 'rebase', eyebrow: 'OPTION', label: 'Rebase + merge', detail: "A' · B' · C'", role: 'process', size: 'compact'},
-    {id: 'merge', eyebrow: 'OPTION', label: 'Merge commit', detail: 'Keep branch topology', role: 'process', size: 'compact'},
-    {id: 'cherry', eyebrow: 'OPTION', label: 'Cherry-pick', detail: 'Pick one commit', role: 'process', size: 'compact'},
+    {id: 'merge', eyebrow: 'OPTION', label: 'Merge commit', detail: 'Branch topology', role: 'process', size: 'compact'},
+    {id: 'cherry', eyebrow: 'OPTION', label: 'Cherry-pick', detail: 'One selected commit', role: 'process', size: 'compact'},
     {id: 'main', eyebrow: 'RESULT', label: 'main history', detail: 'Intentional, reviewable history', role: 'output', size: 'standard'},
   ]}
   edges={[
     {source: 'feature', target: 'decision', route: 'primary'},
-    {source: 'decision', target: 'squash', label: 'one logical change', route: 'secondary'},
-    {source: 'decision', target: 'rebase', label: 'keep good commits', route: 'secondary'},
-    {source: 'decision', target: 'merge', label: 'keep topology', route: 'secondary'},
-    {source: 'decision', target: 'cherry', label: 'one fix only', route: 'secondary'},
+    {source: 'decision', target: 'squash', route: 'secondary'},
+    {source: 'decision', target: 'rebase', route: 'secondary'},
+    {source: 'decision', target: 'merge', route: 'secondary'},
+    {source: 'decision', target: 'cherry', route: 'secondary'},
     {source: 'squash', target: 'main', route: 'secondary'},
     {source: 'rebase', target: 'main', route: 'secondary'},
     {source: 'merge', target: 'main', route: 'secondary'},
@@ -335,14 +335,14 @@ Một team có `main` và shared `testing` branch. Nhiều feature 1, 2, 3 đư�
     {id: 'release', eyebrow: 'PROD STATE', label: 'Production candidate', detail: 'main + 1 + 3', role: 'output', size: 'standard'},
   ]}
   edges={[
-    {source: 'main', target: 'f1', label: 'branch', route: 'secondary'},
-    {source: 'main', target: 'f2', label: 'branch', route: 'secondary'},
-    {source: 'main', target: 'f3', label: 'branch', route: 'secondary'},
-    {source: 'f1', target: 'testing', label: 'merge', route: 'secondary'},
-    {source: 'f2', target: 'testing', label: 'merge', route: 'secondary'},
-    {source: 'f3', target: 'testing', label: 'merge', route: 'secondary'},
-    {source: 'f1', target: 'release', label: 'selected', route: 'primary'},
-    {source: 'f3', target: 'release', label: 'selected', route: 'primary'},
+    {source: 'main', target: 'f1', route: 'secondary'},
+    {source: 'main', target: 'f2', route: 'secondary'},
+    {source: 'main', target: 'f3', route: 'secondary'},
+    {source: 'f1', target: 'testing', route: 'secondary'},
+    {source: 'f2', target: 'testing', route: 'secondary'},
+    {source: 'f3', target: 'testing', route: 'secondary'},
+    {source: 'f1', target: 'release', route: 'primary'},
+    {source: 'f3', target: 'release', route: 'primary'},
   ]}
 />
 
