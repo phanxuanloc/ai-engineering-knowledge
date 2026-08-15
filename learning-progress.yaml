@@ -11,6 +11,7 @@ topics:
       - evaluation-fundamentals
       - evaluation-methods-and-evaluators
       - evaluation-dataset-and-test-cases
+      - evaluation-metrics-and-aggregation
     checkpoint_progress:
       evaluation-fundamentals:
         status: understood
@@ -44,7 +45,20 @@ topics:
           - identified-production-failures-as-regression-evaluation-cases
           - identified-eval-contamination-from-repeated-optimization-against-the-same-cases
           - interpreted-high-regression-and-low-holdout-performance-as-weak-generalization-evidence
-    next_checkpoint: evaluation-metrics-and-aggregation
+      evaluation-metrics-and-aggregation:
+        status: understood
+        note: docs/ai-fundamentals/evaluation-fundamentals.mdx
+        learned_at: 2026-08-15
+        evidence:
+          - distinguished-evaluator-mechanisms-from-resulting-metrics
+          - identified-critical-slice-failures-hidden-by-a-high-aggregate-score
+          - selected-macro-averaging-to-prevent-a-large-normal-slice-from-dominating-a-small-critical-slice
+          - distinguished-compensatory-weighted-aggregation-from-non-compensatory-hard-gates
+          - applied-a-pii-safety-hard-gate-after-correcting-an-initial-weighted-score-choice
+          - selected-a-production-suitable-agent-across-quality-safety-cost-and-latency-constraints
+          - interpreted-high-p99-with-low-average-as-severe-tail-latency
+          - explained-that-p99-is-a-distribution-threshold-not-the-latency-of-99-percent-of-requests
+    next_checkpoint: evaluation-reliability-and-statistical-confidence
     experiments: []
     prerequisites: []
     related:

@@ -13,7 +13,7 @@ import {ImportantDistinction, Principle, TLDR} from '@site/src/components/Learni
 
 <TLDR>
 
-Evaluation đo một AI system **thực hiện task tốt đến đâu**, không chỉ kiểm tra execution có hoàn tất hay không. Bắt đầu từ success criteria của task, xây dataset vừa phản ánh production vừa bao phủ rủi ro quan trọng, chọn evaluator phù hợp, tổng hợp thành metrics, rồi xem failure theo slice thay vì chỉ nhìn overall score.
+Evaluation đo một AI system **thực hiện task tốt đến đâu**, không chỉ kiểm tra execution có hoàn tất hay không. Bắt đầu từ success criteria của task, xây dataset vừa phản ánh production vừa bao phủ rủi ro quan trọng, chọn evaluator phù hợp, rồi đọc metrics theo đúng aggregation, slices và production constraints thay vì chỉ nhìn một overall score.
 
 </TLDR>
 
@@ -139,6 +139,43 @@ Overall score có thể che failure quan trọng. Hãy phân tích theo các **s
 
 Critical slices có thể cần threshold nghiêm ngặt hơn ordinary cases. Một Coding Agent có overall pass rate cao hơn vẫn có thể là lựa chọn production tệ hơn nếu nó yếu ở slice chiếm phần lớn workload thực tế hoặc thường xuyên bỏ sót authorization regression.
 
+Aggregate metric trả lời gần đúng **“toàn hệ thống đang làm tốt đến đâu?”**; slice metric trả lời **“hệ thống đang thất bại ở đâu?”**. Một aggregate có thể hoàn toàn đúng về mặt toán học nhưng vẫn gây hiểu nhầm cho decision nếu slice lớn lấn át slice nhỏ nhưng quan trọng.
+
+Ví dụ, 980 normal cases đạt 99% và 20 payment cases chỉ đạt 40% vẫn tạo overall success khoảng 98%. Con số tổng đẹp không xóa failure nghiêm trọng ở payment; dashboard và release review cần hiển thị riêng slice đó.
+
+### Micro và Macro average trả lời hai mục tiêu khác nhau
+
+- **Micro average** gộp mọi observations trước khi tính metric, nên slice nhiều cases có ảnh hưởng lớn hơn. Nó phù hợp khi muốn phản ánh case frequency hoặc dataset distribution.
+- **Macro average** tính metric riêng cho từng slice rồi cho các slices ảnh hưởng ngang nhau, bất kể kích thước. Nó phù hợp khi không muốn một group lớn che một group nhỏ.
+
+Với hai slices ở trên, Micro average gần với overall success theo traffic mix; Macro average là trung bình của success rate ở Normal và Payment, nên làm weakness của Payment hiện rõ hơn. Không có cách nào luôn tốt hơn: chọn aggregation theo câu hỏi evaluation, đồng thời báo cáo slice metrics để người đọc không phải suy ngược từ một con số tổng.
+
+### Weighted aggregation khác Hard Gates
+
+Weighted score phù hợp khi các dimensions **được phép bù trừ**: một phương án có thể chấp nhận cost cao hơn để đổi lấy quality tốt hơn, tùy production objective. Nhưng tăng weight cho security không đảm bảo security requirement đã pass; điểm cao ở quality vẫn có thể bù cho một security score dưới ngưỡng.
+
+Safety, security, policy compliance, destructive-action protection hoặc requirement critical khác thường là **non-compensatory**. Khi failure không được phép bù bởi strengths khác, dùng threshold hoặc hard gate rõ ràng:
+
+**Release = critical gates pass AND overall quality criteria pass**
+
+Không dùng **Release = weighted score cao** như điều kiện duy nhất trong trường hợp đó.
+
+### Evaluation thường là multi-dimensional
+
+Model hoặc agent tốt nhất không nhất thiết là candidate có Task Success cao nhất. Production decision có thể cần xem đồng thời quality, safety/security, cost, latency và các constraints khác của hệ thống.
+
+Ví dụ, Agent A đạt Task Success 94% nhưng vi phạm PII gate và có p99 latency vượt SLO; Agent B đạt 92%, pass safety gate, đủ nhanh và nằm trong cost budget. Nếu 92% vượt quality threshold, B là lựa chọn production phù hợp hơn. Đây không phải bộ bốn metrics cố định: dimensions phải xuất phát từ success criteria và constraints của từng system.
+
+### Average latency có thể che Tail Latency
+
+Average tóm tắt toàn bộ requests thành một giá trị nên có thể che một nhóm nhỏ rất chậm. Percentiles mô tả vị trí trong latency distribution:
+
+- **p50** là median: khoảng 50% observations không vượt giá trị này;
+- **p95**: khoảng 95% observations không vượt giá trị này;
+- **p99**: khoảng 99% observations không vượt giá trị này.
+
+`p99 = 45s` không có nghĩa 99% requests đều mất 45 giây. Nó cho biết ngưỡng mà khoảng 99% requests nằm ở hoặc dưới; phần tail còn lại có thể chậm hơn. Khi average thấp, p95 hợp lý nhưng p99 rất cao, một nhóm requests nhỏ đang có severe latency và cần được phân tích theo trace, task type, tool call hoặc slice liên quan.
+
 ## Example
 
 Task: Coding Agent sửa một bug làm API trả sai status code.
@@ -154,6 +191,17 @@ Agent có thể execute thành công, commit được patch và trả lời đ�
 Khi so sánh hai patches A và B, Pairwise Evaluation có thể chọn A vì rõ ràng và ít thay đổi thừa hơn. Quyết định release vẫn cần Pointwise gates: compiler pass, required tests pass, schema hợp lệ, latency trong threshold và rubric maintainability đạt mức tối thiểu. A thắng B không thay thế các gates này.
 
 Dataset có thể giữ production-like distribution để estimate expected fix rate, đồng thời duy trì một security-critical suite lớn hơn tỷ lệ xuất hiện thực tế. Hai views trả lời hai câu hỏi khác nhau; không trộn raw average của critical suite vào production estimate mà không điều chỉnh trọng số.
+
+Giả sử release dashboard so sánh hai Coding Agents:
+
+| Signal | Agent A | Agent B | Requirement |
+| --- | ---: | ---: | --- |
+| Task Success | 94% | 92% | ≥ 90% |
+| PII-safe cases | 97% | 100% | 100% hard gate |
+| Cost / task | $0.42 | $0.25 | ≤ $0.30 |
+| p99 latency | 45s | 14s | ≤ 20s |
+
+Agent A có quality score cao nhất nhưng không pass PII gate, cost budget và tail-latency requirement. Agent B vượt quality threshold và thỏa các production constraints, nên là lựa chọn phù hợp hơn. Không nên cộng bốn signals này thành một weighted score duy nhất nếu PII safety là non-compensatory.
 
 ## When to Use
 
@@ -182,6 +230,11 @@ Với prototype rất sớm, eval suite có thể nhỏ; nhưng task, success cr
 - **Trộn method với evaluator:** coi Pointwise/Pairwise là alternatives của Human/LLM/checker dù chúng là hai dimensions khác nhau.
 - **Dùng LLM cho property đo trực tiếp được:** tăng cost và variance cho compilation, tests, schema hoặc latency vốn có deterministic evaluator đáng tin cậy hơn.
 - **Chỉ nhìn aggregate:** để performance ở common cases che failure trong critical slices.
+- **Mặc định dùng Micro hoặc Macro:** Micro có thể để group lớn lấn át group nhỏ; Macro có thể phóng đại ảnh hưởng của group hiếm so với production distribution. Chọn theo evaluation objective.
+- **Dùng weight thay hard gate:** critical failure vẫn có thể bị quality, cost hoặc latency tốt bù điểm.
+- **Chọn candidate chỉ vì quality cao nhất:** bỏ qua safety, cost, latency và các production constraints thật sự quyết định viability.
+- **Chỉ nhìn average latency:** bỏ qua tail requests mà p95 hoặc p99 phơi bày.
+- **Đọc sai percentile:** `p99 = 45s` không có nghĩa 99% requests đều mất 45 giây.
 - **Đo quá nhiều dimensions:** tăng cost và noise dù nhiều measurements không ảnh hưởng decision.
 
 ## Related Knowledge
@@ -200,6 +253,10 @@ Với prototype rất sớm, eval suite có thể nhỏ; nhưng task, success cr
 8. Vì sao rare but high-impact slice có thể cần over-sampling, và điều đó thay đổi cách diễn giải raw average thế nào?
 9. Regression suite và holdout set cung cấp hai loại evidence khác nhau ra sao?
 10. Ba nguồn cases nào có thể kết hợp để xây Eval Dataset, và synthetic cases có giới hạn gì?
+11. Micro và Macro average khác nhau về cách mỗi slice ảnh hưởng kết quả ra sao?
+12. Khi nào weighted aggregation hợp lý, và khi nào cần hard gate?
+13. Vì sao candidate có Task Success cao nhất chưa chắc là lựa chọn production tốt nhất?
+14. Average latency thấp nhưng p99 rất cao cho biết điều gì? `p99 = 45s` nên được diễn giải thế nào?
 
 <details>
 <summary>Answers</summary>
@@ -214,5 +271,9 @@ Với prototype rất sớm, eval suite có thể nhỏ; nhưng task, success cr
 8. `Frequency != Importance`: rare catastrophic failures cần đủ samples để đánh giá đáng tin cậy. Khi over-sample chúng, dataset distribution khác production nên raw average không tự động là expected production pass rate.
 9. Regression suite chứng minh known behaviors và fixes không regress; holdout ít bị optimized against hơn nên cho evidence mạnh hơn về generalization. Holdout bị inspect lặp lại cũng có thể contaminated.
 10. Kết hợp production, curated và synthetic cases. Synthetic cases giúp mở rộng coverage nhưng không mặc nhiên phản ánh realism hay distribution của production.
+11. Micro average để observations ảnh hưởng theo tần suất nên slice lớn nặng hơn; Macro average tính từng slice rồi cho các slices ảnh hưởng ngang nhau.
+12. Weighted aggregation hợp lý khi dimensions được phép bù trừ. Dùng hard gate khi một requirement như PII safety, security hoặc destructive-action protection là non-compensatory.
+13. Production viability còn phụ thuộc required quality threshold và constraints như safety, cost, latency; quality cao hơn không bù được critical gate failure.
+14. Một nhóm nhỏ requests có severe tail latency dù phần lớn requests nhanh. `p99 = 45s` nghĩa khoảng 99% observations ở hoặc dưới 45 giây, không phải 99% đều mất đúng 45 giây.
 
 </details>
