@@ -1,0 +1,117 @@
+---
+title: Evaluation Regression Gates & Production Workflow
+description: Biến evaluation evidence thành release decision và dùng production failures để làm eval suite mạnh dần theo thời gian.
+tags: [evaluation, regression, production, coding-agent]
+---
+
+import {Principle, TLDR} from '@site/src/components/Learning';
+import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+
+# Evaluation Regression Gates & Production Workflow
+
+## TL;DR
+
+<TLDR>
+Evaluation không kết thúc ở một score. Trong production, kết quả evaluation phải đi qua **Regression Gates** để quyết định ship hay block; sau deploy, production failures phải quay lại thành regression cases để Eval Suite ngày càng bao phủ failure modes thực tế.
+</TLDR>
+
+<Principle label="Mental rule">
+Evaluation đo chất lượng. Regression Gate biến evidence thành release decision. Production failure làm Eval Suite tiến hóa.
+</Principle>
+
+## Mental Model
+
+<ReactFlowDiagram
+  ariaLabel="Production evaluation feedback loop"
+  caption="Release decision là một vòng lặp: evaluate change, áp policy gate, deploy khi pass và đưa failure thực tế quay lại Eval Suite."
+  controls={false}
+  direction="TB"
+  fullscreen
+  height={620}
+  interactive={false}
+  kind="workflow"
+  primaryPath={['change', 'eval', 'evidence', 'gate', 'deploy', 'production', 'regression']}
+  nodes={[
+    {id: 'change', eyebrow: 'CHANGE', label: 'Candidate', detail: 'Model, prompt, agent hoặc code change', role: 'source'},
+    {id: 'eval', eyebrow: 'EVALUATE', label: 'Eval Suite', detail: 'Representative cases + regression cases', role: 'process'},
+    {id: 'evidence', eyebrow: 'READ', label: 'Metrics + Slices', detail: 'Overall, critical slices, cost, latency', role: 'state'},
+    {id: 'gate', eyebrow: 'DECIDE', label: 'Regression Gates', detail: 'Policy quyết định PASS / FAIL', role: 'constraint', emphasis: true},
+    {id: 'deploy', eyebrow: 'PASS', label: 'Deploy', detail: 'Ship candidate khi mọi required gate pass', role: 'output'},
+    {id: 'production', eyebrow: 'OBSERVE', label: 'Production', detail: 'Theo dõi failure thực tế', role: 'state'},
+    {id: 'regression', eyebrow: 'LEARN', label: 'Regression Case', detail: 'Reproduce failure và thêm vào Eval Suite', role: 'data'},
+    {id: 'block', eyebrow: 'FAIL', label: 'Block', detail: 'Không release candidate', role: 'output'},
+  ]}
+  edges={[
+    {source: 'change', target: 'eval', route: 'primary'},
+    {source: 'eval', target: 'evidence', route: 'primary'},
+    {source: 'evidence', target: 'gate', route: 'primary'},
+    {source: 'gate', target: 'deploy', label: 'PASS', route: 'primary'},
+    {source: 'gate', target: 'block', label: 'FAIL'},
+    {source: 'deploy', target: 'production', route: 'primary'},
+    {source: 'production', target: 'regression', label: 'failure found', route: 'primary'},
+    {source: 'regression', target: 'eval', label: 'add to suite'},
+  ]}
+/>
+
+## Core Concepts
+
+### Regression Gate là release policy
+
+Một candidate có overall score tốt hơn chưa đủ để release. Regression Gate mã hóa các constraints thực tế thành policy: quality không regression quá mức cho phép, critical slices đạt threshold, safety violations bằng 0 khi đó là hard requirement, và cost/latency nằm trong production budget.
+
+### Hard gate không được bù bằng metric khác
+
+Nếu policy yêu cầu `PII violations == 0`, một candidate có quality cao hơn, rẻ hơn và nhanh hơn vẫn phải bị block khi có PII violation. Đây là non-compensatory decision: improvement ở metric khác không xóa được failure của critical constraint.
+
+### Critical slices cần được bảo vệ riêng
+
+Aggregate score có thể che failure nghiêm trọng trong một nhóm nhỏ. Security, destructive operations, backward compatibility hoặc những high-risk slices khác có thể cần threshold hay hard gate riêng thay vì chỉ đóng góp vào weighted overall score.
+
+### Production failures phải quay lại Eval Suite
+
+Khi production tìm thấy failure mà Eval Suite không bắt được, đó là một blind spot. Sau khi reproduce được failure, thêm nó thành regression case; nếu incident cho thấy một failure mode rộng hơn, xây một slice gồm nhiều representative cases. Future candidates phải chứng minh rằng failure đã biết không quay lại.
+
+## Example
+
+Agent A đang production. Candidate B có overall success `91%`, security slice `96%`, cost `$0.08/request`, p99 latency `3.5s`, nhưng có `1` PII violation. Policy yêu cầu security `>= 95%`, cost `<= $0.12`, p99 `<= 5s` và `PII violations == 0`.
+
+B phải bị **block** dù các metric còn lại đều pass, vì PII là hard gate.
+
+Sau khi B được sửa và deploy, production phát hiện agent đôi khi xóa một backward-compatible API vẫn được service cũ sử dụng khi refactor module lớn. Team không chỉ fix agent; incident cần được reproduce và đưa vào Eval Suite thành regression case để future changes không lặp lại failure đó.
+
+## When to Use
+
+- Khi cần biến offline evaluation thành release decision cho model, prompt, RAG hoặc agent change.
+- Khi có safety, security, compatibility hoặc business constraints không được phép bị aggregate score che khuất.
+- Khi production incidents cần trở thành durable evidence cho những lần release sau.
+
+## Common Mistakes
+
+- **Release vì overall score tăng:** aggregate improvement không override critical hard-gate failure.
+- **Dùng weighted score cho mọi constraint:** critical safety/security constraints thường cần non-compensatory gate.
+- **Fix production bug nhưng không update eval:** cùng failure mode có thể quay lại ở candidate tương lai.
+- **Đóng băng Eval Suite:** production distribution và failure modes thay đổi; suite cần tiến hóa từ evidence thực tế.
+
+## Related Knowledge
+
+- [Evaluation Fundamentals](./evaluation-fundamentals.mdx) — mental model từ task success tới production decision.
+- [Evaluation Dataset & Test Cases](./evaluation-dataset-and-test-cases.mdx) — thiết kế cases, slices và regression datasets.
+- [Evaluation Metrics & Aggregation](./evaluation-metrics-and-aggregation.mdx) — aggregate, slice metrics và hard gates.
+- [Evaluation Reliability & Statistical Confidence](./evaluation-reliability-and-statistical-confidence.mdx) — kiểm tra evidence có đủ đáng tin để ra quyết định hay chưa.
+
+## Self-test
+
+1. Regression Gate khác evaluation metric ở đâu?
+2. Vì sao candidate tốt hơn về overall quality vẫn có thể bị block?
+3. Production failure nên thay đổi Eval Suite như thế nào?
+4. Khi nào nên tạo cả regression slice thay vì chỉ một regression case?
+
+<details>
+<summary>Answers</summary>
+
+1. Metric đo/tóm tắt kết quả; Regression Gate là policy dùng evidence đó để quyết định release hay block.
+2. Vì candidate có thể fail một hard constraint như PII, security hoặc compatibility mà metric khác không được phép bù.
+3. Reproduce failure và thêm nó thành regression case để future candidates phải chứng minh failure không quay lại.
+4. Khi incident đại diện cho một failure mode rộng hơn cần nhiều representative cases để đo coverage đáng tin cậy.
+
+</details>
