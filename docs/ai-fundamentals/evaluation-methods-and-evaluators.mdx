@@ -1,0 +1,109 @@
+---
+title: Evaluation Methods & Evaluators
+description: Phân biệt cách chấm Pointwise/Pairwise với cơ chế chấm deterministic, Human Evaluation và LLM-as-a-Judge.
+tags: [evaluation, pointwise, pairwise, llm-judge]
+sidebar_position: 2
+---
+
+import {Comparison, ImportantDistinction, TLDR} from '@site/src/components/Learning';
+import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+
+# Evaluation Methods & Evaluators
+
+## TL;DR
+
+<TLDR>
+**Pointwise / Pairwise** mô tả cách comparison được thực hiện; **deterministic checker / Human / LLM-as-a-Judge** mô tả ai hoặc cơ chế nào thực hiện judgment. Hai dimensions này độc lập và có thể kết hợp.
+</TLDR>
+
+## Mental Model
+
+<ReactFlowDiagram
+  ariaLabel="Từ quality dimension tới evaluation method và evaluator"
+  caption="Đừng hỏi 'dùng LLM Judge hay Pairwise?'. Hãy tách hai quyết định: chấm theo method nào và dùng evaluator nào."
+  controls={false}
+  direction="LR"
+  fullscreen
+  height={360}
+  interactive={false}
+  kind="workflow"
+  primaryPath={['dimension', 'method', 'evaluator', 'result']}
+  nodes={[
+    {id: 'dimension', eyebrow: 'WHAT', label: 'Quality Dimension', detail: 'Correctness, relevance, clarity…', role: 'source'},
+    {id: 'method', eyebrow: 'HOW', label: 'Evaluation Method', detail: 'Pointwise hoặc Pairwise', role: 'process', emphasis: true},
+    {id: 'evaluator', eyebrow: 'WHO / WHAT', label: 'Evaluator', detail: 'Checker, Human, LLM Judge', role: 'process'},
+    {id: 'result', eyebrow: 'OUTPUT', label: 'Judgment', detail: 'Pass, score, preference', role: 'output'},
+  ]}
+  edges={[
+    {source: 'dimension', target: 'method', route: 'primary', type: 'straight'},
+    {source: 'method', target: 'evaluator', route: 'primary', type: 'straight'},
+    {source: 'evaluator', target: 'result', route: 'primary', type: 'straight'},
+  ]}
+/>
+
+## Core Concepts
+
+### Pointwise vs Pairwise
+
+<Comparison items={[
+  {title: 'Pointwise → GOOD?', description: 'Chấm từng output độc lập theo rubric hoặc quality bar. Phù hợp để kiểm tra absolute readiness.'},
+  {title: 'Pairwise → BETTER?', description: 'So hai candidates để chọn candidate tốt hơn. Phù hợp cho preference/comparison nhưng winner vẫn có thể dưới production bar.'},
+]} />
+
+Pairwise winner chưa tự động production-ready. Khi cần chứng minh cả improvement và release quality, có thể dùng Pairwise để chọn candidate rồi Pointwise để kiểm tra absolute threshold.
+
+### Evaluator khác Metric
+
+<ImportantDistinction title="Evaluator ≠ Metric">
+Evaluator là cơ chế phán xét output; Metric là measurement dùng để tóm tắt kết quả qua một hay nhiều cases.
+</ImportantDistinction>
+
+Ví dụ: compiler → compile success rate; test runner → test pass rate; Human reviewer → rubric score; LLM Judge → judged preference hoặc rubric score.
+
+### Deterministic evaluator
+
+Ưu tiên deterministic checks khi property có thể code-check đáng tin cậy: compilation, tests, schema, exact values, lint rules hoặc latency threshold. Chúng repeatable, rẻ và dễ debug hơn judgment-based evaluation.
+
+### Human Evaluation và LLM-as-a-Judge
+
+Dùng judgment khi cần đánh giá relevance, clarity, maintainability hoặc overall solution quality. LLM Judge không phải ground truth. Các bias quan trọng gồm **position bias**, **verbosity bias**, và **style/self-preference bias**. Với decision quan trọng, cần rubric rõ và calibration với Human Evaluation hoặc trusted evidence phù hợp.
+
+## Example
+
+Coding Agent tạo hai patches. Correctness dùng test runner deterministic; maintainability dùng Human hoặc calibrated LLM Judge. Muốn biết patch nào tốt hơn thì dùng Pairwise; muốn biết winner có đủ production quality thì dùng Pointwise với threshold.
+
+## When to Use
+
+- Khi cần chọn evaluator cho từng quality dimension.
+- Khi A/B prompt hoặc model cần relative comparison.
+- Khi release decision yêu cầu absolute quality bar.
+- Khi muốn giảm việc dùng LLM Judge cho properties deterministic.
+
+## Common Mistakes
+
+- **Trộn method với evaluator:** Pairwise không phải alternative của Human/LLM/checker.
+- **Dùng Pairwise winner như release approval:** “better” không đồng nghĩa “good enough”.
+- **Dùng LLM cho property đo trực tiếp được:** tăng cost và variance không cần thiết.
+- **Xem LLM Judge là ground truth:** bỏ qua bias và rubric ambiguity.
+
+## Related Knowledge
+
+- [Evaluation Fundamentals](./evaluation-fundamentals.mdx) — map tổng.
+- [Evaluation Metrics & Aggregation](./evaluation-metrics-and-aggregation.mdx) — judgment được tổng hợp thành metrics như thế nào.
+
+## Self-test
+
+1. Pointwise và Pairwise trả lời hai câu hỏi khác nhau nào?
+2. Vì sao LLM-as-a-Judge và Pairwise không phải hai lựa chọn cùng một dimension?
+3. Khi nào deterministic evaluator nên được ưu tiên?
+4. Vì sao Pairwise winner vẫn có thể bị reject ở production?
+
+<details>
+<summary>Answers</summary>
+
+1. Pointwise hỏi “đủ tốt không?”, Pairwise hỏi “cái nào tốt hơn?”.
+2. Pairwise là method; LLM Judge là evaluator.
+3. Khi property có thể kiểm tra trực tiếp và đáng tin bằng code/measurement.
+4. Vì winner vẫn có thể dưới absolute threshold hoặc vi phạm hard constraints.
+
+</details>
