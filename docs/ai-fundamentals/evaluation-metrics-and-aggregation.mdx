@@ -1,0 +1,124 @@
+---
+title: Evaluation Metrics & Aggregation
+description: Đọc metrics theo slices, Micro/Macro aggregation, hard gates và production constraints thay vì chỉ nhìn overall score.
+tags: [evaluation, metrics, aggregation, hard-gates, latency]
+sidebar_position: 4
+---
+
+import {Comparison, ImportantDistinction, TLDR} from '@site/src/components/Learning';
+import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+
+# Evaluation Metrics & Aggregation
+
+## TL;DR
+
+<TLDR>
+Một overall score có thể đúng về toán học nhưng sai cho decision. Luôn đọc metric cùng slices, aggregation semantics và hard production constraints như safety, cost và tail latency.
+</TLDR>
+
+## Mental Model
+
+<ReactFlowDiagram
+  ariaLabel="Từ case results đến slice metrics aggregation hard gates và release decision"
+  caption="Metric không đi thẳng tới release. Trước decision cần xem slice failures, cách aggregate và các non-compensatory gates."
+  controls={false}
+  direction="LR"
+  fullscreen
+  height={410}
+  interactive={false}
+  kind="workflow"
+  primaryPath={['results', 'slices', 'aggregate', 'gates', 'decision']}
+  nodes={[
+    {id: 'results', eyebrow: 'RAW', label: 'Case Results', detail: 'Pass, fail, score, latency', role: 'source'},
+    {id: 'slices', eyebrow: 'DIAGNOSE', label: 'Slice Metrics', detail: 'Failure nằm ở đâu?', role: 'state', emphasis: true},
+    {id: 'aggregate', eyebrow: 'SUMMARIZE', label: 'Aggregation', detail: 'Micro, Macro, weighted', role: 'process'},
+    {id: 'gates', eyebrow: 'REQUIRE', label: 'Hard Gates', detail: 'Safety, security, SLO…', role: 'constraint'},
+    {id: 'decision', eyebrow: 'ACT', label: 'Release Decision', detail: 'Pass / reject / investigate', role: 'output'},
+  ]}
+  edges={[
+    {source: 'results', target: 'slices', type: 'straight', route: 'primary'},
+    {source: 'slices', target: 'aggregate', type: 'straight', route: 'primary'},
+    {source: 'aggregate', target: 'gates', type: 'straight', route: 'primary'},
+    {source: 'gates', target: 'decision', type: 'straight', route: 'primary'},
+  ]}
+/>
+
+## Core Concepts
+
+### Aggregate vs Slice
+
+980 normal cases đạt 99% và 20 payment cases đạt 40% vẫn tạo overall success rất cao. Aggregate không xóa weakness ở payment. Critical slices có thể cần threshold riêng.
+
+### Micro vs Macro
+
+<Comparison items={[
+  {title: 'Micro average', description: 'Gộp observations trước khi tính metric; slice lớn ảnh hưởng nhiều hơn. Hợp khi muốn phản ánh case frequency/distribution.'},
+  {title: 'Macro average', description: 'Tính từng slice rồi average các slice; mỗi slice ảnh hưởng ngang nhau. Hợp khi không muốn group lớn che group nhỏ.'},
+]} />
+
+Không có cách nào luôn tốt hơn. Chọn theo evaluation objective và vẫn báo cáo slice metrics.
+
+### Weighted score vs Hard Gate
+
+<ImportantDistinction title="Compensatory ≠ Non-compensatory">
+Weighted aggregation phù hợp khi dimensions được phép bù trừ. Hard gate dùng khi failure không được phép được “bù điểm” bởi strengths khác.
+</ImportantDistinction>
+
+Security, PII safety, destructive-action protection hoặc required SLO thường là candidates cho hard gates. Mental rule: **Release = critical gates pass AND quality criteria pass**, không phải chỉ **Release = weighted score cao**.
+
+### Multi-dimensional production decision
+
+Candidate tốt nhất không nhất thiết có Task Success cao nhất. Decision có thể cần quality, safety, cost và latency cùng lúc.
+
+### Tail latency
+
+Average có thể che một nhóm requests rất chậm. p50 là khoảng 50% observations không vượt giá trị này; p95 là khoảng 95%; p99 là khoảng 99%. `p99 = 45s` không có nghĩa 99% requests đều mất 45 giây.
+
+## Example
+
+| Signal | Agent A | Agent B | Requirement |
+| --- | ---: | ---: | --- |
+| Task Success | 94% | 92% | ≥ 90% |
+| PII-safe cases | 97% | 100% | 100% hard gate |
+| Cost / task | $0.42 | $0.25 | ≤ $0.30 |
+| p99 latency | 45s | 14s | ≤ 20s |
+
+A có quality cao hơn nhưng fail PII, cost và latency requirements. B vượt quality threshold và pass production constraints nên là production choice hợp lý hơn.
+
+## When to Use
+
+- Khi đọc eval dashboard.
+- Khi overall score đẹp nhưng user reports vẫn xấu.
+- Khi release có safety/security/SLO constraints.
+- Khi so nhiều candidates theo quality + cost + latency.
+
+## Common Mistakes
+
+- **Chỉ nhìn aggregate.**
+- **Mặc định dùng Micro hoặc Macro.**
+- **Dùng weight thay hard gate.**
+- **Chọn candidate chỉ vì quality cao nhất.**
+- **Chỉ nhìn average latency.**
+- **Đọc sai percentile.**
+
+## Related Knowledge
+
+- [Evaluation Dataset & Test Cases](./evaluation-dataset-and-test-cases.mdx) — slices và distribution được tạo từ đâu.
+- [Evaluation Reliability & Statistical Confidence](./evaluation-reliability-and-statistical-confidence.mdx) — metric difference có đáng tin và đáng hành động hay không.
+
+## Self-test
+
+1. Micro và Macro average khác nhau thế nào?
+2. Khi nào weighted aggregation hợp lý và khi nào cần hard gate?
+3. Vì sao Task Success cao nhất chưa chắc là production choice tốt nhất?
+4. p99 cao nhưng average thấp cho biết điều gì?
+
+<details>
+<summary>Answers</summary>
+
+1. Micro để observations ảnh hưởng theo frequency; Macro cho các slices trọng lượng ngang nhau.
+2. Weighted khi dimensions được phép trade off; hard gate khi requirement là non-compensatory.
+3. Candidate có thể fail safety, cost, latency hoặc critical constraints.
+4. Một tail nhỏ requests rất chậm đang bị average che đi.
+
+</details>
