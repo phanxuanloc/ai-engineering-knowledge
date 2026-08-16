@@ -13,6 +13,6 @@ export function ConceptGrid({children, className, columns}: ChildrenProps & {col
 }
 
 export type ComparisonItem = {title: string; description: ReactNode; eyebrow?: string};
-export function Comparison({items, className, label = 'Concept comparison'}: {items: ComparisonItem[]; className?: string; label?: string}) {
-  return <div className={clsx(styles.comparison, className)} aria-label={label}>{items.map((item) => <div className={styles.comparisonItem} key={item.title}>{item.eyebrow && <div className={styles.eyebrow}>{item.eyebrow}</div>}<div className={styles.comparisonTitle}>{item.title}</div><div className={styles.comparisonDescription}>{item.description}</div></div>)}</div>;
+export function Comparison({items, className, columns, label = 'Concept comparison'}: {items: ComparisonItem[]; className?: string; columns?: 2; label?: string}) {
+  return <div className={clsx(styles.comparison, columns === 2 && styles.comparisonTwo, className)} aria-label={label}>{items.map((item) => <div className={styles.comparisonItem} key={item.title}>{item.eyebrow && <div className={styles.eyebrow}>{item.eyebrow}</div>}<div className={styles.comparisonTitle}>{item.title}</div><div className={styles.comparisonDescription}>{item.description}</div></div>)}</div>;
 }

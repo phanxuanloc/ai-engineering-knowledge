@@ -59,6 +59,7 @@ export type FlowExplainerScenario = {
   label: string;
   nodes: FlowExplainerNode[];
   edges?: FlowExplainerEdge[];
+  layout?: "auto" | "compact";
   steps: FlowExplainerStep[];
 };
 export type FlowExplainerProps = {
@@ -460,7 +461,9 @@ export function FlowExplainer({
   }, [mobile, scenarioId]);
   if (!scenario || !step) return null;
   const scenarioEdges = scenario.edges ?? inferEdges(scenario.nodes);
-  const compactSequence = !scenario.edges && scenario.nodes.length >= 4;
+  const compactSequence =
+    scenario.layout === "compact" ||
+    (!scenario.edges && scenario.nodes.length >= 4);
   const wideStage = scenario.nodes.length >= 4;
   const positionById = new Map(
     scenario.nodes.map((n, i) => [
