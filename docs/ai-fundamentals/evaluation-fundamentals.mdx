@@ -13,7 +13,7 @@ import {ImportantDistinction, Principle, TLDR} from '@site/src/components/Learni
 
 <TLDR>
 
-Evaluation đo một AI system **thực hiện task tốt đến đâu**, không chỉ kiểm tra execution có hoàn tất hay không. Bắt đầu từ success criteria của task, xây dataset vừa phản ánh production vừa bao phủ rủi ro quan trọng, chọn evaluator phù hợp, rồi đọc metrics theo đúng aggregation, slices và production constraints thay vì chỉ nhìn một overall score.
+Evaluation đo một AI system **thực hiện task tốt đến đâu**, không chỉ kiểm tra execution có hoàn tất hay không. Bắt đầu từ success criteria của task, xây dataset vừa phản ánh production vừa bao phủ rủi ro quan trọng, chọn evaluator phù hợp, rồi đọc metrics theo đúng aggregation, slices, uncertainty và production constraints thay vì chỉ nhìn một overall score. Eval score là một measurement có uncertainty, không phải absolute truth về production performance.
 
 </TLDR>
 
@@ -30,6 +30,12 @@ Thiết kế evaluation theo chuỗi:
 Chuỗi này buộc câu hỏi “score là bao nhiêu?” quay về đúng gốc: system đang làm task nào, “tốt” nghĩa là gì, test cases có giống production không, ai hoặc cơ chế nào phán xét output, và failure tập trung ở đâu.
 
 Vì vậy, ngoài **“AI đạt score bao nhiêu?”**, luôn hỏi thêm **“AI thất bại ở đâu?”**.
+
+Khi dùng kết quả để chọn candidate hoặc release, đọc evidence theo chuỗi:
+
+**Metric → Slice → Uncertainty → Practical Impact → Decision**
+
+Metric chỉ là điểm bắt đầu. Cần biết score đến từ slice nào, estimate ổn định đến đâu, improvement có giá trị thực tế không, rồi mới kết hợp các release constraints để quyết định.
 
 ## Core Concepts
 
@@ -143,6 +149,27 @@ Aggregate metric trả lời gần đúng **“toàn hệ thống đang làm t�
 
 Ví dụ, 980 normal cases đạt 99% và 20 payment cases chỉ đạt 40% vẫn tạo overall success khoảng 98%. Con số tổng đẹp không xóa failure nghiêm trọng ở payment; dashboard và release review cần hiển thị riêng slice đó.
 
+### Eval score là estimate có uncertainty
+
+Observed metric là một **estimate** được đo trên sample cụ thể, không phải giá trị tuyệt đối của true production performance. Ngay cả khi system không đổi, hai samples khác nhau vẫn có thể cho hai pass rates khác nhau do sampling variation.
+
+Sample nhỏ thường tạo uncertainty lớn hơn. Tăng sample size phù hợp thường làm estimate ổn định hơn và giảm sampling uncertainty; điều này không có nghĩa score nhất thiết phải đổi. Đồng thời, dataset lớn vẫn có thể cho evidence yếu nếu bị bias, thiếu critical slices hoặc không đại diện cho câu hỏi evaluation.
+
+Vì vậy, chênh lệch như `84%` và `88%` trên `n = 50` cases cho mỗi agent chưa tự chứng minh agent đạt `88%` thực sự tốt hơn. Cần xem uncertainty và strength của evidence trước khi biến observed difference thành kết luận release.
+
+**Confidence Interval** biểu diễn một khoảng estimate tương thích với dữ liệu và procedure lấy mẫu, giúp communicate uncertainty thay vì trình bày point estimate như absolute truth. Với frequentist 95% confidence interval, không nên diễn giải đơn giản rằng “có 95% probability true score nằm trong interval cụ thể vừa tính”; mức 95% nói về long-run coverage của procedure qua nhiều samples lặp lại theo cùng cách.
+
+### Statistical confidence khác Practical significance
+
+Hai câu hỏi cần được tách riêng:
+
+- **Statistical confidence / reliability:** observed improvement có đủ credible để không dễ bị giải thích là sampling noise hay không?
+- **Practical significance:** improvement có đủ lớn hoặc đủ giá trị để thay đổi production decision hay không?
+
+Một improvement có thể reliable nhưng quá nhỏ để bù cost hoặc latency tăng mạnh. Ngược lại, improvement reliable trên một critical security slice có thể đáng trả thêm cost và latency dù overall quality chỉ tăng ít, vì impact của failure trong slice đó rất lớn.
+
+Production decision vì thế phải kết hợp quality evidence với safety/security, critical slices, cost, latency và các task-specific release constraints. Aggregate score không được quyền làm mờ một critical gate.
+
 ### Micro và Macro average trả lời hai mục tiêu khác nhau
 
 - **Micro average** gộp mọi observations trước khi tính metric, nên slice nhiều cases có ảnh hưởng lớn hơn. Nó phù hợp khi muốn phản ánh case frequency hoặc dataset distribution.
@@ -192,6 +219,12 @@ Khi so sánh hai patches A và B, Pairwise Evaluation có thể chọn A vì rõ
 
 Dataset có thể giữ production-like distribution để estimate expected fix rate, đồng thời duy trì một security-critical suite lớn hơn tỷ lệ xuất hiện thực tế. Hai views trả lời hai câu hỏi khác nhau; không trộn raw average của critical suite vào production estimate mà không điều chỉnh trọng số.
 
+Giả sử A đạt `84%`, B đạt `88%`, nhưng mỗi agent chỉ được evaluate trên `50` cases. Observed difference này là signal cần điều tra, chưa đủ để kết luận ngay “B tốt hơn, deploy B”, vì estimate còn nhiều sampling uncertainty.
+
+Trong một evaluation khác gồm `5,000` cases cho mỗi agent, A đạt `84.0%`, B đạt `85.2%`, security của cả hai cùng `98%`, và improvement của B được xác nhận là reliable. Nếu A tốn `$0.04/task` với p99 `8s`, còn B tốn `$0.07/task` với p99 `13s`, A có thể vẫn là production choice hợp lý: improvement nhỏ của B không đủ practical significance để bù cost và latency.
+
+Nếu security-critical slice đổi thành A `90%` và B `99%`, đồng thời difference này reliable, decision có thể chuyển sang B. Overall gain nhỏ không quan trọng bằng mức giảm failure risk trên critical slice khi hậu quả security đủ nghiêm trọng.
+
 Giả sử release dashboard so sánh hai Coding Agents:
 
 | Signal | Agent A | Agent B | Requirement |
@@ -210,6 +243,7 @@ Agent A có quality score cao nhất nhưng không pass PII gate, cost budget v�
 - Khi production failure có nhiều mức độ impact khác nhau.
 - Khi overall metric có vẻ tốt nhưng user reports hoặc critical cases vẫn thất bại.
 - Khi cần phân biệt tiến bộ trên known failures với khả năng generalize sang unseen cases.
+- Khi observed improvement cần được phân biệt giữa sampling noise và thay đổi đủ giá trị để release.
 
 Với prototype rất sớm, eval suite có thể nhỏ; nhưng task, success criteria và risky cases vẫn phải được nói rõ trước khi tin vào kết quả.
 
@@ -230,6 +264,11 @@ Với prototype rất sớm, eval suite có thể nhỏ; nhưng task, success cr
 - **Trộn method với evaluator:** coi Pointwise/Pairwise là alternatives của Human/LLM/checker dù chúng là hai dimensions khác nhau.
 - **Dùng LLM cho property đo trực tiếp được:** tăng cost và variance cho compilation, tests, schema hoặc latency vốn có deterministic evaluator đáng tin cậy hơn.
 - **Chỉ nhìn aggregate:** để performance ở common cases che failure trong critical slices.
+- **Coi point estimate là absolute truth:** bỏ qua sampling variation và uncertainty của measurement.
+- **Kết luận từ sample nhỏ chỉ bằng chênh lệch score:** không xem evidence có đủ ổn định để hỗ trợ comparison hay không.
+- **Đồng nhất dataset lớn với dataset tốt:** sample size không sửa được bias, missing slices hoặc sai evaluation objective.
+- **Diễn giải sai 95% confidence interval:** gán 95% probability cho true score nằm trong interval frequentist cụ thể vừa tính.
+- **Đồng nhất reliability với practical significance:** improvement credible vẫn có thể quá nhỏ để bù cost, latency hoặc release risk.
 - **Mặc định dùng Micro hoặc Macro:** Micro có thể để group lớn lấn át group nhỏ; Macro có thể phóng đại ảnh hưởng của group hiếm so với production distribution. Chọn theo evaluation objective.
 - **Dùng weight thay hard gate:** critical failure vẫn có thể bị quality, cost hoặc latency tốt bù điểm.
 - **Chọn candidate chỉ vì quality cao nhất:** bỏ qua safety, cost, latency và các production constraints thật sự quyết định viability.
@@ -257,6 +296,9 @@ Với prototype rất sớm, eval suite có thể nhỏ; nhưng task, success cr
 12. Khi nào weighted aggregation hợp lý, và khi nào cần hard gate?
 13. Vì sao candidate có Task Success cao nhất chưa chắc là lựa chọn production tốt nhất?
 14. Average latency thấp nhưng p99 rất cao cho biết điều gì? `p99 = 45s` nên được diễn giải thế nào?
+15. Vì sao `84%` và `88%` trên hai samples `n = 50` chưa đủ để tự động kết luận candidate `88%` tốt hơn?
+16. Statistical confidence và practical significance trả lời hai câu hỏi khác nhau nào?
+17. Khi nào một critical slice có thể đảo ngược decision dựa trên aggregate score, cost và latency?
 
 <details>
 <summary>Answers</summary>
@@ -275,5 +317,8 @@ Với prototype rất sớm, eval suite có thể nhỏ; nhưng task, success cr
 12. Weighted aggregation hợp lý khi dimensions được phép bù trừ. Dùng hard gate khi một requirement như PII safety, security hoặc destructive-action protection là non-compensatory.
 13. Production viability còn phụ thuộc required quality threshold và constraints như safety, cost, latency; quality cao hơn không bù được critical gate failure.
 14. Một nhóm nhỏ requests có severe tail latency dù phần lớn requests nhanh. `p99 = 45s` nghĩa khoảng 99% observations ở hoặc dưới 45 giây, không phải 99% đều mất đúng 45 giây.
+15. Hai scores là estimates chịu sampling variation; sample nhỏ thường có uncertainty lớn hơn. Cần strength-of-evidence phù hợp trước khi xem observed difference là improvement thật sự.
+16. Statistical confidence hỏi improvement có credible thay vì có khả năng là sampling noise hay không; practical significance hỏi improvement có đủ lớn hoặc đủ giá trị để thay đổi production decision hay không.
+17. Khi failure impact của slice rất lớn và difference trên slice được xác lập là reliable, ví dụ security `90%` so với `99%`, lợi ích giảm risk có thể đáng đổi lấy cost hoặc latency cao hơn dù overall gain nhỏ.
 
 </details>

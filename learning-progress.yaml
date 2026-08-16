@@ -12,6 +12,7 @@ topics:
       - evaluation-methods-and-evaluators
       - evaluation-dataset-and-test-cases
       - evaluation-metrics-and-aggregation
+      - evaluation-reliability-and-statistical-confidence
     checkpoint_progress:
       evaluation-fundamentals:
         status: understood
@@ -58,7 +59,16 @@ topics:
           - selected-a-production-suitable-agent-across-quality-safety-cost-and-latency-constraints
           - interpreted-high-p99-with-low-average-as-severe-tail-latency
           - explained-that-p99-is-a-distribution-threshold-not-the-latency-of-99-percent-of-requests
-    next_checkpoint: evaluation-reliability-and-statistical-confidence
+      evaluation-reliability-and-statistical-confidence:
+        status: understood
+        note: docs/ai-fundamentals/evaluation-fundamentals.mdx
+        learned_at: 2026-08-16
+        evidence:
+          - rejected-deployment-conclusion-from-84-vs-88-percent-with-50-cases-each
+          - explained-small-samples-increase-uncertainty-and-appropriate-larger-samples-stabilize-estimates
+          - selected-lower-cost-lower-latency-agent-when-reliable-overall-gain-was-not-practically-significant
+          - selected-higher-cost-agent-when-reliable-security-critical-slice-improvement-reduced-severe-risk
+    next_checkpoint: evaluation-regression-gates-and-production-workflow
     experiments: []
     prerequisites: []
     related:
