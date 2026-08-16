@@ -1,0 +1,77 @@
+version: 1
+
+mission:
+  - learn-essential-ai-engineering-fast
+  - apply-to-real-software-engineering
+  - create-reusable-engineering-evidence
+  - share-validated-knowledge
+  - build-ai-solution-consulting-capability
+
+principles:
+  - evidence-over-claims
+  - application-over-passive-learning
+  - durable-knowledge-over-hype
+  - minimum-sufficient-agent-route
+  - human-remains-principal-owner
+
+agents:
+  orchestrator:
+    status: active
+    contract: agents/orchestrator/AGENT.md
+  researcher:
+    status: active
+    contract: agents/researcher/AGENT.md
+  tutor:
+    status: active
+    contract: agents/tutor/AGENT.md
+  builder:
+    status: active
+    contract: agents/builder/AGENT.md
+  reviewer:
+    status: active
+    contract: agents/reviewer/AGENT.md
+  publisher:
+    status: active
+    contract: agents/publisher/AGENT.md
+  consultant:
+    status: active
+    contract: agents/consultant/AGENT.md
+
+canonical_state:
+  learning: learning-progress.yaml
+  knowledge: docs/
+  engineering:
+    - labs/
+    - src/
+  decisions: decisions/
+  work_coordination: state/agent-system.yaml
+
+default_workflows:
+  learning:
+    route:
+      - tutor
+      - builder: when-practical-evidence-is-needed
+      - reviewer: when-evidence-or-artifact-needs-validation
+      - publisher: when-capture-or-sharing-is-authorized
+  engineering:
+    route:
+      - builder
+      - reviewer
+  research:
+    route:
+      - researcher
+      - orchestrator
+  consulting:
+    route:
+      - consultant
+      - researcher: when-current-external-evidence-is-needed
+      - builder: when-poc-is-needed
+      - reviewer
+
+human_gates:
+  - public-publishing
+  - destructive-or-irreversible-actions
+  - ambiguous-learning-promotion
+  - final-consequential-consulting-recommendation
+
+work_items: []
