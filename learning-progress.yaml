@@ -2,7 +2,7 @@ topics:
   evaluation:
     title: Evaluation
     category: AI Fundamentals
-    status: learning
+    status: understood
     note: docs/ai-fundamentals/evaluation-fundamentals.mdx
     learned_at: 2026-08-13
     last_reviewed: null
@@ -13,6 +13,7 @@ topics:
       - evaluation-dataset-and-test-cases
       - evaluation-metrics-and-aggregation
       - evaluation-reliability-and-statistical-confidence
+      - evaluation-regression-gates-and-production-workflow
     checkpoint_progress:
       evaluation-fundamentals:
         status: understood
@@ -68,7 +69,14 @@ topics:
           - explained-small-samples-increase-uncertainty-and-appropriate-larger-samples-stabilize-estimates
           - selected-lower-cost-lower-latency-agent-when-reliable-overall-gain-was-not-practically-significant
           - selected-higher-cost-agent-when-reliable-security-critical-slice-improvement-reduced-severe-risk
-    next_checkpoint: evaluation-regression-gates-and-production-workflow
+      evaluation-regression-gates-and-production-workflow:
+        status: understood
+        note: docs/ai-fundamentals/evaluation-regression-gates-and-production-workflow.mdx
+        learned_at: 2026-08-16
+        evidence:
+          - blocked-a-candidate-that-improved-overall-quality-cost-and-latency-because-a-pii-violation-failed-a-hard-gate
+          - explained-that-production-failures-should-be-added-to-the-eval-suite-to-prevent-future-regressions
+    next_checkpoint: null
     experiments: []
     prerequisites: []
     related:
