@@ -1,324 +1,121 @@
 ---
 title: Evaluation Fundamentals
-description: Nền tảng thiết kế evaluation cho AI systems từ task success đến evaluators, metrics và slice analysis.
-tags: [evaluation, evaluator, metrics, coding-agent]
+description: Mental model nền tảng để biến task success thành evaluation evidence có thể dùng cho engineering decision.
+tags: [evaluation, ai-fundamentals, coding-agent]
 sidebar_position: 1
 ---
 
-import {ImportantDistinction, Principle, TLDR} from '@site/src/components/Learning';
+import {Principle, TLDR} from '@site/src/components/Learning';
+import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 
 # Evaluation Fundamentals
 
 ## TL;DR
 
 <TLDR>
-
-Evaluation đo một AI system **thực hiện task tốt đến đâu**, không chỉ kiểm tra execution có hoàn tất hay không. Bắt đầu từ success criteria của task, xây dataset vừa phản ánh production vừa bao phủ rủi ro quan trọng, chọn evaluator phù hợp, rồi đọc metrics theo đúng aggregation, slices, uncertainty và production constraints thay vì chỉ nhìn một overall score. Eval score là một measurement có uncertainty, không phải absolute truth về production performance.
-
+Evaluation đo một AI system **thực hiện task tốt đến đâu**, không chỉ kiểm tra execution có hoàn tất hay không. Bắt đầu từ task và success criteria, rồi mới thiết kế dataset, evaluators, metrics, slices và production decision.
 </TLDR>
 
 <Principle label="Mental rule">
-  `Execution success != Task success`. Một Coding Agent chạy xong và tạo được patch chưa có nghĩa patch sửa đúng bug, không gây regression, an toàn và đủ tốt để release.
+`Execution success != Task success`. Coding Agent tạo được patch chưa có nghĩa patch sửa đúng bug, không gây regression, an toàn và đủ tốt để release.
 </Principle>
 
 ## Mental Model
 
-Thiết kế evaluation theo chuỗi:
+<ReactFlowDiagram
+  ariaLabel="Evaluation learning path từ task tới production decision"
+  caption="Evaluation không bắt đầu từ metric. Nó bắt đầu từ task và success criteria, rồi mới tạo evidence đủ tốt để ra quyết định."
+  controls={false}
+  direction="LR"
+  fullscreen
+  height={420}
+  interactive={false}
+  kind="workflow"
+  primaryPath={['task', 'criteria', 'dataset', 'evaluator', 'metrics', 'slices', 'decision']}
+  nodes={[
+    {id: 'task', eyebrow: 'START', label: 'Task', detail: 'System phải làm gì?', role: 'source', size: 'compact'},
+    {id: 'criteria', eyebrow: 'DEFINE GOOD', label: 'Success Criteria', detail: 'Thế nào là đủ tốt?', role: 'constraint', emphasis: true},
+    {id: 'dataset', eyebrow: 'EVIDENCE', label: 'Eval Dataset', detail: 'Cases cần kiểm tra', role: 'data'},
+    {id: 'evaluator', eyebrow: 'JUDGE', label: 'Evaluators', detail: 'Cơ chế phán xét output', role: 'process'},
+    {id: 'metrics', eyebrow: 'MEASURE', label: 'Metrics', detail: 'Tóm tắt kết quả', role: 'state'},
+    {id: 'slices', eyebrow: 'DIAGNOSE', label: 'Slice Analysis', detail: 'Failure nằm ở đâu?', role: 'state'},
+    {id: 'decision', eyebrow: 'ACT', label: 'Decision', detail: 'Ship, reject, investigate', role: 'output'},
+  ]}
+  edges={[
+    {source: 'task', target: 'criteria', type: 'straight', route: 'primary'},
+    {source: 'criteria', target: 'dataset', type: 'straight', route: 'primary'},
+    {source: 'dataset', target: 'evaluator', type: 'straight', route: 'primary'},
+    {source: 'evaluator', target: 'metrics', type: 'straight', route: 'primary'},
+    {source: 'metrics', target: 'slices', type: 'straight', route: 'primary'},
+    {source: 'slices', target: 'decision', type: 'straight', route: 'primary'},
+  ]}
+/>
 
-**Task → Success Criteria → Eval Dataset → Evaluators → Metrics → Slice Analysis**
+Evaluation path hiện được tách thành các bài ngắn:
 
-Chuỗi này buộc câu hỏi “score là bao nhiêu?” quay về đúng gốc: system đang làm task nào, “tốt” nghĩa là gì, test cases có giống production không, ai hoặc cơ chế nào phán xét output, và failure tập trung ở đâu.
-
-Vì vậy, ngoài **“AI đạt score bao nhiêu?”**, luôn hỏi thêm **“AI thất bại ở đâu?”**.
-
-Khi dùng kết quả để chọn candidate hoặc release, đọc evidence theo chuỗi:
-
-**Metric → Slice → Uncertainty → Practical Impact → Decision**
-
-Metric chỉ là điểm bắt đầu. Cần biết score đến từ slice nào, estimate ổn định đến đâu, improvement có giá trị thực tế không, rồi mới kết hợp các release constraints để quyết định.
+1. **Evaluation Fundamentals** — task success, success criteria và mental model tổng.
+2. [Evaluation Methods & Evaluators](./evaluation-methods-and-evaluators.mdx) — Pointwise, Pairwise, deterministic checks, Human và LLM Judge.
+3. [Evaluation Dataset & Test Cases](./evaluation-dataset-and-test-cases.mdx) — production/curated/synthetic cases, slices, regression và holdout.
+4. [Evaluation Metrics & Aggregation](./evaluation-metrics-and-aggregation.mdx) — aggregate vs slice, Micro/Macro, weighted score, hard gates và tail latency.
+5. [Evaluation Reliability & Statistical Confidence](./evaluation-reliability-and-statistical-confidence.mdx) — sample uncertainty, confidence interval và practical significance.
 
 ## Core Concepts
 
 ### Task success có nhiều quality dimensions
 
-Một output tốt có thể cần **correctness, relevance, completeness, safety, regression risk, performance, latency** hoặc **cost**. Không cần đo tất cả; chỉ chọn những dimensions có ý nghĩa với task và release decision.
+Một output tốt có thể cần **correctness, relevance, completeness, safety, regression risk, performance, latency** hoặc **cost**. Không đo mọi thứ chỉ vì có thể đo; chọn dimensions có ý nghĩa với task và release decision.
 
-Ví dụ, một Coding Agent sửa bug cần ưu tiên correctness và regression risk. Với security fix, safety có thể là release gate. Với refactor trong hot path, performance và maintainability mới trở thành criteria quan trọng.
+### Test Case mô tả điều kiện thành công
 
-### Test Case mô tả điều kiện thành công, không nhất thiết là exact answer
-
-Với open-ended AI system, mental model hữu ích cho một test case là:
-
-**Situation/Input → Success Criteria → Evaluators → Result**
-
-Nhiều outputs khác nhau có thể cùng hợp lệ, nên expected behavior có thể được mô tả bằng criteria và constraints thay vì một reference output duy nhất. Với task refactor, success có thể là giữ nguyên behavior, pass existing tests, cải thiện maintainability hoặc coupling khi đo được, và không phá public contract. Ép implementation khớp exact reference patch sẽ đánh trượt những lời giải khác nhưng vẫn đúng.
-
-### Eval Dataset cần coverage có chủ đích
-
-Eval Dataset là tập hợp được thiết kế để đại diện cho những tình huống system phải xử lý, không chỉ là một collection lớn lấy mẫu ngẫu nhiên. Với Coding Agent, các slices có ý nghĩa có thể gồm:
-
-- simple fixes;
-- logic bugs;
-- multi-file changes;
-- dependency-related tasks;
-- refactoring;
-- ambiguous requirements;
-- security-sensitive hoặc high-risk operations.
-
-Nếu dataset chỉ gồm happy paths dễ, metric cao chủ yếu chứng minh system làm tốt trên happy paths dễ.
-
-<ImportantDistinction title="Frequency ≠ Importance">
-  Production distribution giúp ước lượng expected production performance, nhưng tần suất thấp không có nghĩa một case ít quan trọng. Rare failures có impact lớn cần đủ samples để tạo evidence đáng tin cậy.
-</ImportantDistinction>
-
-Vì vậy, dataset thường phục vụ hai mục tiêu bổ sung cho nhau:
-
-- **Representative evaluation:** giữ distribution gần workload thực tế để ước lượng performance trong production.
-- **Critical/risk evaluation:** chủ động tăng coverage cho slices high-risk, high-impact, khó, từng gây failure hoặc đặc biệt quan trọng.
-
-Ví dụ, destructive database migration chỉ chiếm 2% traffic nhưng failure có thể gây data loss. Critical slice này nên được over-sample đủ lớn thay vì chỉ giữ khoảng 2% cases. Khi đó, raw average trên eval dataset **không tự động là expected production pass rate**, vì evaluation distribution đã khác production distribution; cần báo cáo riêng slice results hoặc reweight theo production distribution cho mục tiêu ước lượng đó.
-
-### Kết hợp nhiều nguồn test cases
-
-Một dataset mạnh có thể kết hợp:
-
-- **Production cases:** đem lại realism, distribution và failure patterns thực tế.
-- **Curated cases:** chủ động bao phủ edge cases, scenarios quan trọng, known weaknesses và risks.
-- **Synthetic cases:** mở rộng variations hoặc lấp coverage gaps khi real examples chưa đủ.
-
-Synthetic cases hữu ích cho coverage nhưng không mặc nhiên có cùng realism hoặc distribution như production data.
-
-### Production failures trở thành regression coverage
-
-Một learning loop thực dụng là:
-
-**Production failure → xác định failure mode/root cause → regression test case → eval dataset/suite → evaluate future versions**
-
-Khi phù hợp, production failure nên trở thành regression case hoặc một sanitized equivalent. Vì known failures tích lũy theo thời gian, Eval Dataset không nhất thiết là artifact được tạo một lần rồi đóng băng.
-
-### Regression suite khác Holdout evaluation
-
-- **Regression/development cases** là known cases và known failure modes mà developers có thể inspect trong quá trình phát triển. Chúng kiểm tra behavior đã sửa không quay lại.
-- **Holdout evaluation** dùng cases không bị repeatedly optimized against, nên cung cấp evidence mạnh hơn về generalization tới tình huống chưa thấy.
-
-Nếu agent đạt 99% trên regression suite nhưng chỉ 62% trên holdout set, evidence cho thấy agent xử lý known cases tốt nhưng khả năng generalize vẫn đáng nghi ngờ.
-
-Việc liên tục xem eval failures rồi tối ưu trực tiếp trên cùng cases có thể gây **eval contamination/overfitting**. Score rất cao trên dataset đã repeatedly exposed không tự chứng minh general capability. Holdout cũng mất giá trị holdout nếu developers liên tục inspect và tối ưu theo nó; khi đó cần refresh hoặc rotate cases.
+Với open-ended AI system, test case không nhất thiết có một exact answer. Mental model hữu ích là **Situation/Input → Success Criteria → Evaluators → Result**. Một Coding Agent có thể tạo nhiều implementation khác nhau nhưng vẫn đúng nếu chúng thỏa behavior, tests, constraints và không phá public contract.
 
 ### Evaluator khác Metric
 
-<ImportantDistinction title="Evaluator ≠ Metric">
-  **Evaluator** là mechanism phán xét một output. **Metric** là result hoặc measurement dùng để tóm tắt quality qua một hay nhiều eval cases.
-</ImportantDistinction>
+**Evaluator** là mechanism phán xét output. **Metric** là measurement tóm tắt kết quả evaluation. Ví dụ: test runner là evaluator; test pass rate là metric.
 
-Ví dụ:
+### Overall score không đủ
 
-- test runner là evaluator; test pass rate là metric;
-- compiler là evaluator; compile success rate là metric;
-- latency check là evaluator; p95 latency hoặc tỷ lệ vượt threshold là metric;
-- human reviewer là evaluator; rubric score trung bình là metric.
-
-Ưu tiên **deterministic code-based evaluators** khi property có thể được code kiểm tra đáng tin cậy: unit/integration tests, compilation, exact values, lint rules hoặc latency thresholds. Chúng thường repeatable và dễ debug hơn judgment-based evaluation.
-
-Dùng **Human Evaluation** hoặc **LLM-as-a-Judge** khi cần judgment về clarity, maintainability, relevance hoặc overall solution quality. `LLM-as-a-Judge` cũng có thể bias, không ổn định hoặc hiểu sai rubric; judge model mạnh hơn không tự biến kết quả của nó thành ground truth. Với decision quan trọng, cần rubric rõ, calibration và kết hợp evidence khác.
-
-### Evaluation method khác Evaluator
-
-**Pointwise / Pairwise** mô tả **cách evaluation được thực hiện**; **Human / LLM / deterministic programmatic checker** mô tả **ai hoặc cơ chế nào thực hiện evaluation**. Hai dimensions này độc lập với nhau: một Human reviewer hoặc `LLM-as-a-Judge` đều có thể chấm Pointwise hay Pairwise.
-
-- **Pointwise Evaluation — `GOOD?`:** chấm từng output độc lập theo rubric hoặc quality bar để quyết định nó có đủ tốt hay không.
-- **Pairwise Evaluation — `BETTER?`:** đặt hai candidates cạnh nhau để quyết định candidate nào tốt hơn.
-
-Pairwise chỉ cho biết relative preference. Nếu A tốt hơn B nhưng cả hai đều dưới production threshold, A vẫn chưa production-ready. Khi decision cần chứng minh cả improvement lẫn release quality, hãy kết hợp Pairwise để chọn candidate tốt hơn và Pointwise để kiểm tra winner có vượt absolute quality bar hay không.
-
-`LLM-as-a-Judge` không phải ground truth. Judge cần được validate hoặc calibrate với Human Evaluation phù hợp hay trusted evidence khác cho target task. Những failure modes quan trọng gồm:
-
-- **position bias:** thiên vị candidate theo vị trí trình bày;
-- **verbosity bias:** ưu tiên câu trả lời dài hơn dù không tốt hơn;
-- **style/self-preference bias:** ưu tiên style quen thuộc hoặc giống preference của chính judge model.
-
-Không nên buộc một evaluator đo mọi quality dimension. Dùng compiler cho compilation, test runner cho test correctness, validator cho schema/format và measurement hoặc benchmark cho latency. Dành Human Evaluation hoặc calibrated LLM Judge cho maintainability, relevance, clarity hay overall solution quality. Một evaluation system mạnh có thể kết hợp deterministic checks, LLM judgment và sampled Human Evaluation theo đúng thế mạnh của từng evaluator.
-
-### Aggregate metrics không đủ cho release decision
-
-Overall score có thể che failure quan trọng. Hãy phân tích theo các **slices** phản ánh task type, difficulty, risk level, language, repository size hoặc loại bug.
-
-Critical slices có thể cần threshold nghiêm ngặt hơn ordinary cases. Một Coding Agent có overall pass rate cao hơn vẫn có thể là lựa chọn production tệ hơn nếu nó yếu ở slice chiếm phần lớn workload thực tế hoặc thường xuyên bỏ sót authorization regression.
-
-Aggregate metric trả lời gần đúng **“toàn hệ thống đang làm tốt đến đâu?”**; slice metric trả lời **“hệ thống đang thất bại ở đâu?”**. Một aggregate có thể hoàn toàn đúng về mặt toán học nhưng vẫn gây hiểu nhầm cho decision nếu slice lớn lấn át slice nhỏ nhưng quan trọng.
-
-Ví dụ, 980 normal cases đạt 99% và 20 payment cases chỉ đạt 40% vẫn tạo overall success khoảng 98%. Con số tổng đẹp không xóa failure nghiêm trọng ở payment; dashboard và release review cần hiển thị riêng slice đó.
-
-### Eval score là estimate có uncertainty
-
-Observed metric là một **estimate** được đo trên sample cụ thể, không phải giá trị tuyệt đối của true production performance. Ngay cả khi system không đổi, hai samples khác nhau vẫn có thể cho hai pass rates khác nhau do sampling variation.
-
-Sample nhỏ thường tạo uncertainty lớn hơn. Tăng sample size phù hợp thường làm estimate ổn định hơn và giảm sampling uncertainty; điều này không có nghĩa score nhất thiết phải đổi. Đồng thời, dataset lớn vẫn có thể cho evidence yếu nếu bị bias, thiếu critical slices hoặc không đại diện cho câu hỏi evaluation.
-
-Vì vậy, chênh lệch như `84%` và `88%` trên `n = 50` cases cho mỗi agent chưa tự chứng minh agent đạt `88%` thực sự tốt hơn. Cần xem uncertainty và strength của evidence trước khi biến observed difference thành kết luận release.
-
-**Confidence Interval** biểu diễn một khoảng estimate tương thích với dữ liệu và procedure lấy mẫu, giúp communicate uncertainty thay vì trình bày point estimate như absolute truth. Với frequentist 95% confidence interval, không nên diễn giải đơn giản rằng “có 95% probability true score nằm trong interval cụ thể vừa tính”; mức 95% nói về long-run coverage của procedure qua nhiều samples lặp lại theo cùng cách.
-
-### Statistical confidence khác Practical significance
-
-Hai câu hỏi cần được tách riêng:
-
-- **Statistical confidence / reliability:** observed improvement có đủ credible để không dễ bị giải thích là sampling noise hay không?
-- **Practical significance:** improvement có đủ lớn hoặc đủ giá trị để thay đổi production decision hay không?
-
-Một improvement có thể reliable nhưng quá nhỏ để bù cost hoặc latency tăng mạnh. Ngược lại, improvement reliable trên một critical security slice có thể đáng trả thêm cost và latency dù overall quality chỉ tăng ít, vì impact của failure trong slice đó rất lớn.
-
-Production decision vì thế phải kết hợp quality evidence với safety/security, critical slices, cost, latency và các task-specific release constraints. Aggregate score không được quyền làm mờ một critical gate.
-
-### Micro và Macro average trả lời hai mục tiêu khác nhau
-
-- **Micro average** gộp mọi observations trước khi tính metric, nên slice nhiều cases có ảnh hưởng lớn hơn. Nó phù hợp khi muốn phản ánh case frequency hoặc dataset distribution.
-- **Macro average** tính metric riêng cho từng slice rồi cho các slices ảnh hưởng ngang nhau, bất kể kích thước. Nó phù hợp khi không muốn một group lớn che một group nhỏ.
-
-Với hai slices ở trên, Micro average gần với overall success theo traffic mix; Macro average là trung bình của success rate ở Normal và Payment, nên làm weakness của Payment hiện rõ hơn. Không có cách nào luôn tốt hơn: chọn aggregation theo câu hỏi evaluation, đồng thời báo cáo slice metrics để người đọc không phải suy ngược từ một con số tổng.
-
-### Weighted aggregation khác Hard Gates
-
-Weighted score phù hợp khi các dimensions **được phép bù trừ**: một phương án có thể chấp nhận cost cao hơn để đổi lấy quality tốt hơn, tùy production objective. Nhưng tăng weight cho security không đảm bảo security requirement đã pass; điểm cao ở quality vẫn có thể bù cho một security score dưới ngưỡng.
-
-Safety, security, policy compliance, destructive-action protection hoặc requirement critical khác thường là **non-compensatory**. Khi failure không được phép bù bởi strengths khác, dùng threshold hoặc hard gate rõ ràng:
-
-**Release = critical gates pass AND overall quality criteria pass**
-
-Không dùng **Release = weighted score cao** như điều kiện duy nhất trong trường hợp đó.
-
-### Evaluation thường là multi-dimensional
-
-Model hoặc agent tốt nhất không nhất thiết là candidate có Task Success cao nhất. Production decision có thể cần xem đồng thời quality, safety/security, cost, latency và các constraints khác của hệ thống.
-
-Ví dụ, Agent A đạt Task Success 94% nhưng vi phạm PII gate và có p99 latency vượt SLO; Agent B đạt 92%, pass safety gate, đủ nhanh và nằm trong cost budget. Nếu 92% vượt quality threshold, B là lựa chọn production phù hợp hơn. Đây không phải bộ bốn metrics cố định: dimensions phải xuất phát từ success criteria và constraints của từng system.
-
-### Average latency có thể che Tail Latency
-
-Average tóm tắt toàn bộ requests thành một giá trị nên có thể che một nhóm nhỏ rất chậm. Percentiles mô tả vị trí trong latency distribution:
-
-- **p50** là median: khoảng 50% observations không vượt giá trị này;
-- **p95**: khoảng 95% observations không vượt giá trị này;
-- **p99**: khoảng 99% observations không vượt giá trị này.
-
-`p99 = 45s` không có nghĩa 99% requests đều mất 45 giây. Nó cho biết ngưỡng mà khoảng 99% requests nằm ở hoặc dưới; phần tail còn lại có thể chậm hơn. Khi average thấp, p95 hợp lý nhưng p99 rất cao, một nhóm requests nhỏ đang có severe latency và cần được phân tích theo trace, task type, tool call hoặc slice liên quan.
+Aggregate score trả lời gần đúng “toàn hệ thống đang làm tốt đến đâu?”. Slice metric trả lời “system đang thất bại ở đâu?”. Production decision cần cả hai.
 
 ## Example
 
-Task: Coding Agent sửa một bug làm API trả sai status code.
+Một Coding Agent hoàn thành 100% tool calls nhưng patch chỉ pass 70% regression tests. Execution thành công, nhưng task success chưa đạt.
 
-1. **Success Criteria:** reproduce test pass; existing tests không regression; patch không bypass authorization; latency không vượt threshold; code vẫn dễ maintain.
-2. **Eval Dataset:** các bug thông thường, malformed input, concurrent request edge case và security-critical authorization cases.
-3. **Evaluators:** test runner + compiler cho correctness, security checks cho risky behavior, latency benchmark cho performance, human hoặc calibrated LLM judge cho maintainability.
-4. **Metrics:** fix rate, regression rate, security-critical failure rate, p95 latency delta và rubric score cho code quality.
-5. **Slice Analysis:** tách kết quả theo bug type, difficulty và risk. Không để fix rate cao ở bug thường che security-critical failures.
-
-Agent có thể execute thành công, commit được patch và trả lời đầy đủ; nhưng nếu regression tests fail thì task vẫn thất bại.
-
-Khi so sánh hai patches A và B, Pairwise Evaluation có thể chọn A vì rõ ràng và ít thay đổi thừa hơn. Quyết định release vẫn cần Pointwise gates: compiler pass, required tests pass, schema hợp lệ, latency trong threshold và rubric maintainability đạt mức tối thiểu. A thắng B không thay thế các gates này.
-
-Dataset có thể giữ production-like distribution để estimate expected fix rate, đồng thời duy trì một security-critical suite lớn hơn tỷ lệ xuất hiện thực tế. Hai views trả lời hai câu hỏi khác nhau; không trộn raw average của critical suite vào production estimate mà không điều chỉnh trọng số.
-
-Giả sử A đạt `84%`, B đạt `88%`, nhưng mỗi agent chỉ được evaluate trên `50` cases. Observed difference này là signal cần điều tra, chưa đủ để kết luận ngay “B tốt hơn, deploy B”, vì estimate còn nhiều sampling uncertainty.
-
-Trong một evaluation khác gồm `5,000` cases cho mỗi agent, A đạt `84.0%`, B đạt `85.2%`, security của cả hai cùng `98%`, và improvement của B được xác nhận là reliable. Nếu A tốn `$0.04/task` với p99 `8s`, còn B tốn `$0.07/task` với p99 `13s`, A có thể vẫn là production choice hợp lý: improvement nhỏ của B không đủ practical significance để bù cost và latency.
-
-Nếu security-critical slice đổi thành A `90%` và B `99%`, đồng thời difference này reliable, decision có thể chuyển sang B. Overall gain nhỏ không quan trọng bằng mức giảm failure risk trên critical slice khi hậu quả security đủ nghiêm trọng.
-
-Giả sử release dashboard so sánh hai Coding Agents:
-
-| Signal | Agent A | Agent B | Requirement |
-| --- | ---: | ---: | --- |
-| Task Success | 94% | 92% | ≥ 90% |
-| PII-safe cases | 97% | 100% | 100% hard gate |
-| Cost / task | $0.42 | $0.25 | ≤ $0.30 |
-| p99 latency | 45s | 14s | ≤ 20s |
-
-Agent A có quality score cao nhất nhưng không pass PII gate, cost budget và tail-latency requirement. Agent B vượt quality threshold và thỏa các production constraints, nên là lựa chọn phù hợp hơn. Không nên cộng bốn signals này thành một weighted score duy nhất nếu PII safety là non-compensatory.
+Một evaluation tốt sẽ bắt đầu bằng các câu hỏi: patch có sửa đúng bug không, existing behavior có bị regression không, security constraints có pass không, cost và latency có nằm trong production budget không? Sau đó mới chọn evaluator và metric phù hợp.
 
 ## When to Use
 
-- Trước khi so sánh prompt, model, context strategy hoặc agent implementation.
-- Khi cần release gate cho một AI feature hay Coding Agent.
-- Khi production failure có nhiều mức độ impact khác nhau.
-- Khi overall metric có vẻ tốt nhưng user reports hoặc critical cases vẫn thất bại.
-- Khi cần phân biệt tiến bộ trên known failures với khả năng generalize sang unseen cases.
-- Khi observed improvement cần được phân biệt giữa sampling noise và thay đổi đủ giá trị để release.
-
-Với prototype rất sớm, eval suite có thể nhỏ; nhưng task, success criteria và risky cases vẫn phải được nói rõ trước khi tin vào kết quả.
+- Khi bắt đầu thiết kế eval cho prompt, model, agent hoặc RAG system.
+- Khi team đang tranh luận “score nào nên đo?” nhưng chưa định nghĩa success criteria.
+- Khi cần một map để đọc các bài Evaluation sâu hơn.
 
 ## Common Mistakes
 
-- **Đồng nhất execution với success:** tool calls hoàn tất hoặc agent trả output không chứng minh task đã được giải quyết.
-- **Chọn metric trước success criteria:** dễ tối ưu con số không đại diện cho user outcome.
-- **Dataset chỉ có happy paths:** bỏ qua edge cases và failures có impact lớn.
-- **Ép mọi task vào exact match:** đánh trượt các output khác wording hoặc implementation nhưng vẫn đúng.
-- **Sao chép production frequency một cách máy móc:** không tạo đủ evidence cho rare but catastrophic failures.
-- **Gọi raw average của oversampled dataset là production pass rate:** bỏ qua việc evaluation distribution đã khác production.
-- **Chỉ dùng một nguồn cases:** production data có thể thiếu intentional coverage, còn curated hoặc synthetic data có thể thiếu realism.
-- **Đóng băng dataset mãi mãi:** không biến production failures mới thành regression coverage phù hợp.
-- **Dùng regression score để kết luận generalization:** known cases không thay thế holdout evidence.
-- **Làm lộ holdout liên tục:** repeated inspection và optimization biến holdout thành development set trên thực tế.
-- **Dùng LLM judge như ground truth:** bỏ qua bias, variance và rubric ambiguity của chính evaluator.
-- **Dùng Pairwise winner như release approval:** nhầm “tốt hơn candidate còn lại” với “đủ tốt cho production”.
-- **Trộn method với evaluator:** coi Pointwise/Pairwise là alternatives của Human/LLM/checker dù chúng là hai dimensions khác nhau.
-- **Dùng LLM cho property đo trực tiếp được:** tăng cost và variance cho compilation, tests, schema hoặc latency vốn có deterministic evaluator đáng tin cậy hơn.
-- **Chỉ nhìn aggregate:** để performance ở common cases che failure trong critical slices.
-- **Coi point estimate là absolute truth:** bỏ qua sampling variation và uncertainty của measurement.
-- **Kết luận từ sample nhỏ chỉ bằng chênh lệch score:** không xem evidence có đủ ổn định để hỗ trợ comparison hay không.
-- **Đồng nhất dataset lớn với dataset tốt:** sample size không sửa được bias, missing slices hoặc sai evaluation objective.
-- **Diễn giải sai 95% confidence interval:** gán 95% probability cho true score nằm trong interval frequentist cụ thể vừa tính.
-- **Đồng nhất reliability với practical significance:** improvement credible vẫn có thể quá nhỏ để bù cost, latency hoặc release risk.
-- **Mặc định dùng Micro hoặc Macro:** Micro có thể để group lớn lấn át group nhỏ; Macro có thể phóng đại ảnh hưởng của group hiếm so với production distribution. Chọn theo evaluation objective.
-- **Dùng weight thay hard gate:** critical failure vẫn có thể bị quality, cost hoặc latency tốt bù điểm.
-- **Chọn candidate chỉ vì quality cao nhất:** bỏ qua safety, cost, latency và các production constraints thật sự quyết định viability.
-- **Chỉ nhìn average latency:** bỏ qua tail requests mà p95 hoặc p99 phơi bày.
-- **Đọc sai percentile:** `p99 = 45s` không có nghĩa 99% requests đều mất 45 giây.
-- **Đo quá nhiều dimensions:** tăng cost và noise dù nhiều measurements không ảnh hưởng decision.
+- **Chọn metric trước success criteria:** dễ tối ưu con số không đại diện user outcome.
+- **Đồng nhất execution với success:** workflow chạy xong chưa chứng minh task đã được giải quyết.
+- **Chỉ nhìn overall score:** critical failures có thể bị che bởi common easy cases.
+- **Đo quá nhiều dimensions:** tăng cost và noise mà không giúp decision.
 
 ## Related Knowledge
 
-- Chưa có learning note liên quan khác. `Evaluation Dataset & Test Cases` thuộc canonical note này vì nó nối trực tiếp success criteria với evaluators và slice analysis.
+- [Evaluation Methods & Evaluators](./evaluation-methods-and-evaluators.mdx) — chọn cách và cơ chế chấm.
+- [Evaluation Dataset & Test Cases](./evaluation-dataset-and-test-cases.mdx) — xây evidence coverage.
+- [Evaluation Metrics & Aggregation](./evaluation-metrics-and-aggregation.mdx) — đọc score đúng cách.
+- [Evaluation Reliability & Statistical Confidence](./evaluation-reliability-and-statistical-confidence.mdx) — biết mức độ nên tin score.
 
 ## Self-test
 
-1. Vì sao một Coding Agent chạy xong không đồng nghĩa task thành công?
-2. `Evaluator` và `Metric` khác nhau thế nào?
-3. Pointwise và Pairwise trả lời hai câu hỏi khác nhau nào? Vì sao Pairwise winner chưa chắc production-ready?
-4. `Evaluation method` và `Evaluator` là hai dimensions khác nhau như thế nào?
-5. Khi nào nên ưu tiên deterministic evaluator, và khi nào cần Human Evaluation hoặc calibrated LLM Judge?
-6. Kể tên ba bias quan trọng của LLM Judge và một cách giảm rủi ro xem Judge là ground truth.
-7. Vì sao overall score cao vẫn có thể chưa đủ để release?
-8. Vì sao rare but high-impact slice có thể cần over-sampling, và điều đó thay đổi cách diễn giải raw average thế nào?
-9. Regression suite và holdout set cung cấp hai loại evidence khác nhau ra sao?
-10. Ba nguồn cases nào có thể kết hợp để xây Eval Dataset, và synthetic cases có giới hạn gì?
-11. Micro và Macro average khác nhau về cách mỗi slice ảnh hưởng kết quả ra sao?
-12. Khi nào weighted aggregation hợp lý, và khi nào cần hard gate?
-13. Vì sao candidate có Task Success cao nhất chưa chắc là lựa chọn production tốt nhất?
-14. Average latency thấp nhưng p99 rất cao cho biết điều gì? `p99 = 45s` nên được diễn giải thế nào?
-15. Vì sao `84%` và `88%` trên hai samples `n = 50` chưa đủ để tự động kết luận candidate `88%` tốt hơn?
-16. Statistical confidence và practical significance trả lời hai câu hỏi khác nhau nào?
-17. Khi nào một critical slice có thể đảo ngược decision dựa trên aggregate score, cost và latency?
+1. Vì sao execution success không đồng nghĩa task success?
+2. Vì sao success criteria phải xuất hiện trước metric?
+3. Evaluator và Metric khác nhau thế nào?
+4. Vì sao overall score cao vẫn có thể chưa đủ để release?
 
 <details>
 <summary>Answers</summary>
 
-1. Execution chỉ xác nhận workflow hoàn tất; task success còn phụ thuộc criteria như fix đúng bug, không regression, an toàn và đáp ứng performance/cost cần thiết.
-2. Evaluator là cơ chế phán xét từng output; metric là measurement tóm tắt các kết quả evaluation.
-3. Pointwise hỏi một output có vượt rubric/quality bar hay không (`GOOD?`); Pairwise hỏi candidate nào tốt hơn (`BETTER?`). Winner vẫn có thể dưới absolute production threshold.
-4. Pointwise/Pairwise là cách chấm; Human/LLM/deterministic checker là người hoặc cơ chế chấm. Một evaluator có thể dùng cả hai methods.
-5. Dùng deterministic evaluator cho property đo trực tiếp được như compilation, tests, schema và latency; dùng Human Evaluation hoặc calibrated LLM Judge cho maintainability, relevance, clarity hoặc overall quality.
-6. Position bias, verbosity bias và style/self-preference bias. Validate hoặc calibrate Judge với human judgment phù hợp hay trusted evidence khác trên target task.
-7. Aggregate có thể che failures trong slice khó hoặc critical; các slice này có thể cần threshold nghiêm ngặt riêng.
-8. `Frequency != Importance`: rare catastrophic failures cần đủ samples để đánh giá đáng tin cậy. Khi over-sample chúng, dataset distribution khác production nên raw average không tự động là expected production pass rate.
-9. Regression suite chứng minh known behaviors và fixes không regress; holdout ít bị optimized against hơn nên cho evidence mạnh hơn về generalization. Holdout bị inspect lặp lại cũng có thể contaminated.
-10. Kết hợp production, curated và synthetic cases. Synthetic cases giúp mở rộng coverage nhưng không mặc nhiên phản ánh realism hay distribution của production.
-11. Micro average để observations ảnh hưởng theo tần suất nên slice lớn nặng hơn; Macro average tính từng slice rồi cho các slices ảnh hưởng ngang nhau.
-12. Weighted aggregation hợp lý khi dimensions được phép bù trừ. Dùng hard gate khi một requirement như PII safety, security hoặc destructive-action protection là non-compensatory.
-13. Production viability còn phụ thuộc required quality threshold và constraints như safety, cost, latency; quality cao hơn không bù được critical gate failure.
-14. Một nhóm nhỏ requests có severe tail latency dù phần lớn requests nhanh. `p99 = 45s` nghĩa khoảng 99% observations ở hoặc dưới 45 giây, không phải 99% đều mất đúng 45 giây.
-15. Hai scores là estimates chịu sampling variation; sample nhỏ thường có uncertainty lớn hơn. Cần strength-of-evidence phù hợp trước khi xem observed difference là improvement thật sự.
-16. Statistical confidence hỏi improvement có credible thay vì có khả năng là sampling noise hay không; practical significance hỏi improvement có đủ lớn hoặc đủ giá trị để thay đổi production decision hay không.
-17. Khi failure impact của slice rất lớn và difference trên slice được xác lập là reliable, ví dụ security `90%` so với `99%`, lợi ích giảm risk có thể đáng đổi lấy cost hoặc latency cao hơn dù overall gain nhỏ.
+1. Workflow hoàn tất chỉ chứng minh execution; task success còn phụ thuộc correctness, regression, safety và các constraints thực tế.
+2. Vì metric chỉ có ý nghĩa khi nó đo một success criterion đã được xác định.
+3. Evaluator phán xét output; metric tóm tắt kết quả evaluation.
+4. Aggregate có thể che failure trong critical slices hoặc candidate có thể vi phạm hard production constraints.
 
 </details>
