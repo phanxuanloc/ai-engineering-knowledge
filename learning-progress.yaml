@@ -24,7 +24,7 @@ topics:
           - distinguished-evaluators-from-metrics-and-selected-appropriate-judge-types
       evaluation-methods-and-evaluators:
         status: understood
-        note: docs/ai-fundamentals/evaluation-fundamentals.mdx
+        note: docs/ai-fundamentals/evaluation-methods-and-evaluators.mdx
         learned_at: 2026-08-13
         evidence:
           - distinguished-pointwise-good-enough-from-pairwise-better
@@ -35,7 +35,7 @@ topics:
           - combined-deterministic-llm-and-sampled-human-evaluation-by-quality-dimension
       evaluation-dataset-and-test-cases:
         status: understood
-        note: docs/ai-fundamentals/evaluation-fundamentals.mdx
+        note: docs/ai-fundamentals/evaluation-dataset-and-test-cases.mdx
         learned_at: 2026-08-13
         evidence:
           - recognized-open-ended-test-cases-can-use-success-criteria-and-constraints-instead-of-exact-output
@@ -48,7 +48,7 @@ topics:
           - interpreted-high-regression-and-low-holdout-performance-as-weak-generalization-evidence
       evaluation-metrics-and-aggregation:
         status: understood
-        note: docs/ai-fundamentals/evaluation-fundamentals.mdx
+        note: docs/ai-fundamentals/evaluation-metrics-and-aggregation.mdx
         learned_at: 2026-08-15
         evidence:
           - distinguished-evaluator-mechanisms-from-resulting-metrics
@@ -61,7 +61,7 @@ topics:
           - explained-that-p99-is-a-distribution-threshold-not-the-latency-of-99-percent-of-requests
       evaluation-reliability-and-statistical-confidence:
         status: understood
-        note: docs/ai-fundamentals/evaluation-fundamentals.mdx
+        note: docs/ai-fundamentals/evaluation-reliability-and-statistical-confidence.mdx
         learned_at: 2026-08-16
         evidence:
           - rejected-deployment-conclusion-from-84-vs-88-percent-with-50-cases-each
