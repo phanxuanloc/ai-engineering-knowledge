@@ -1,0 +1,125 @@
+---
+title: Evaluation Dataset & Test Cases
+description: Thiết kế evaluation dataset có coverage, critical slices, regression evidence và holdout evidence.
+tags: [evaluation, dataset, test-cases, holdout, regression]
+sidebar_position: 3
+---
+
+import {ImportantDistinction, TLDR} from '@site/src/components/Learning';
+import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+
+# Evaluation Dataset & Test Cases
+
+## TL;DR
+
+<TLDR>
+Eval Dataset không chỉ là một collection lớn. Nó phải đại diện đủ cho production workload, cố ý bao phủ risks quan trọng và giữ được distinction giữa known regression cases với holdout evidence cho generalization.
+</TLDR>
+
+## Mental Model
+
+<ReactFlowDiagram
+  ariaLabel="Các nguồn tạo evaluation dataset và cách chia thành representative critical regression holdout evidence"
+  caption="Production, curated và synthetic cases bổ sung cho nhau. Sau khi gom cases, cần nhìn theo slices và tách regression/development evidence khỏi holdout evidence."
+  controls={false}
+  direction="LR"
+  fullscreen
+  height={430}
+  interactive={false}
+  kind="data-flow"
+  primaryPath={['production', 'dataset', 'slices', 'holdout']}
+  nodes={[
+    {id: 'production', eyebrow: 'SOURCE', label: 'Production Cases', detail: 'Realism + real failures', role: 'source'},
+    {id: 'curated', eyebrow: 'SOURCE', label: 'Curated Cases', detail: 'Intentional edge/risk coverage', role: 'source'},
+    {id: 'synthetic', eyebrow: 'SOURCE', label: 'Synthetic Cases', detail: 'Coverage expansion', role: 'source'},
+    {id: 'dataset', eyebrow: 'COMBINE', label: 'Eval Dataset', detail: 'Designed evidence set', role: 'data', emphasis: true},
+    {id: 'slices', eyebrow: 'ANALYZE', label: 'Meaningful Slices', detail: 'Task, difficulty, risk…', role: 'state'},
+    {id: 'regression', eyebrow: 'KNOWN', label: 'Regression Suite', detail: 'Known failures stay fixed', role: 'output'},
+    {id: 'holdout', eyebrow: 'UNSEEN', label: 'Holdout Eval', detail: 'Generalization evidence', role: 'output'},
+  ]}
+  edges={[
+    {source: 'production', target: 'dataset', type: 'straight', route: 'primary'},
+    {source: 'curated', target: 'dataset', type: 'straight', route: 'secondary'},
+    {source: 'synthetic', target: 'dataset', type: 'straight', route: 'secondary'},
+    {source: 'dataset', target: 'slices', type: 'straight', route: 'primary'},
+    {source: 'slices', target: 'regression', type: 'straight', route: 'secondary'},
+    {source: 'slices', target: 'holdout', type: 'straight', route: 'primary'},
+  ]}
+/>
+
+## Core Concepts
+
+### Test Case không cần exact answer
+
+Open-ended AI tasks có thể dùng success criteria và constraints thay vì một reference output duy nhất. Điều quan trọng là mô tả behavior nào được xem là thành công.
+
+### Representative vs Critical evaluation
+
+<ImportantDistinction title="Frequency ≠ Importance">
+Production frequency giúp ước lượng expected performance, nhưng rare failure có impact lớn vẫn cần đủ samples để tạo evidence đáng tin.
+</ImportantDistinction>
+
+- **Representative evaluation:** gần production distribution.
+- **Critical/risk evaluation:** chủ động tăng coverage cho high-risk, destructive hoặc security-sensitive cases.
+
+Nếu destructive migration chỉ chiếm 2% production nhưng có risk data loss, critical slice có thể cần over-sampling. Khi đó raw average của eval dataset không tự động bằng expected production pass rate.
+
+### Kết hợp nhiều nguồn cases
+
+- **Production:** realism và failure patterns thật.
+- **Curated:** intentional edge cases và known risks.
+- **Synthetic:** mở rộng variants hoặc lấp coverage gaps.
+
+Synthetic data hữu ích nhưng không mặc nhiên có realism hoặc distribution giống production.
+
+### Production failure trở thành regression coverage
+
+Mental loop: **Production failure → root cause/failure mode → regression case → future eval**. Known failures nên được giữ để behavior đã sửa không quay lại.
+
+### Regression khác Holdout
+
+Regression/development suite chứa known cases developers có thể inspect. Holdout dùng cases chưa bị repeatedly optimized against nên cung cấp evidence mạnh hơn về generalization. Nếu regression = 99% nhưng holdout = 62%, agent xử lý known cases tốt nhưng generalization vẫn đáng nghi. Repeatedly inspect holdout rồi tối ưu trực tiếp theo nó sẽ làm holdout mất giá trị và cần refresh/rotate.
+
+## Example
+
+Một Coding Agent eval dataset có production bug-fix cases, curated destructive migration cases, synthetic variants cho ambiguous requirements, regression cases từ production incidents và một holdout set chưa được dùng trong prompt/model iteration. Dataset này tốt hơn một tập 10.000 happy-path cases dù tập kia lớn hơn.
+
+## When to Use
+
+- Khi xây eval suite mới.
+- Khi overall score tốt nhưng production vẫn có severe failures.
+- Khi cần regression protection cho known incidents.
+- Khi cần đánh giá generalization thay vì chỉ known-case performance.
+
+## Common Mistakes
+
+- **Chỉ lấy happy paths.**
+- **Sao chép production frequency máy móc:** bỏ thiếu rare high-impact cases.
+- **Gọi raw average của oversampled dataset là production pass rate.**
+- **Chỉ dùng một nguồn cases.**
+- **Đóng băng dataset mãi mãi:** không học từ production failures.
+- **Dùng regression score để kết luận generalization.**
+- **Làm lộ holdout liên tục:** biến holdout thành development set.
+
+## Related Knowledge
+
+- [Evaluation Fundamentals](./evaluation-fundamentals.mdx) — success criteria định nghĩa dataset cần chứng minh điều gì.
+- [Evaluation Metrics & Aggregation](./evaluation-metrics-and-aggregation.mdx) — slices được aggregate và đọc như thế nào.
+- [Evaluation Reliability & Statistical Confidence](./evaluation-reliability-and-statistical-confidence.mdx) — sample size và uncertainty ảnh hưởng strength of evidence.
+
+## Self-test
+
+1. Vì sao dataset lớn chưa chắc là dataset tốt?
+2. Khi nào nên over-sample một rare slice?
+3. Regression suite và holdout set cho evidence khác nhau ra sao?
+4. Vì sao holdout có thể bị contamination?
+
+<details>
+<summary>Answers</summary>
+
+1. Vì size không sửa bias, missing slices hoặc sai evaluation objective.
+2. Khi slice hiếm nhưng failure impact lớn và cần đủ samples để đánh giá đáng tin.
+3. Regression bảo vệ known behavior; holdout cung cấp evidence mạnh hơn về unseen/generalization.
+4. Nếu developers liên tục inspect rồi optimize trực tiếp theo holdout, nó không còn unseen nữa.
+
+</details>

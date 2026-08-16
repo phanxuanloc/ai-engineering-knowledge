@@ -1,0 +1,118 @@
+---
+title: Evaluation Reliability & Statistical Confidence
+description: Hiểu uncertainty của eval score và phân biệt improvement đáng tin với improvement đáng để ship.
+tags: [evaluation, reliability, uncertainty, confidence-interval]
+sidebar_position: 5
+---
+
+import {ImportantDistinction, Principle, TLDR} from '@site/src/components/Learning';
+import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+
+# Evaluation Reliability & Statistical Confidence
+
+## TL;DR
+
+<TLDR>
+Eval score là một **measurement có uncertainty**, không phải absolute truth về production performance. Trước khi ship candidate tốt hơn trên paper, cần hỏi cả hai câu: improvement có đủ đáng tin không, và nếu đáng tin thì nó có đủ practical value để đổi production decision không?
+</TLDR>
+
+<Principle label="Decision rule">
+**Metric → Slice → Uncertainty → Practical Impact → Decision**
+</Principle>
+
+## Mental Model
+
+<ReactFlowDiagram
+  ariaLabel="Từ sample tới observed score uncertainty practical impact và production decision"
+  caption="Observed score chỉ là estimate từ sample. Decision tốt cần thêm uncertainty và practical impact trước khi ship."
+  controls={false}
+  direction="LR"
+  fullscreen
+  height={390}
+  interactive={false}
+  kind="workflow"
+  primaryPath={['sample', 'score', 'uncertainty', 'impact', 'decision']}
+  nodes={[
+    {id: 'sample', eyebrow: 'OBSERVE', label: 'Eval Sample', detail: 'Một tập cases cụ thể', role: 'source'},
+    {id: 'score', eyebrow: 'ESTIMATE', label: 'Observed Score', detail: 'Ví dụ 85% pass', role: 'state'},
+    {id: 'uncertainty', eyebrow: 'ASK', label: 'Uncertainty', detail: 'Estimate ổn định đến đâu?', role: 'constraint', emphasis: true},
+    {id: 'impact', eyebrow: 'VALUE', label: 'Practical Impact', detail: 'Cost, latency, risk, safety', role: 'process'},
+    {id: 'decision', eyebrow: 'ACT', label: 'Production Decision', detail: 'Ship / keep / investigate', role: 'output'},
+  ]}
+  edges={[
+    {source: 'sample', target: 'score', type: 'straight', route: 'primary'},
+    {source: 'score', target: 'uncertainty', type: 'straight', route: 'primary'},
+    {source: 'uncertainty', target: 'impact', type: 'straight', route: 'primary'},
+    {source: 'impact', target: 'decision', type: 'straight', route: 'primary'},
+  ]}
+/>
+
+## Core Concepts
+
+### Observed score không phải true performance
+
+True production performance không được nhìn thấy trực tiếp. Eval chỉ lấy sample rồi tạo estimate. Ngay cả khi system không đổi, sample khác nhau vẫn có thể cho pass rate khác nhau do sampling variation.
+
+### Sample size và uncertainty
+
+Sample nhỏ thường tạo uncertainty lớn hơn. Tăng sample size phù hợp thường làm estimate ổn định hơn và giảm sampling uncertainty. Điều này **không** có nghĩa score nhất thiết sẽ đổi, và cũng không có nghĩa dataset lớn tự động tốt. Size không sửa được bias, missing critical slices hoặc sai evaluation objective.
+
+### Confidence Interval
+
+Confidence Interval giúp communicate uncertainty quanh estimate thay vì trình bày point estimate như absolute truth. Với frequentist 95% confidence interval, không nên diễn giải đơn giản là “có 95% probability true score nằm trong interval cụ thể vừa tính”. Mức 95% nói về long-run coverage của procedure qua nhiều samples lặp lại theo cùng cách.
+
+### Statistical confidence khác Practical significance
+
+<ImportantDistinction title="Reliable ≠ Worth shipping">
+**Statistical confidence / reliability:** observed improvement có đủ credible để không dễ bị giải thích là sampling noise?
+
+**Practical significance:** improvement có đủ lớn hoặc đủ giá trị để thay đổi production decision?
+</ImportantDistinction>
+
+Một improvement có thể reliable nhưng quá nhỏ để bù cost hoặc latency tăng mạnh. Ngược lại, improvement reliable trên critical security slice có thể đáng trả thêm cost và latency dù overall gain nhỏ.
+
+## Example
+
+Case 1: A = 84%, B = 88%, mỗi agent chỉ có `n = 50`. Observed difference là signal cần điều tra, chưa đủ để kết luận “B tốt hơn, deploy B”.
+
+Case 2: 5.000 cases mỗi agent; A = 84.0%, B = 85.2%; security cùng 98%; improvement của B được xác nhận reliable; A = `$0.04/task`, p99 `8s`; B = `$0.07/task`, p99 `13s`. A vẫn có thể là production choice hợp lý vì gain nhỏ của B không đủ practical significance.
+
+Case 3: Nếu critical security slice đổi thành A `90%`, B `99%`, và difference này reliable, decision có thể chuyển sang B vì mức giảm severe-risk quan trọng hơn aggregate gain nhỏ.
+
+## When to Use
+
+- Khi A/B eval scores chỉ chênh vài percentage points.
+- Khi cần quyết định liệu improvement có phải sampling noise.
+- Khi improvement đáng tin nhưng production trade-off còn chưa rõ.
+- Khi critical slice có thể đảo ngược aggregate decision.
+
+## Common Mistakes
+
+- **Coi point estimate là absolute truth.**
+- **Kết luận từ sample nhỏ chỉ bằng chênh lệch score.**
+- **Đồng nhất dataset lớn với dataset tốt.**
+- **Diễn giải sai frequentist confidence interval.**
+- **Đồng nhất reliability với practical significance.**
+- **Bỏ critical risk vì overall gain nhỏ.**
+
+## Related Knowledge
+
+- [Evaluation Dataset & Test Cases](./evaluation-dataset-and-test-cases.mdx) — sample quality, slices và holdout.
+- [Evaluation Metrics & Aggregation](./evaluation-metrics-and-aggregation.mdx) — metric và production constraints đi vào decision như thế nào.
+
+## Self-test
+
+1. Vì sao `84%` và `88%` trên `n = 50` chưa đủ để auto-deploy candidate `88%`?
+2. Dataset lớn hơn thường giúp reliability theo cách nào?
+3. Statistical confidence và practical significance khác nhau thế nào?
+4. Khi nào critical slice có thể đảo ngược decision dựa trên aggregate score?
+
+<details>
+<summary>Answers</summary>
+
+1. Hai scores là estimates chịu sampling variation; sample nhỏ thường có uncertainty lớn hơn.
+2. Appropriate larger samples thường làm estimate ổn định hơn và giảm sampling uncertainty, nhưng không sửa bias/missing slices.
+3. Reliability hỏi improvement có credible không; practical significance hỏi improvement có đáng để hành động không.
+4. Khi failure impact rất lớn và difference trên critical slice đã được xác lập là reliable.
+
+</details>

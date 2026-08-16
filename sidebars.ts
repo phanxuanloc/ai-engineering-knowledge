@@ -6,7 +6,20 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'AI Fundamentals',
       link: {type: 'doc', id: 'ai-fundamentals/index'},
-      items: ['ai-fundamentals/evaluation-fundamentals'],
+      items: [
+        {
+          type: 'category',
+          label: 'Evaluation',
+          link: {type: 'doc', id: 'ai-fundamentals/evaluation-fundamentals'},
+          items: [
+            'ai-fundamentals/evaluation-fundamentals',
+            'ai-fundamentals/evaluation-methods-and-evaluators',
+            'ai-fundamentals/evaluation-dataset-and-test-cases',
+            'ai-fundamentals/evaluation-metrics-and-aggregation',
+            'ai-fundamentals/evaluation-reliability-and-statistical-confidence',
+          ],
+        },
+      ],
     },
     {
       type: 'category',
