@@ -46,6 +46,12 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'category',
+          label: 'Programming & Code Design',
+          link: {type: 'doc', id: 'software-engineering/programming-and-code-design'},
+          items: [],
+        },
+        {
+          type: 'category',
           label: 'Algorithms & Data Structures',
           link: {
             type: 'generated-index',
@@ -55,6 +61,24 @@ const sidebars: SidebarsConfig = {
             slug: '/software-engineering/algorithms-and-data-structures',
           },
           items: ['software-engineering/search-and-ranking-fundamentals'],
+        },
+        {
+          type: 'category',
+          label: 'Databases',
+          link: {
+            type: 'generated-index',
+            title: 'Databases',
+            description:
+              'Data modeling, indexing, transactions và các cơ chế giữ correctness cho persistent state.',
+            slug: '/software-engineering/databases',
+          },
+          items: ['software-engineering/database-design-foundations'],
+        },
+        {
+          type: 'category',
+          label: 'Networking & Web Fundamentals',
+          link: {type: 'doc', id: 'software-engineering/networking-and-web-fundamentals'},
+          items: [],
         },
         {
           type: 'category',
@@ -70,15 +94,15 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
-          label: 'Databases',
-          link: {
-            type: 'generated-index',
-            title: 'Databases',
-            description:
-              'Data modeling, indexing, transactions và các cơ chế giữ correctness cho persistent state.',
-            slug: '/software-engineering/databases',
-          },
-          items: ['software-engineering/database-design-foundations'],
+          label: 'Testing & Quality Engineering',
+          link: {type: 'doc', id: 'software-engineering/testing-and-quality-engineering'},
+          items: [],
+        },
+        {
+          type: 'category',
+          label: 'Security Engineering',
+          link: {type: 'doc', id: 'software-engineering/security-engineering'},
+          items: [],
         },
         {
           type: 'category',
@@ -109,6 +133,24 @@ const sidebars: SidebarsConfig = {
             slug: '/software-engineering/development-workflows',
           },
           items: ['software-engineering/git-workflows'],
+        },
+        {
+          type: 'category',
+          label: 'DevOps, Cloud & Infrastructure',
+          link: {type: 'doc', id: 'software-engineering/devops-cloud-and-infrastructure'},
+          items: [],
+        },
+        {
+          type: 'category',
+          label: 'Observability & Reliability',
+          link: {type: 'doc', id: 'software-engineering/observability-and-reliability'},
+          items: [],
+        },
+        {
+          type: 'category',
+          label: 'Operating Systems & Concurrency',
+          link: {type: 'doc', id: 'software-engineering/operating-systems-and-concurrency'},
+          items: [],
         },
       ],
     },
