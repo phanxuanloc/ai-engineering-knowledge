@@ -120,7 +120,8 @@ topics:
       - context-manager-v0-playground
       - raw-context-vs-managed-context-controlled-experiment
     prerequisites: []
-    related: []
+    related:
+      - algorithms
   api-communication:
     title: API Communication
     category: Software Engineering
@@ -183,3 +184,32 @@ topics:
     prerequisites: []
     related:
       - api-communication
+  algorithms:
+    title: Algorithms
+    category: Software Engineering
+    status: learning
+    note: docs/software-engineering/search-and-ranking-fundamentals.mdx
+    learned_at: 2026-08-17
+    last_reviewed: null
+    confidence: 3
+    checkpoints:
+      - search-and-ranking-fundamentals
+    checkpoint_progress:
+      search-and-ranking-fundamentals:
+        status: understood
+        note: docs/software-engineering/search-and-ranking-fundamentals.mdx
+        learned_at: 2026-08-17
+        evidence:
+          - explained-linear-search-as-sequential-scan-with-linear-search-behavior
+          - explained-binary-search-space-reduction-and-ordering-requirement
+          - applied-linear-vs-logarithmic-growth-intuition-to-one-million-ordered-items
+          - distinguished-search-retrieval-candidate-generation-from-ranking-by-relevance
+          - distinguished-top-k-selection-from-complete-ordering
+          - selected-top-10-from-two-thousand-retrieved-candidates-for-a-ten-chunk-context-budget
+          - selected-binary-search-for-exact-transaction-id-lookup-in-ten-million-sorted-transactions
+          - selected-top-20-from-fifty-thousand-scored-search-results
+    next_checkpoint: hashing-and-hash-table-fundamentals
+    experiments: []
+    prerequisites: []
+    related:
+      - context-engineering

@@ -1,0 +1,116 @@
+---
+title: Search & Ranking Fundamentals
+description: Nền tảng để phân biệt cách tìm candidates, xếp hạng relevance và chọn Top-K cho consumer có capacity hữu hạn.
+tags: [algorithms, search, ranking, top-k]
+sidebar_position: 3
+---
+
+import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
+
+# Search & Ranking Fundamentals
+
+## TL;DR
+
+<TLDR>
+
+Search/Retrieval trả lời **những item nào có thể phù hợp**; Ranking trả lời **candidate nào phù hợp hơn**; Top-K chỉ lấy số item tốt nhất mà consumer cần. Với exact lookup trên dữ liệu có ordering phù hợp, Binary Search giảm search space theo từng bước và có thể hiệu quả hơn nhiều so với Linear Search.
+
+</TLDR>
+
+## Mental Model
+
+`Large Search Space → Search/Retrieve → Candidates → Score/Rank → Top-K → Consumer/LLM`
+
+Mỗi stage thu hẹp hoặc tổ chức information cho stage sau. Search/Retrieval không cần trả toàn bộ corpus; Ranking chỉ làm việc trên candidates đã tìm được; Top-K chỉ chuyển tiếp số kết quả mà consumer thực sự có thể dùng.
+
+<Principle label="Decision rule">
+  Tìm candidates trước, xếp hạng đúng phạm vi candidates, rồi chỉ lấy K item mà consumer cần.
+</Principle>
+
+## Core Concepts
+
+### Linear Search và Binary Search
+
+**Linear Search** kiểm tra lần lượt từng item cho tới khi tìm thấy target hoặc hết collection. Trong trường hợp xấu nhất, số lần kiểm tra tăng tuyến tính theo số item: `O(n)`.
+
+**Binary Search** so sánh target với phần tử ở giữa rồi loại bỏ một nửa search space sau mỗi quyết định. Nó cần dữ liệu có **ordering phù hợp với phép so sánh**—thường là collection đã sort theo đúng key cần tìm—để biết chắc target chỉ có thể nằm ở nửa nào. Nếu dữ liệu không có ordering phù hợp, việc bỏ một nửa collection là không có cơ sở.
+
+Với khoảng 1.000.000 item đã sort, Binary Search chỉ cần xấp xỉ 20 quyết định vì `2^20 ≈ 1.000.000`. Linear Search có thể phải kiểm tra gần như toàn bộ collection. Đây là trực giác của khác biệt giữa `O(log n)` và `O(n)`, không phải cam kết rằng Binary Search luôn nhanh hơn trong mọi data structure hay workload.
+
+### Search/Retrieval khác Ranking
+
+<Comparison
+  label="Candidate generation và relevance ordering"
+  items={[
+    {
+      eyebrow: 'Find',
+      title: 'Search / Retrieval',
+      description: 'Từ search space lớn, tạo ra tập candidates có khả năng phù hợp.',
+    },
+    {
+      eyebrow: 'Prioritize',
+      title: 'Ranking',
+      description: 'Dùng score hoặc relevance signal để quyết định candidate nào nên đứng trước.',
+    },
+  ]}
+/>
+
+Retrieval tốt giúp item liên quan xuất hiện trong candidate set. Ranking tốt giúp item hữu ích nhất tiến gần đầu danh sách. Hai stage liên quan nhưng không đồng nhất: ranking không thể cứu một item chưa bao giờ được retrieve, còn retrieval có candidates đúng chưa đảm bảo consumer nhận được những candidate tốt nhất trước.
+
+### Sorting-all khác Top-K
+
+Full sorting tạo thứ tự hoàn chỉnh cho mọi item trong input. **Top-K** chỉ yêu cầu xác định K item tốt nhất; thứ tự đầy đủ của phần còn lại không quan trọng. Vì vậy, khi consumer chỉ cần một số ít kết quả, không nhất thiết phải sort toàn bộ original corpus.
+
+Top-K ở đây là requirement và mental model lựa chọn, không ngầm chỉ một implementation cụ thể. Cách cài đặt bằng Heap, Priority Queue, Quickselect hay complexity chi tiết là phạm vi học tiếp theo, không phải điều kiện để áp dụng quyết định “chỉ cần K kết quả tốt nhất”.
+
+## Example
+
+### RAG hoặc coding-agent repository search
+
+Giả sử repository có 1.000.000 code chunks. Retriever đã tạo 2.000 scored candidates, nhưng Context Window chỉ đủ cho 10 chunks:
+
+1. Không ranking lại toàn bộ 1.000.000 chunks nếu retrieval stage đã thu hẹp phạm vi.
+2. Không đưa cả 2.000 candidates vào LLM context.
+3. Chọn **Top-10 từ 2.000 candidates** theo ranking signal phù hợp, rồi chuyển 10 chunks đó cho LLM.
+
+### Production lookup và search results
+
+- Với 10.000.000 transactions đã sort theo `transactionId`, exact lookup theo cùng key phù hợp với Binary Search.
+- Với 50.000 scored search results nhưng UI chỉ cần 20 kết quả, requirement là Top-20 thay vì complete ordering của mọi item chỉ vì toàn bộ input tồn tại.
+
+## When to Use
+
+- Dùng Linear Search khi collection nhỏ, dữ liệu chưa có ordering/index phù hợp, hoặc chỉ cần một traversal đơn giản.
+- Dùng Binary Search cho exact lookup hoặc boundary lookup khi dữ liệu hỗ trợ ordering đúng theo search key.
+- Tách Retrieval và Ranking khi hệ thống phải tìm trong corpus lớn rồi ưu tiên candidates theo relevance.
+- Dùng Top-K khi downstream consumer như UI, API, RAG pipeline hoặc coding agent chỉ có thể dùng một số ít kết quả tốt nhất.
+
+## Common Mistakes
+
+- **Dùng Binary Search trên dữ liệu không có ordering phù hợp:** không thể loại bỏ đúng một nửa search space sau phép so sánh.
+- **Ranking original corpus sau khi đã retrieve candidates:** bỏ qua boundary giữa candidate generation và ranking, gây xử lý thừa.
+- **Đưa mọi candidate vào LLM context:** candidate set không đồng nghĩa selected context; Context Window là capacity hữu hạn.
+- **Mặc định Top-K phải full-sort toàn bộ input:** complete ordering mạnh hơn requirement “chỉ cần K item tốt nhất”.
+- **Đồng nhất retrieval score với final usefulness:** score là relevance signal; consumer và current task vẫn quyết định item nào thực sự hữu ích.
+
+## Related Knowledge
+
+- [Context Engineering: Foundations & Lifecycle](../ai-coding/context-engineering.mdx) — giải thích sâu hơn vì sao Retrieval tạo candidates còn Selection quyết định information nào đáng chiếm Context Window.
+- [Practical Context Manager](../ai-coding/practical-context-manager.mdx) — nối Top-K candidates với bài toán capacity, budgeting và selection cho từng decision của coding agent.
+
+## Self-test
+
+1. Vì sao Binary Search không thể loại bỏ một nửa collection nếu dữ liệu không có ordering phù hợp?
+2. Search/Retrieval và Ranking chịu trách nhiệm khác nhau thế nào?
+3. Retriever trả 5.000 candidates nhưng consumer chỉ cần 15 item. Phạm vi Top-K hợp lý là gì?
+4. Khi nào full sorting cung cấp nhiều information hơn requirement thực sự cần?
+
+<details>
+<summary>Answers</summary>
+
+1. Không có ordering phù hợp thì phép so sánh không cho biết target chắc chắn thuộc nửa nào; loại một nửa có thể bỏ mất target.
+2. Search/Retrieval tạo candidate set từ search space; Ranking ưu tiên candidates theo relevance hoặc score.
+3. Chọn Top-15 từ 5.000 candidates, không quay lại ranking toàn bộ original corpus nếu retrieval boundary vẫn hợp lệ.
+4. Khi consumer chỉ cần K item tốt nhất còn thứ tự của các item ngoài K không được sử dụng.
+
+</details>
