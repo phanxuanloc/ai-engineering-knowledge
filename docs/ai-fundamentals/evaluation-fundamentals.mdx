@@ -26,12 +26,12 @@ Evaluation đo một AI system **thực hiện task tốt đến đâu**, không
   ariaLabel="Evaluation learning path từ task tới production decision"
   caption="Evaluation không bắt đầu từ metric. Nó bắt đầu từ task và success criteria, rồi mới tạo evidence đủ tốt để ra quyết định."
   controls={false}
-  direction="LR"
+  direction="TB"
   fullscreen
-  height={420}
   interactive={false}
   kind="workflow"
   primaryPath={['task', 'criteria', 'dataset', 'evaluator', 'metrics', 'slices', 'decision']}
+  rankSpacing={36}
   nodes={[
     {id: 'task', eyebrow: 'START', label: 'Task', detail: 'System phải làm gì?', role: 'source', size: 'compact'},
     {id: 'criteria', eyebrow: 'DEFINE GOOD', label: 'Success Criteria', detail: 'Thế nào là đủ tốt?', role: 'constraint', emphasis: true},

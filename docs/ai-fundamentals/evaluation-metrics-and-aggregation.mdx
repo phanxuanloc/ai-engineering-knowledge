@@ -22,12 +22,12 @@ Một overall score có thể đúng về toán học nhưng sai cho decision. L
   ariaLabel="Từ case results đến slice metrics aggregation hard gates và release decision"
   caption="Metric không đi thẳng tới release. Trước decision cần xem slice failures, cách aggregate và các non-compensatory gates."
   controls={false}
-  direction="LR"
+  direction="TB"
   fullscreen
-  height={410}
   interactive={false}
   kind="workflow"
   primaryPath={['results', 'slices', 'aggregate', 'gates', 'decision']}
+  rankSpacing={36}
   nodes={[
     {id: 'results', eyebrow: 'RAW', label: 'Case Results', detail: 'Pass, fail, score, latency', role: 'source'},
     {id: 'slices', eyebrow: 'DIAGNOSE', label: 'Slice Metrics', detail: 'Failure nằm ở đâu?', role: 'state', emphasis: true},

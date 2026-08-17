@@ -26,12 +26,12 @@ Eval score là một **measurement có uncertainty**, không phải absolute tru
   ariaLabel="Từ sample tới observed score uncertainty practical impact và production decision"
   caption="Observed score chỉ là estimate từ sample. Decision tốt cần thêm uncertainty và practical impact trước khi ship."
   controls={false}
-  direction="LR"
+  direction="TB"
   fullscreen
-  height={390}
   interactive={false}
   kind="workflow"
   primaryPath={['sample', 'score', 'uncertainty', 'impact', 'decision']}
+  rankSpacing={36}
   nodes={[
     {id: 'sample', eyebrow: 'OBSERVE', label: 'Eval Sample', detail: 'Một tập cases cụ thể', role: 'source'},
     {id: 'score', eyebrow: 'ESTIMATE', label: 'Observed Score', detail: 'Ví dụ 85% pass', role: 'state'},
