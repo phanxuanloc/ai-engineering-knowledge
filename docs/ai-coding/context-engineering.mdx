@@ -21,13 +21,37 @@ import { FlowExplainer } from "@site/src/components/VisualExplainer";
 
 <TLDR>
 
-`Context Engineering` là việc quyết định **model cần biết gì cho current decision** và quản lý information đó qua nhiều invocation. `Context Window` chỉ là capacity model có thể xử lý trong một invocation; window lớn hơn không tự chọn đúng context. Mental rule xuyên suốt: **Relevant context > More context**.
+`Context Engineering` trả lời một câu hỏi vận hành: **model cần biết gì để đưa ra current decision?** Nó chọn và duy trì information qua nhiều invocation; `Context Window` chỉ đặt ra giới hạn capacity cho từng invocation.
 
 </TLDR>
 
+<Comparison
+  label="Information, capacity, and decision"
+  items={[
+    {
+      eyebrow: "Information",
+      title: "Context",
+      description: "Những gì model thực sự nhận ở invocation hiện tại.",
+    },
+    {
+      eyebrow: "Capacity",
+      title: "Context Window",
+      description:
+        "Giới hạn information model có thể xử lý trong invocation đó.",
+    },
+    {
+      eyebrow: "Decision process",
+      title: "Context Engineering",
+      description:
+        "Quyết định information nào xứng đáng chiếm capacity ngay lúc này.",
+    },
+  ]}
+/>
+
 <Remember title="Relevant context > More context">
-  Nhiều token hơn không tự động tạo ra quyết định tốt hơn. Đúng information,
-  đúng thời điểm và đúng role quan trọng hơn việc đưa mọi thứ vào model.
+  Window lớn hơn cho model thêm chỗ, nhưng không tự tìm đúng evidence, loại
+  noise hay refresh state đã cũ. Chất lượng decision phụ thuộc vào đúng
+  information, đúng thời điểm và đúng role.
 </Remember>
 
 ## Mental Model
@@ -41,12 +65,9 @@ import { FlowExplainer } from "@site/src/components/VisualExplainer";
   caption="Context Window là cái bàn; Context Engineering quyết định thứ gì xứng đáng được đặt lên bàn cho current decision."
 />
 
-Mental model đơn giản:
+Context Window giống mặt bàn có giới hạn. Context Engineering không làm chiếc bàn lớn hơn; nó quyết định tài liệu nào cần đặt lên bàn cho quyết định hiện tại và tài liệu nào nên để ngoài.
 
-- **Context** = những information model thực sự nhận ở invocation hiện tại.
-- **Context Window** = capacity tối đa của invocation đó.
-- **Context Engineering** = decision process chọn, tổ chức, duy trì và refresh information nào nên chiếm capacity.
-- **Context Manager** = application/agent layer thực thi các quyết định context trong hệ thống thực tế.
+Trong hệ thống thực tế, `Context Manager` là application/agent layer thực thi các quyết định đó: retrieve, select, assemble, preserve và refresh context.
 
 ## Core Concepts
 
@@ -55,29 +76,6 @@ Mental model đơn giản:
 `Prompt Engineering` chủ yếu hỏi: **Nên chỉ dẫn model thế nào?**
 
 `Context Engineering` rộng hơn: **Model cần biết gì để thực hiện đúng task này?** Prompt là một phần của context, cùng với history, memory, retrieved knowledge, source code, project rules, tool definitions/results và environment/application state.
-
-<Comparison
-  label="Context, window, and management"
-  items={[
-    {
-      eyebrow: "Information",
-      title: "Context",
-      description: "Information thực tế được cung cấp cho model.",
-    },
-    {
-      eyebrow: "Capacity",
-      title: "Context Window",
-      description:
-        "Giới hạn information model có thể xử lý trong một invocation.",
-    },
-    {
-      eyebrow: "Decision",
-      title: "Context Engineering",
-      description:
-        "Quyết định information nào nên chiếm capacity và được duy trì ra sao.",
-    },
-  ]}
-/>
 
 ### Context Sources
 
@@ -113,61 +111,19 @@ Một source **có sẵn** không đồng nghĩa nó nên vào Context Window. S
 - token cost;
 - confidence/source quality khi phù hợp.
 
-Retrieval score là **một signal**, không phải final selection rule. Một file match query mạnh vẫn có thể kém hữu ích hơn một fresh test result hoặc source fragment trực tiếp giải thích failure.
-
-### Selection is decision-specific
-
-Context không được tối ưu cho “toàn task” một cách tĩnh. Current decision thay đổi khi agent tiến triển.
-
-Ví dụ `Fix login 401`:
-
-1. **401 xảy ra ở đâu?** → route, auth middleware, fresh error.
-2. **Token bị reject vì sao?** → verifier, issuer/audience/expiry evidence.
-3. **Fix đúng chưa?** → diff, focused tests, fresh runtime result.
-
-Information hữu ích ở bước 1 không nhất thiết còn cần ở bước 3.
-
-### Useful Does Not Mean Simultaneous
-
-Khi toàn bộ useful context lớn hơn một invocation, agent nên chia task thành nhiều decisions:
-
-`Retrieve/Select → Reason/Act → Preserve important state → Release obsolete context → Retrieve for next decision`
-
-<KeyInsight title="Useful does not mean simultaneous">
-  Information hữu ích cho toàn task không cần cùng tồn tại trong một Context
-  Window. Preserve goal, constraints, verified findings và next actions; refresh
-  evidence theo decision tiếp theo.
-</KeyInsight>
-
-### Working State Across Invocations
-
-Working state là compact structured memory giúp carry forward task state mà không kéo toàn bộ history.
-
-Một coding-agent working state có thể giữ:
-
-- `goal`;
-- `constraints`;
-- `verifiedFindings`;
-- `decisions`;
-- `changesMade`;
-- `unresolvedQuestions`;
-- `nextActions`.
-
-Working state không thay thế raw evidence. Nó là state summary có provenance/uncertainty phù hợp để quyết định invocation tiếp theo cần retrieve gì.
-
-### Context Lifecycle
-
-Canonical lifecycle của topic được giữ tại [Context Engineering Map](./context-engineering-map.mdx). Foundations tập trung vào đoạn đầu của lifecycle:
-
-**Sources → Retrieve → Candidates → Select → selected context**.
-
-Sau đó selected context đi qua quality/budget/compression/assembly trước model invocation; phần này nằm ở [Context Optimization](./context-optimization.mdx). Quan sát, metrics, freshness và trust boundaries nằm ở [Context Operations](./context-operations.mdx).
+Retrieval score là **một signal**, không phải final selection rule. Một file match query mạnh vẫn có thể kém hữu ích hơn fresh evidence trực tiếp giải thích failure. Runtime trace tiếp theo cho thấy sự khác biệt này khi current decision thay đổi.
 
 ## Example
 
-### Watch the system run: `Fix login 401`
+### Observe the runtime: `Fix login 401`
 
-Runtime trace dưới đây tách task thành các event hữu hạn. Bấm `Play trace`, bước từng event, hoặc chọn trực tiếp một event để quan sát **candidate pool**, **selected context**, **Context Window** và **Working State** thay đổi. Occupancy chỉ là giá trị minh hoạ để làm capacity hữu hạn dễ nhìn; đây không phải measurement từ một repository thật.
+Thay vì đọc thêm một lifecycle bằng prose, hãy quan sát task đi qua ba current decision:
+
+1. **401 xảy ra ở đâu?**
+2. **Token bị reject vì sao?**
+3. **Fix đúng chưa?**
+
+Bấm `Play trace`, bước từng event hoặc chọn trực tiếp một event. Theo dõi đồng thời `CURRENT DECISION`, candidate states, Context Window occupancy và `WORKING STATE`. Occupancy chỉ là giá trị minh hoạ cho bounded capacity, không phải measurement từ một repository thật.
 
 <FlowExplainer
   title="Context reconstructed for the current decision"
@@ -232,7 +188,7 @@ Runtime trace dưới đây tách task thành các event hữu hạn. Bấm `Pla
           to: "retrieve",
           message: "Fix login 401",
           description:
-            "Agent establishes the current decision: first locate where the 401 happens. It does not load every potentially useful source yet.",
+            "Agent xác lập current decision đầu tiên: tìm nơi phát sinh 401. Nó chưa tải mọi source có thể hữu ích.",
           inspection: {
             decision: "Locate the 401",
             invocation: "1 / 3",
@@ -250,7 +206,7 @@ Runtime trace dưới đây tách task thành các event hữu hạn. Bấm `Pla
           to: "select",
           message: "candidate pool",
           description:
-            "Retrieval makes several plausible sources available. Availability is not permission to spend context capacity.",
+            "Retrieval mở candidate pool. Một item xuất hiện trong pool chưa có nghĩa nó được phép chiếm context capacity.",
           inspection: {
             decision: "Locate the 401",
             invocation: "1 / 3",
@@ -275,7 +231,7 @@ Runtime trace dưới đây tách task thành các event hữu hạn. Bấm `Pla
           to: "window",
           message: "useful now",
           description:
-            "Selection uses current-decision usefulness, freshness, authority, redundancy and cost—not retrieval score alone. Noise and stale candidates stay outside.",
+            "Selection xét usefulness cho current decision, freshness, authority, redundancy và cost—not retrieval score alone. Noise và stale candidates ở ngoài window.",
           inspection: {
             decision: "Locate the 401",
             invocation: "1 / 3",
@@ -300,7 +256,7 @@ Runtime trace dưới đây tách task thành các event hữu hạn. Bấm `Pla
           to: "model",
           message: "selected context",
           description:
-            "Only the selected set enters this invocation. Free capacity remains intentionally; Context Window is a ceiling, not a quota to fill.",
+            "Chỉ selected set đi vào invocation. Capacity còn trống là có chủ ý: Context Window là ceiling, không phải quota phải lấp đầy.",
           inspection: {
             decision: "Locate the 401",
             invocation: "1 / 3",
@@ -323,7 +279,7 @@ Runtime trace dưới đây tách task thành các event hữu hạn. Bấm `Pla
           to: "state",
           message: "verified finding",
           description:
-            "The agent uses the bounded context to identify the next decision: investigate why token verification rejects the request.",
+            "Agent dùng bounded context để đi tới next decision: tìm vì sao token verification reject request.",
           inspection: {
             decision: "Why is token rejected?",
             invocation: "2 / 3",
@@ -349,7 +305,7 @@ Runtime trace dưới đây tách task thành các event hữu hạn. Bấm `Pla
           to: "refresh",
           message: "compact state",
           description:
-            "Goal, constraint, verified finding and next action survive across invocations. This compact state is distinct from raw evidence and does not replace its provenance.",
+            "Goal, constraint, verified finding và next action sống qua nhiều invocation. Compact state này khác raw evidence và không thay thế provenance.",
           inspection: {
             decision: "Why is token rejected?",
             invocation: "2 / 3",
@@ -375,7 +331,7 @@ Runtime trace dưới đây tách task thành các event hữu hạn. Bấm `Pla
           to: "retrieve",
           message: "evict + retrieve fresh",
           description:
-            "Old search output leaves; verifier evidence becomes relevant now. After a change, fresh focused tests can replace investigation evidence for the verification decision.",
+            "Old search output rời window; verifier evidence trở nên relevant. Sau code change, fresh focused tests thay investigation evidence cho verification decision.",
           inspection: {
             decision: "Verify the fix",
             invocation: "3 / 3",
@@ -408,27 +364,17 @@ Runtime trace dưới đây tách task thành các event hữu hạn. Bấm `Pla
   quan trọng và reconstruct context; nó không append mọi evidence mãi mãi.
 </KeyInsight>
 
-### What changed between invocations?
+### Read the state transitions
 
-Ở invocation đầu, agent cần xác định 401 xảy ra ở đâu. Khi đã có verified finding, raw route/search output có thể rời Context Window; invocation kế tiếp dùng verifier evidence. Sau code change, old log/test output trở thành stale và phải được thay bằng fresh verification evidence.
+**Selection is decision-specific.** `auth route` và `fresh 401 log` phục vụ decision đầu; verifier evidence phục vụ decision thứ hai; focused tests và fresh runtime result phục vụ verification. Một item hữu ích cho task không nhất thiết hữu ích **ngay lúc này**.
 
-Working State nối các invocation bằng `goal`, `constraints`, verified findings, decision/change và next action. Nó không biến summary thành source of truth: khi decision cần kiểm chứng, agent vẫn phải retrieve raw evidence có provenance phù hợp.
+**Working State carries continuity.** Agent giữ compact state gồm `goal`, `constraints`, `verifiedFindings`, `decisions`, `changesMade`, `unresolvedQuestions` và `nextActions`. Nó không kéo toàn bộ history sang invocation tiếp theo.
 
-User yêu cầu agent sửa lỗi `401` trong một repository lớn.
+**Working State is not raw evidence.** Summary hoặc hypothesis được carry forward không tự trở thành source of truth. Khi decision cần kiểm chứng, agent phải retrieve evidence có provenance và freshness phù hợp.
 
-Bad approach: đưa toàn repo, toàn chat history và hàng nghìn log lines vào một prompt vì “window còn chỗ”.
+**Context is reconstructed, not endlessly appended.** Khi state thay đổi, old search output hoặc test result có thể stale và bị evict. Agent preserve điều cần nhớ, release evidence đã obsolete rồi retrieve cho current decision mới.
 
-Better approach:
-
-- pin user goal + critical repository constraints;
-- retrieve auth path và fresh failing evidence;
-- select vài source fragments trực tiếp cho current decision;
-- reason/act;
-- save verified finding vào working state;
-- evict obsolete search output;
-- retrieve fresh evidence cho decision kế tiếp.
-
-Khi task tiến triển, context được **reconstructed**, không chỉ append mãi.
+Canonical lifecycle đầy đủ nằm tại [Context Engineering Map](./context-engineering-map.mdx). Selected context còn phải đi qua quality, budget, compression và assembly trong [Context Optimization](./context-optimization.mdx); freshness, metrics và trust boundaries được xử lý tại [Context Operations](./context-operations.mdx).
 
 ## When to Use
 
