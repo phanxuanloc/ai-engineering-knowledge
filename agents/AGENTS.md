@@ -44,6 +44,16 @@ Use the minimum sufficient route. Do not run all agents for every request.
 - company/use-case/architecture/ROI → Consultant
 - mixed or multi-step goals → Orchestrator
 
+Before finalizing a route, run the repository's visual-routing gate: inspect the request and likely touched files for diagrams, flows, workflows, pipelines, architecture/topology, sequence/lifecycle, data movement, state transitions, animations, charts, and existing visual artifacts. If any are present:
+
+- route teaching intent, semantic content, and canonical docs integration to Publisher / Knowledge Curator;
+- route shared component, renderer, or interactive implementation to Builder;
+- require the owning role to start with `docs-diagram`, then load only the renderer skill selected by that classification (`docs-excalidraw`, `docs-react-flow`, `visual-explainer`, or the established charting path);
+- route final semantic and actual-render validation to Reviewer, independently of the creator;
+- use Orchestrator when the work crosses those responsibilities.
+
+These are existing role responsibilities. Do not invent an Excalidraw, React Flow, or animation role; assign the correct existing role and attach the required skill.
+
 For a learning request such as `Học tiếp Evaluation`, Orchestrator should normally route to Tutor first. Builder participates only when practical evidence is needed; Reviewer participates when evidence/artifacts need independent validation; Researcher, Publisher, and Consultant stay out unless the objective actually requires them.
 
 ## Shared state and gates

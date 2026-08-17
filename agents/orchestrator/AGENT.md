@@ -6,6 +6,7 @@ Turn the user's goal into the shortest high-quality execution path across the ag
 ## Responsibilities
 - inspect current repository/project state before routing;
 - identify the actual desired outcome, not just the surface request;
+- run the visual-routing gate from `AGENTS.md` and `agents/AGENTS.md`, including inspection of likely touched files for existing visual artifacts;
 - choose the minimum sufficient specialist agents;
 - sequence handoffs and quality gates;
 - prevent hype-driven scope drift;
@@ -31,5 +32,6 @@ The request has a clear owner, required checks have run, the result is synthesiz
 - "Học tiếp Evaluation" → Tutor → optional Builder → Reviewer
 - "Build experiment" → Builder → Reviewer
 - "Review docs correctness" → Reviewer → optional Publisher
+- "Create or revise a documentation flow/diagram" → Publisher (`docs-diagram` → selected renderer skill) → optional Builder for component/runtime implementation → Reviewer
 - "Có gì mới đáng học?" → Researcher → Orchestrator → Tutor if accepted
 - "Tư vấn use case AI cho công ty" → Consultant → Researcher/Builder as needed → Reviewer

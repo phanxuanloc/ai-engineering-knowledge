@@ -1,0 +1,92 @@
+---
+title: Abstraction & Encapsulation
+description: Phân biệt WHAT được expose với HOW được giấu sau một capability boundary.
+tags: [programming, code-design, abstraction, encapsulation]
+---
+
+import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
+
+# Abstraction & Encapsulation
+
+## TL;DR
+
+<TLDR>
+
+**Abstraction** expose capability hữu ích — **WHAT** caller có thể yêu cầu. **Encapsulation** giữ implementation — **HOW** capability đó hoạt động — ở sau boundary. Hai ý liên quan nhưng không đồng nghĩa, và không bắt buộc phải tạo interface cho mọi class.
+
+</TLDR>
+
+## Mental Model
+
+Caller cần biết “tôi có thể charge payment” hoặc “tôi có thể upload file”, không cần biết PaymentIntent, bucket, credential hay vendor error được xử lý thế nào.
+
+<Comparison
+  items={[
+    {title: 'Abstraction · WHAT', description: 'Capability và contract có ý nghĩa với caller.'},
+    {title: 'Encapsulation · HOW', description: 'SDK calls, credentials, retry và error mapping được giữ bên trong implementation.'},
+  ]}
+/>
+
+<Principle label="Boundary test">Nếu caller phải biết vendor detail để dùng capability, boundary chưa che đúng phần HOW.</Principle>
+
+## Core Concepts
+
+- **Abstraction:** `PaymentGateway.charge()` nói bằng ngôn ngữ checkout thay vì ngôn ngữ Stripe SDK.
+- **Encapsulation:** Stripe PaymentIntent creation, confirmation, retry và error mapping nằm trong Stripe adapter.
+- **Application capability:** `FileStorage.upload()` và `getDownloadUrl()` diễn đạt nhu cầu của application; S3 bucket, key convention, credential và AWS error là implementation detail.
+- **Meaningful variability:** abstraction hữu ích khi có complexity cần cô lập hoặc implementation có lý do thực tế để thay đổi.
+- **Concrete boundary vẫn có thể encapsulate:** nếu hiện chỉ có SendGrid và chưa có runtime variability, một class nhỏ che SendGrid detail có thể đủ; chưa cần factory hay hierarchy giả định.
+
+## Example
+
+```ts
+interface FileStorage {
+  upload(file: Upload): Promise<StoredFile>;
+  getDownloadUrl(fileId: string): Promise<string>;
+}
+
+class S3FileStorage implements FileStorage {
+  async upload(file: Upload): Promise<StoredFile> {
+    // bucket, credentials, AWS SDK calls and error mapping stay here
+  }
+}
+```
+
+Application phụ thuộc vào storage capability. Nếu implementation chuyển từ S3 sang provider khác, application contract có thể giữ ổn định trong khi HOW thay đổi.
+
+## When to Use
+
+- Khi vendor SDK detail đang rò vào business logic.
+- Khi một capability có complexity riêng cần che giấu và kiểm thử độc lập.
+- Khi có variability thực tế hoặc boundary giúp giảm change impact.
+- Giữ concrete implementation đơn giản khi chưa có nhu cầu thay thế hoặc selection.
+
+## Common Mistakes
+
+- **Tạo interface cho mọi class:** syntax không tự tạo meaningful abstraction.
+- **Đồng nhất abstraction với encapsulation:** một cái định nghĩa WHAT, cái kia che HOW.
+- **Premature abstraction:** dựng SMS/push/factory hierarchy chỉ vì tương lai có thể cần.
+- **Leaky abstraction:** contract vẫn expose bucket name, Stripe exception hoặc vendor request object cho caller.
+
+## Related Knowledge
+
+- [Coupling & Cohesion](./coupling-and-cohesion.mdx) — capability boundary phù hợp giúp thu hẹp direct dependencies và blast radius.
+- [SOLID as Design Lenses](./solid-design-lenses.mdx) — DIP dựa trên contract phù hợp, còn ISP kiểm tra capability trong contract có thật sự được support.
+- [Composition vs Inheritance](./composition-vs-inheritance.mdx) — abstraction thường được inject và compose vào object cần dùng capability.
+
+## Self-test
+
+1. Abstraction và encapsulation trả lời hai câu hỏi nào?
+2. Trong `PaymentGateway`, đâu là WHAT và đâu là HOW?
+3. Có cần interface cho mọi class để đạt encapsulation không?
+4. Khi nào một abstraction có thể là premature?
+
+<details>
+<summary>Answers</summary>
+
+1. Abstraction trả lời caller dùng được WHAT; encapsulation giấu HOW implementation hoạt động.
+2. `charge()` là capability; PaymentIntent, SDK calls, retry và error mapping là implementation detail.
+3. Không; một concrete boundary vẫn có thể che detail tốt.
+4. Khi chưa có variability hoặc complexity thực tế để cô lập và indirection chưa bảo vệ thay đổi nào.
+
+</details>

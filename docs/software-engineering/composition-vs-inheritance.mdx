@@ -1,0 +1,90 @@
+---
+title: Composition vs Inheritance
+description: Chọn IS-A cho subtype thật và HAS-A hoặc USES-A cho capability có thể thay thế.
+tags: [programming, code-design, composition, inheritance]
+---
+
+import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
+
+# Composition vs Inheritance
+
+## TL;DR
+
+<TLDR>
+
+Inheritance phù hợp khi subtype có quan hệ **IS-A** thật sự và giữ đúng behavioral contract. Composition phù hợp với **HAS-A / USES-A**: object được lắp từ các capability có thể thay thế độc lập. Không nên dùng inheritance chỉ để reuse code.
+
+</TLDR>
+
+## Mental Model
+
+<Comparison
+  items={[
+    {title: 'Inheritance · IS-A', description: 'Subtype nhận contract và coupling từ parent; cần substitutability thật.'},
+    {title: 'Composition · HAS-A / USES-A', description: 'Object cộng tác với capability được inject; mỗi phần có thể thay thế riêng.'},
+  ]}
+/>
+
+<Principle label="Default question">Behavior này là identity ổn định của subtype, hay chỉ là capability mà object đang sử dụng?</Principle>
+
+## Core Concepts
+
+- **Inheritance:** mô hình subtype relationship; child gắn với contract và behavior của parent.
+- **Composition:** assemble behavior bằng collaborators như Parser, OCR engine, Embedder hoặc VectorStore.
+- **Replaceable capability:** nếu OCR hoặc storage có lifecycle và implementation riêng, composition giữ boundary rõ hơn.
+- **Deep hierarchy:** càng nhiều tầng, behavior càng khó trace và thay đổi parent càng có blast radius lớn.
+- **AI Agent architecture:** agent thường được compose từ tools/capabilities thay vì tạo hierarchy sâu cho mọi tổ hợp tool.
+
+## Example
+
+`DocumentProcessor` nên compose các capability độc lập:
+
+```ts
+class DocumentProcessor {
+  constructor(
+    private readonly parser: Parser,
+    private readonly ocr: OcrEngine,
+    private readonly embedder: Embedder,
+    private readonly vectorStore: VectorStore,
+  ) {}
+}
+```
+
+Cấu trúc này tránh hierarchy theo tổ hợp feature như `BaseProcessor → PDFProcessor → OCRPDFProcessor → EmbeddingOCRPDFProcessor`. Mỗi capability có thể được thay, test hoặc cấu hình riêng mà không tạo thêm subclass cho mọi combination.
+
+## When to Use
+
+- Dùng composition cho capability độc lập, có thể thay thế hoặc kết hợp theo nhiều cấu hình.
+- Dùng inheritance khi domain thật sự có subtype relation và child giữ được contract của parent.
+- Ưu tiên composition khi hierarchy bắt đầu phản ánh tổ hợp feature thay vì identity.
+- Với AI Agent, compose tools khi tool set là capability/configuration của agent.
+
+## Common Mistakes
+
+- **Dùng inheritance để reuse code:** reuse đơn thuần không chứng minh quan hệ IS-A.
+- **Hierarchy theo mọi feature combination:** số subclass tăng nhanh và behavior khó trace.
+- **Composition không có boundary:** inject concrete vendor detail khắp nơi vẫn tạo coupling.
+- **Coi composition luôn thắng:** subtype ổn định và substitutable vẫn có thể là inheritance hợp lý.
+
+## Related Knowledge
+
+- [Coupling & Cohesion](./coupling-and-cohesion.mdx) — deep hierarchy tăng coupling; capability boundary giúp thu hẹp change impact.
+- [Abstraction & Encapsulation](./abstraction-and-encapsulation.mdx) — abstraction định nghĩa capability được compose, implementation encapsulate HOW.
+- [SOLID as Design Lenses](./solid-design-lenses.mdx) — LSP kiểm tra subtype contract, còn DIP hỗ trợ inject collaborator qua suitable contract.
+
+## Self-test
+
+1. `IS-A` và `HAS-A / USES-A` dẫn tới hai lựa chọn nào?
+2. Vì sao code reuse không đủ để chọn inheritance?
+3. `DocumentProcessor` có Parser, OCR, Embedder và VectorStore nên được model thế nào?
+4. Trường hợp nào inheritance vẫn hợp lý?
+
+<details>
+<summary>Answers</summary>
+
+1. `IS-A` có thể dùng inheritance; `HAS-A / USES-A` thường dùng composition.
+2. Inheritance còn áp behavioral contract và coupling với parent; reuse không chứng minh subtype relation.
+3. Compose bốn capability qua các boundary phù hợp thay vì tạo subclass cho từng tổ hợp.
+4. Khi subtype relation là thật, ổn định và child thay thế được parent mà không phá behavioral promise.
+
+</details>

@@ -1,4 +1,57 @@
 topics:
+  programming-and-code-design:
+    title: Programming & Code Design
+    category: Software Engineering
+    status: learning
+    note: docs/software-engineering/programming-and-code-design.mdx
+    learned_at: 2026-08-18
+    last_reviewed: null
+    confidence: 3
+    checkpoints:
+      - coupling-and-cohesion
+      - abstraction-and-encapsulation
+      - solid-design-lenses
+      - composition-vs-inheritance
+    checkpoint_progress:
+      coupling-and-cohesion:
+        status: understood
+        note: docs/software-engineering/coupling-and-cohesion.mdx
+        learned_at: 2026-08-18
+        evidence:
+          - identified-low-cohesion-and-high-coupling-in-a-user-service-with-unrelated-responsibilities-and-direct-infrastructure-dependencies
+          - selected-a-payment-gateway-boundary-instead-of-adding-provider-branches-to-checkout
+          - explained-that-lower-coupling-reduces-change-blast-radius
+          - explained-that-splitting-code-into-more-files-does-not-by-itself-reduce-coupling
+      abstraction-and-encapsulation:
+        status: understood
+        note: docs/software-engineering/abstraction-and-encapsulation.mdx
+        learned_at: 2026-08-18
+        evidence:
+          - distinguished-abstraction-as-exposed-what-from-encapsulation-as-hidden-how-after-clarification
+          - selected-a-file-storage-capability-boundary-around-s3-details
+          - chose-a-simple-boundary-around-current-sendgrid-details-over-a-premature-multi-channel-hierarchy
+      solid-design-lenses:
+        status: understood
+        note: docs/software-engineering/solid-design-lenses.mdx
+        learned_at: 2026-08-18
+        evidence:
+          - applied-solid-as-change-impact-and-maintainability-lenses-rather-than-mechanical-rules
+          - proposed-a-common-notification-sender-contract-with-provider-specific-implementations
+          - distinguished-runtime-factory-selection-from-direct-dependency-injection
+      composition-vs-inheritance:
+        status: learning
+        note: docs/software-engineering/composition-vs-inheritance.mdx
+        learned_at: 2026-08-18
+        evidence:
+          - explained-is-a-vs-has-a-and-uses-a-mental-model
+          - reviewed-document-processor-composition-of-parser-ocr-embedder-and-vector-store-with-tutor-guidance
+        remaining:
+          - independent-application-in-a-new-design-scenario
+    next_checkpoint: composition-over-inheritance-independent-application
+    experiments: []
+    prerequisites: []
+    related:
+      - system-design
   evaluation:
     title: Evaluation
     category: AI Fundamentals
@@ -272,6 +325,7 @@ topics:
     related:
       - api-communication
       - database-design
+      - programming-and-code-design
   database-design:
     title: Database Design
     category: Software Engineering

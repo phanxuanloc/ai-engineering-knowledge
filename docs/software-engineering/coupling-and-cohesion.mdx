@@ -1,0 +1,92 @@
+---
+title: Coupling & Cohesion
+description: Nhận diện responsibility và dependency khiến thay đổi lan rộng trong codebase.
+tags: [programming, code-design, coupling, cohesion]
+---
+
+import {Principle, TLDR} from '@site/src/components/Learning';
+
+# Coupling & Cohesion
+
+## TL;DR
+
+<TLDR>
+
+**Cohesion** hỏi các phần trong một module có cùng phục vụ một trách nhiệm rõ ràng hay không; **coupling** hỏi module phụ thuộc chặt tới mức nào vào module hoặc implementation khác. Design dễ bảo trì thường hướng tới high cohesion và low coupling để giảm blast radius của thay đổi.
+
+</TLDR>
+
+## Mental Model
+
+Đừng bắt đầu bằng câu hỏi “class này có bao nhiêu dòng?”. Hãy hỏi:
+
+1. Nó có bao nhiêu **reasons to change** không liên quan nhau?
+2. Nó biết trực tiếp bao nhiêu infrastructure detail?
+3. Khi một dependency đổi, bao nhiêu business logic phải đổi theo?
+
+<Principle label="Change rule">Tách file chỉ thay đổi vị trí code; giảm coupling đòi hỏi thay đổi dependency boundary.</Principle>
+
+## Core Concepts
+
+- **High cohesion:** validation logic nằm cùng validation responsibility; payment orchestration tập trung vào checkout use case.
+- **Low cohesion:** một `UserService` vừa validate, hash password, viết PostgreSQL, gọi SendGrid, publish Kafka và ghi audit log. Các phần này thay đổi vì những lý do khác nhau.
+- **High coupling:** business service gọi trực tiếp provider SDK, SQL detail hoặc concrete implementation nên thay provider kéo theo sửa core logic.
+- **Low coupling:** business logic phụ thuộc vào capability boundary phù hợp; implementation detail có thể đổi với ít tác động hơn.
+- **Blast radius:** phạm vi code, test và behavior có thể bị ảnh hưởng bởi một thay đổi. Coupling thấp thường thu hẹp phạm vi này.
+
+## Example
+
+Checkout không nên thêm nhánh PayPal trực tiếp cạnh Stripe cho mỗi provider mới:
+
+```ts
+interface PaymentGateway {
+  charge(input: ChargeInput): Promise<ChargeResult>;
+}
+
+class CheckoutService {
+  constructor(private readonly gateway: PaymentGateway) {}
+
+  checkout(input: ChargeInput) {
+    return this.gateway.charge(input);
+  }
+}
+```
+
+`CheckoutService` giữ cohesion quanh checkout; Stripe hoặc PayPal adapter sở hữu provider detail. Thêm provider không buộc core checkout biết từng SDK.
+
+## When to Use
+
+- Khi một class có nhiều reasons to change không liên quan.
+- Khi business logic import trực tiếp database, messaging hoặc vendor SDK.
+- Khi thay một provider làm nhiều module phải sửa và retest.
+- Khi review một đề xuất “tách thành nhiều file” nhưng dependency graph vẫn giữ nguyên.
+
+## Common Mistakes
+
+- **Đồng nhất class lớn với design xấu:** size là signal, không phải root cause; responsibility và dependency mới là trọng tâm.
+- **Tách file nhưng giữ direct dependencies:** code phân tán hơn nhưng coupling không giảm.
+- **Tạo boundary không có business meaning:** thêm interface tùy ý có thể chỉ tăng indirection.
+- **Chỉ tối ưu số dependency:** một dependency phù hợp vẫn tốt hơn nhiều lớp wrapper không bảo vệ thay đổi nào.
+
+## Related Knowledge
+
+- [Abstraction & Encapsulation](./abstraction-and-encapsulation.mdx) — giải thích cách capability boundary giảm việc business logic biết implementation detail.
+- [SOLID as Design Lenses](./solid-design-lenses.mdx) — SRP và DIP cung cấp hai lens thực dụng để phát hiện low cohesion và high coupling.
+- [Composition vs Inheritance](./composition-vs-inheritance.mdx) — composition giúp capability có thể được thay thế mà không tạo deep inheritance coupling.
+
+## Self-test
+
+1. Vì sao một class lớn chưa chắc là root problem?
+2. `UserService` vừa hash password, gửi email và publish event có smell gì?
+3. Tách code thành năm file có tự giảm coupling không?
+4. Boundary nào giúp thêm PayPal mà không sửa core checkout theo provider?
+
+<details>
+<summary>Answers</summary>
+
+1. Size chỉ là signal; cần xem responsibilities có liên quan và dependencies có hợp lý không.
+2. Low cohesion vì nhiều reasons to change, đồng thời high coupling nếu phụ thuộc trực tiếp infrastructure/provider.
+3. Không; dependency relationships phải thay đổi thì coupling mới giảm.
+4. Một `PaymentGateway` capability boundary mà checkout phụ thuộc vào.
+
+</details>

@@ -48,7 +48,12 @@ const sidebars: SidebarsConfig = {
           type: 'category',
           label: 'Programming & Code Design',
           link: {type: 'doc', id: 'software-engineering/programming-and-code-design'},
-          items: [],
+          items: [
+            'software-engineering/coupling-and-cohesion',
+            'software-engineering/abstraction-and-encapsulation',
+            'software-engineering/solid-design-lenses',
+            'software-engineering/composition-vs-inheritance',
+          ],
         },
         {
           type: 'category',
