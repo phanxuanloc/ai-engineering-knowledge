@@ -5,8 +5,15 @@ tags: [context-engineering, context-window, ai-agent]
 sidebar_position: 3
 ---
 
-import {Comparison, ImportantDistinction, KeyInsight, Remember, TLDR} from '@site/src/components/Learning';
-import {ExcalidrawDiagram} from '@site/src/components/Diagrams';
+import {
+  Comparison,
+  ImportantDistinction,
+  KeyInsight,
+  Remember,
+  TLDR,
+} from "@site/src/components/Learning";
+import { ExcalidrawDiagram } from "@site/src/components/Diagrams";
+import { FlowExplainer } from "@site/src/components/VisualExplainer";
 
 # Context Engineering: Foundations & Lifecycle
 
@@ -19,7 +26,8 @@ import {ExcalidrawDiagram} from '@site/src/components/Diagrams';
 </TLDR>
 
 <Remember title="Relevant context > More context">
-  Nhiều token hơn không tự động tạo ra quyết định tốt hơn. Đúng information, đúng thời điểm và đúng role quan trọng hơn việc đưa mọi thứ vào model.
+  Nhiều token hơn không tự động tạo ra quyết định tốt hơn. Đúng information,
+  đúng thời điểm và đúng role quan trọng hơn việc đưa mọi thứ vào model.
 </Remember>
 
 ## Mental Model
@@ -51,9 +59,23 @@ Mental model đơn giản:
 <Comparison
   label="Context, window, and management"
   items={[
-    {eyebrow: 'Information', title: 'Context', description: 'Information thực tế được cung cấp cho model.'},
-    {eyebrow: 'Capacity', title: 'Context Window', description: 'Giới hạn information model có thể xử lý trong một invocation.'},
-    {eyebrow: 'Decision', title: 'Context Engineering', description: 'Quyết định information nào nên chiếm capacity và được duy trì ra sao.'},
+    {
+      eyebrow: "Information",
+      title: "Context",
+      description: "Information thực tế được cung cấp cho model.",
+    },
+    {
+      eyebrow: "Capacity",
+      title: "Context Window",
+      description:
+        "Giới hạn information model có thể xử lý trong một invocation.",
+    },
+    {
+      eyebrow: "Decision",
+      title: "Context Engineering",
+      description:
+        "Quyết định information nào nên chiếm capacity và được duy trì ra sao.",
+    },
   ]}
 />
 
@@ -75,7 +97,8 @@ Một source **có sẵn** không đồng nghĩa nó nên vào Context Window. S
 ### Retrieve vs Select
 
 <ImportantDistinction title="Retrieve ≠ Select">
-  Retrieve tạo candidates. Select quyết định candidate nào đáng chiếm context capacity cho current decision.
+  Retrieve tạo candidates. Select quyết định candidate nào đáng chiếm context
+  capacity cho current decision.
 </ImportantDistinction>
 
 **Retrieve** tìm information có thể hữu ích bằng keyword/lexical search, semantic search, code references, memory lookup, tools, logs hoặc evidence từ step trước.
@@ -111,7 +134,9 @@ Khi toàn bộ useful context lớn hơn một invocation, agent nên chia task 
 `Retrieve/Select → Reason/Act → Preserve important state → Release obsolete context → Retrieve for next decision`
 
 <KeyInsight title="Useful does not mean simultaneous">
-  Information hữu ích cho toàn task không cần cùng tồn tại trong một Context Window. Preserve goal, constraints, verified findings và next actions; refresh evidence theo decision tiếp theo.
+  Information hữu ích cho toàn task không cần cùng tồn tại trong một Context
+  Window. Preserve goal, constraints, verified findings và next actions; refresh
+  evidence theo decision tiếp theo.
 </KeyInsight>
 
 ### Working State Across Invocations
@@ -139,6 +164,255 @@ Canonical lifecycle của topic được giữ tại [Context Engineering Map](.
 Sau đó selected context đi qua quality/budget/compression/assembly trước model invocation; phần này nằm ở [Context Optimization](./context-optimization.mdx). Quan sát, metrics, freshness và trust boundaries nằm ở [Context Operations](./context-operations.mdx).
 
 ## Example
+
+### Watch the system run: `Fix login 401`
+
+Runtime trace dưới đây tách task thành các event hữu hạn. Bấm `Play trace`, bước từng event, hoặc chọn trực tiếp một event để quan sát **candidate pool**, **selected context**, **Context Window** và **Working State** thay đổi. Occupancy chỉ là giá trị minh hoạ để làm capacity hữu hạn dễ nhìn; đây không phải measurement từ một repository thật.
+
+<FlowExplainer
+  title="Context reconstructed for the current decision"
+  description="Retrieve mở candidate pool; Select quyết định item nào được vào bounded context. Working State giữ phần cần tiếp tục, còn stale evidence có thể rời window."
+  stepDurationMs={2600}
+  scenarios={[
+    {
+      id: "login-401",
+      label: "Fix login 401",
+      layout: "compact",
+      nodes: [
+        { id: "task", label: "Task", detail: "Fix login 401", role: "client" },
+        {
+          id: "retrieve",
+          label: "Retrieve",
+          detail: "Open candidate pool",
+          role: "tool",
+        },
+        {
+          id: "select",
+          label: "Select",
+          detail: "Current-decision usefulness",
+          role: "service",
+        },
+        {
+          id: "window",
+          label: "Context Window",
+          detail: "Bounded model input",
+          role: "network",
+        },
+        {
+          id: "model",
+          label: "Reason / Act",
+          detail: "Investigate or change",
+          role: "model",
+        },
+        {
+          id: "state",
+          label: "Working State",
+          detail: "Compact durable state",
+          role: "data",
+        },
+        {
+          id: "refresh",
+          label: "Refresh",
+          detail: "Evict and retrieve again",
+          role: "tool",
+        },
+      ],
+      edges: [
+        { id: "task-retrieve", source: "task", target: "retrieve" },
+        { id: "retrieve-select", source: "retrieve", target: "select" },
+        { id: "select-window", source: "select", target: "window" },
+        { id: "window-model", source: "window", target: "model" },
+        { id: "model-state", source: "model", target: "state" },
+        { id: "state-refresh", source: "state", target: "refresh" },
+      ],
+      steps: [
+        {
+          title: "1 · Task arrives",
+          from: "task",
+          to: "retrieve",
+          message: "Fix login 401",
+          description:
+            "Agent establishes the current decision: first locate where the 401 happens. It does not load every potentially useful source yet.",
+          inspection: {
+            decision: "Locate the 401",
+            invocation: "1 / 3",
+            context: "Goal pinned",
+            selected: "0 evidence items",
+            occupancy: 12,
+            occupancyLabel: "small · illustrative",
+            items: [{ label: "user goal", state: "selected" }],
+            state: ["goal: fix login 401"],
+          },
+        },
+        {
+          title: "2 · Retrieve candidates",
+          from: "retrieve",
+          to: "select",
+          message: "candidate pool",
+          description:
+            "Retrieval makes several plausible sources available. Availability is not permission to spend context capacity.",
+          inspection: {
+            decision: "Locate the 401",
+            invocation: "1 / 3",
+            context: "Candidates outside window",
+            selected: "Not selected yet",
+            occupancy: 12,
+            occupancyLabel: "unchanged · illustrative",
+            items: [
+              { label: "auth route" },
+              { label: "auth middleware" },
+              { label: "token verifier" },
+              { label: "fresh 401 log" },
+              { label: "README" },
+              { label: "old auth implementation" },
+            ],
+            state: ["goal: fix login 401"],
+          },
+        },
+        {
+          title: "3 · Select context",
+          from: "select",
+          to: "window",
+          message: "useful now",
+          description:
+            "Selection uses current-decision usefulness, freshness, authority, redundancy and cost—not retrieval score alone. Noise and stale candidates stay outside.",
+          inspection: {
+            decision: "Locate the 401",
+            invocation: "1 / 3",
+            context: "Selection in progress",
+            selected: "3 of 6 candidates",
+            occupancy: 48,
+            occupancyLabel: "bounded · illustrative",
+            items: [
+              { label: "auth route", state: "selected" },
+              { label: "auth middleware", state: "selected" },
+              { label: "fresh 401 log", state: "selected" },
+              { label: "token verifier" },
+              { label: "README", state: "rejected" },
+              { label: "old auth implementation", state: "rejected" },
+            ],
+            state: ["goal: fix login 401"],
+          },
+        },
+        {
+          title: "4 · Build bounded context",
+          from: "window",
+          to: "model",
+          message: "selected context",
+          description:
+            "Only the selected set enters this invocation. Free capacity remains intentionally; Context Window is a ceiling, not a quota to fill.",
+          inspection: {
+            decision: "Locate the 401",
+            invocation: "1 / 3",
+            context: "Ready for model",
+            selected: "Goal + 3 evidence items",
+            occupancy: 48,
+            occupancyLabel: "4.8K / 10K · illustrative",
+            items: [
+              { label: "user goal", state: "selected" },
+              { label: "auth route", state: "selected" },
+              { label: "auth middleware", state: "selected" },
+              { label: "fresh 401 log", state: "selected" },
+            ],
+            state: ["goal: fix login 401"],
+          },
+        },
+        {
+          title: "5 · Model decision / action",
+          from: "model",
+          to: "state",
+          message: "verified finding",
+          description:
+            "The agent uses the bounded context to identify the next decision: investigate why token verification rejects the request.",
+          inspection: {
+            decision: "Why is token rejected?",
+            invocation: "2 / 3",
+            context: "Decision changed",
+            selected: "Next evidence pending",
+            occupancy: 22,
+            occupancyLabel: "released · illustrative",
+            items: [
+              { label: "auth route", state: "evicted" },
+              { label: "auth middleware", state: "evicted" },
+              { label: "fresh 401 log", state: "preserved" },
+            ],
+            state: [
+              "goal: fix login 401",
+              "verified: request reaches token verification",
+              "next: inspect verifier evidence",
+            ],
+          },
+        },
+        {
+          title: "6 · Preserve working state",
+          from: "state",
+          to: "refresh",
+          message: "compact state",
+          description:
+            "Goal, constraint, verified finding and next action survive across invocations. This compact state is distinct from raw evidence and does not replace its provenance.",
+          inspection: {
+            decision: "Why is token rejected?",
+            invocation: "2 / 3",
+            context: "Working state carried",
+            selected: "Verifier evidence next",
+            occupancy: 18,
+            occupancyLabel: "compact · illustrative",
+            items: [
+              { label: "fresh 401 log", state: "preserved" },
+              { label: "token verifier", state: "available" },
+            ],
+            state: [
+              "goal: fix login 401",
+              "constraint: preserve auth behavior",
+              "verified finding + provenance",
+              "next: inspect verifier evidence",
+            ],
+          },
+        },
+        {
+          title: "7 · Context changes",
+          from: "refresh",
+          to: "retrieve",
+          message: "evict + retrieve fresh",
+          description:
+            "Old search output leaves; verifier evidence becomes relevant now. After a change, fresh focused tests can replace investigation evidence for the verification decision.",
+          inspection: {
+            decision: "Verify the fix",
+            invocation: "3 / 3",
+            context: "Reconstructed",
+            selected: "Working state + fresh evidence",
+            occupancy: 41,
+            occupancyLabel: "changes by decision",
+            items: [
+              { label: "old search output", state: "evicted" },
+              { label: "token verifier", state: "preserved" },
+              { label: "focused test result", state: "selected" },
+              { label: "fresh runtime result", state: "selected" },
+            ],
+            state: [
+              "goal + constraints",
+              "verified root cause",
+              "decision / change",
+              "next: verify outcome",
+            ],
+          },
+        },
+      ],
+    },
+  ]}
+/>
+
+<KeyInsight title="Useful does not mean simultaneous">
+  `auth route`, verifier evidence và focused test result đều có thể hữu ích cho
+  toàn task, nhưng chúng phục vụ các decision khác nhau. Agent preserve state
+  quan trọng và reconstruct context; nó không append mọi evidence mãi mãi.
+</KeyInsight>
+
+### What changed between invocations?
+
+Ở invocation đầu, agent cần xác định 401 xảy ra ở đâu. Khi đã có verified finding, raw route/search output có thể rời Context Window; invocation kế tiếp dùng verifier evidence. Sau code change, old log/test output trở thành stale và phải được thay bằng fresh verification evidence.
+
+Working State nối các invocation bằng `goal`, `constraints`, verified findings, decision/change và next action. Nó không biến summary thành source of truth: khi decision cần kiểm chứng, agent vẫn phải retrieve raw evidence có provenance phù hợp.
 
 User yêu cầu agent sửa lỗi `401` trong một repository lớn.
 

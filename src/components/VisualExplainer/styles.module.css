@@ -50,6 +50,29 @@
 .story p { margin: .65rem 0 0; color: var(--ifm-font-color-secondary); font-size: .84rem; line-height: 1.55; }
 .storySignal { display: flex; gap: .42rem; align-items: center; margin-top: 1rem; color: var(--ifm-font-color-secondary); font-size: .62rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 .liveDot { width: 6px; height: 6px; background: var(--learning-active); border-radius: 50%; box-shadow: 0 0 12px color-mix(in srgb, var(--learning-active) 70%, transparent); }
+.inspector { display: grid; gap: .85rem; padding: .9rem 1rem 1rem; background: color-mix(in srgb, var(--learning-subtle-surface) 74%, var(--diagram-surface)); border-top: 1px solid color-mix(in srgb, var(--learning-border) 72%, transparent); }
+.inspectorStrip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--learning-border) 72%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--learning-border) 72%, transparent); }
+.inspectorStrip > div { min-width: 0; padding: .62rem .72rem; background: color-mix(in srgb, var(--diagram-surface) 97%, transparent); }
+.inspectorStrip span, .occupancy span, .workingState > span { display: block; margin-bottom: .24rem; color: var(--ifm-font-color-secondary); font-family: var(--ifm-font-family-monospace); font-size: .6rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.inspectorStrip strong { display: block; overflow: hidden; font-size: .78rem; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.occupancy { display: grid; grid-template-columns: minmax(120px, auto) minmax(160px, 1fr) auto; gap: .75rem; align-items: center; }
+.occupancy > div:first-child { display: flex; gap: .5rem; align-items: baseline; }
+.occupancy > div:first-child span { margin: 0; }
+.occupancy strong { color: var(--learning-active); font-family: var(--ifm-font-family-monospace); font-size: .72rem; }
+.occupancy small { color: var(--ifm-font-color-secondary); font-size: .62rem; }
+.occupancyTrack { height: 8px; overflow: hidden; background: color-mix(in srgb, var(--learning-border) 74%, transparent); border: 1px solid color-mix(in srgb, var(--learning-border) 82%, transparent); border-radius: 999px; }
+.occupancyTrack span { height: 100%; margin: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--learning-active) 64%, transparent), var(--learning-active)); border-radius: inherit; transition: width .28s ease; }
+.contextItems { display: flex; flex-wrap: wrap; gap: .42rem; }
+.contextItem { display: inline-flex; gap: .38rem; align-items: center; padding: .36rem .48rem; color: var(--ifm-font-color-base); font-size: .7rem; line-height: 1.2; background: color-mix(in srgb, var(--diagram-surface) 92%, transparent); border: 1px solid color-mix(in srgb, var(--learning-border) 78%, transparent); border-radius: 7px; transition: opacity .2s ease, border-color .2s ease, background .2s ease; }
+.contextItem i { width: 6px; height: 6px; flex: 0 0 auto; background: var(--ifm-font-color-secondary); border-radius: 50%; }
+.contextItem em { color: var(--ifm-font-color-secondary); font-family: var(--ifm-font-family-monospace); font-size: .56rem; font-style: normal; letter-spacing: .05em; text-transform: uppercase; }
+.contextItem_selected, .contextItem_preserved { background: color-mix(in srgb, var(--learning-active-soft) 42%, var(--diagram-surface)); border-color: var(--learning-active-border); }
+.contextItem_selected i, .contextItem_preserved i { background: var(--learning-active); box-shadow: 0 0 9px color-mix(in srgb, var(--learning-active) 55%, transparent); }
+.contextItem_rejected, .contextItem_evicted { opacity: .48; border-style: dashed; text-decoration: line-through; }
+.workingState { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: .75rem; align-items: start; padding-top: .8rem; border-top: 1px dashed color-mix(in srgb, var(--learning-border) 72%, transparent); }
+.workingState > span { margin: .18rem 0 0; color: var(--learning-active); }
+.workingState ul { display: flex; flex-wrap: wrap; gap: .38rem; margin: 0; padding: 0; list-style: none; }
+.workingState li { padding: .3rem .45rem; font-family: var(--ifm-font-family-monospace); font-size: .65rem; background: color-mix(in srgb, var(--learning-active-soft) 38%, transparent); border: 1px solid color-mix(in srgb, var(--learning-active-border) 62%, transparent); border-radius: 6px; }
 .timeline { display: grid; grid-template-columns: auto minmax(180px, 1fr); gap: 1rem; align-items: center; padding: .82rem 1rem .9rem; border-top: 1px solid color-mix(in srgb, var(--learning-border) 72%, transparent); background: color-mix(in srgb, var(--diagram-surface) 96%, transparent); }
 .transport { display: flex; gap: .35rem; align-items: center; }
 .transport button { min-height: 34px; padding: .38rem .58rem; font-size: .68rem; border-radius: 9px; }
@@ -65,7 +88,7 @@
 .eventPointActive { color: var(--diagram-surface); background: var(--learning-active); border-color: var(--learning-active); box-shadow: 0 0 0 4px color-mix(in srgb, var(--learning-active) 9%, transparent), 0 0 18px color-mix(in srgb, var(--learning-active) 30%, transparent); transform: scale(1.08); }
 @keyframes livePulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .72; } }
 @media (prefers-reduced-motion: reduce) {
-  .node, .nodeActive, .nodeSignal, .tab, .transport button, .eventPoint, .progressTrack > span { transition: none; animation: none; transform: none; }
+  .node, .nodeActive, .nodeSignal, .tab, .transport button, .eventPoint, .progressTrack > span, .occupancyTrack span, .contextItem { transition: none; animation: none; transform: none; }
   .packetDot { display: none; }
 }
 @media (max-width: 820px) {
@@ -84,4 +107,9 @@
   .timeline { padding: .75rem .8rem .85rem; }
   .eventRail { min-width: 230px; }
   .scrubber { overflow-x: auto; padding: .35rem .15rem; }
+  .inspector { padding: .8rem; }
+  .inspectorStrip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .occupancy { grid-template-columns: 1fr; gap: .35rem; }
+  .occupancy small { margin-top: .1rem; }
+  .workingState { grid-template-columns: 1fr; gap: .35rem; }
 }

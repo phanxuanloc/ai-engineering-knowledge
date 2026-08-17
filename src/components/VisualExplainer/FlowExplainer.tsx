@@ -41,6 +41,21 @@ export type FlowExplainerTransition = {
   message?: string;
   repeat?: boolean;
 };
+export type FlowExplainerInspectionItem = {
+  label: string;
+  state?: "available" | "selected" | "preserved" | "rejected" | "evicted";
+};
+export type FlowExplainerInspection = {
+  decision?: string;
+  invocation?: string;
+  selected?: string;
+  context?: string;
+  occupancy?: number;
+  occupancyLabel?: string;
+  items?: FlowExplainerInspectionItem[];
+  stateLabel?: string;
+  state?: string[];
+};
 export type FlowExplainerStep = {
   title: string;
   description: string;
@@ -53,6 +68,7 @@ export type FlowExplainerStep = {
   repeat?: boolean;
   transitions?: FlowExplainerTransition[];
   durationMs?: number;
+  inspection?: FlowExplainerInspection;
 };
 export type FlowExplainerScenario = {
   id: string;
@@ -223,13 +239,11 @@ function PacketEdge({
 const nodeTypes = { explainer: ExplainerNodeView };
 const edgeTypes = { packet: PacketEdge };
 function inferEdges(nodes: FlowExplainerNode[]): FlowExplainerEdge[] {
-  return nodes
-    .slice(1)
-    .map((n, i) => ({
-      id: `${nodes[i].id}-${n.id}`,
-      source: nodes[i].id,
-      target: n.id,
-    }));
+  return nodes.slice(1).map((n, i) => ({
+    id: `${nodes[i].id}-${n.id}`,
+    source: nodes[i].id,
+    target: n.id,
+  }));
 }
 
 // Mobile must preserve authored topology semantics. Explicit column/row metadata means the
@@ -486,13 +500,7 @@ export function FlowExplainer({
           ? "persistent"
           : "idle",
     },
-    position: resolveScenarioPosition(
-      n,
-      i,
-      mobile,
-      compactSequence,
-      wideStage,
-    ),
+    position: resolveScenarioPosition(n, i, mobile, compactSequence, wideStage),
     width: NODE_WIDTH,
     height: NODE_HEIGHT,
     draggable: false,
@@ -641,6 +649,85 @@ export function FlowExplainer({
           </div>
         </aside>
       </div>
+      {step.inspection && (
+        <section className={styles.inspector} aria-label="Runtime state">
+          <div className={styles.inspectorStrip}>
+            {step.inspection.decision && (
+              <div>
+                <span>Current decision</span>
+                <strong>{step.inspection.decision}</strong>
+              </div>
+            )}
+            {step.inspection.invocation && (
+              <div>
+                <span>Invocation</span>
+                <strong>{step.inspection.invocation}</strong>
+              </div>
+            )}
+            {step.inspection.context && (
+              <div>
+                <span>Context</span>
+                <strong>{step.inspection.context}</strong>
+              </div>
+            )}
+            {step.inspection.selected && (
+              <div>
+                <span>Selected</span>
+                <strong>{step.inspection.selected}</strong>
+              </div>
+            )}
+          </div>
+          {step.inspection.occupancy !== undefined && (
+            <div className={styles.occupancy}>
+              <div>
+                <span>Context budget</span>
+                <strong>
+                  {step.inspection.occupancyLabel ??
+                    `${step.inspection.occupancy}%`}
+                </strong>
+              </div>
+              <div
+                className={styles.occupancyTrack}
+                aria-label={`Illustrative context occupancy: ${step.inspection.occupancy}%`}
+                role="meter"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={step.inspection.occupancy}
+              >
+                <span style={{ width: `${step.inspection.occupancy}%` }} />
+              </div>
+              <small>Illustrative, not a measured run</small>
+            </div>
+          )}
+          {step.inspection.items?.length ? (
+            <div className={styles.contextItems} aria-label="Context items">
+              {step.inspection.items.map((item) => (
+                <span
+                  className={clsx(
+                    styles.contextItem,
+                    styles[`contextItem_${item.state ?? "available"}`],
+                  )}
+                  key={item.label}
+                >
+                  <i aria-hidden="true" />
+                  {item.label}
+                  <em>{item.state ?? "available"}</em>
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {step.inspection.state?.length ? (
+            <div className={styles.workingState}>
+              <span>{step.inspection.stateLabel ?? "Working state"}</span>
+              <ul>
+                {step.inspection.state.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      )}
       <div className={styles.timeline}>
         <div className={styles.transport}>
           <button
