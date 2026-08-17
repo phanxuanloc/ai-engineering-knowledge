@@ -271,3 +271,77 @@ topics:
       - api-communication
     related:
       - api-communication
+      - database-design
+  database-design:
+    title: Database Design
+    category: Software Engineering
+    status: learning
+    note: docs/software-engineering/database-design-foundations.mdx
+    learned_at: 2026-08-17
+    last_reviewed: null
+    confidence: 3
+    checkpoints:
+      - relational-data-modeling
+      - normalization-fundamentals
+      - index-design-fundamentals
+      - transactions-and-acid
+      - concurrency-fundamentals
+      - isolation-fundamentals
+    checkpoint_progress:
+      relational-data-modeling:
+        status: understood
+        note: docs/software-engineering/database-design-foundations.mdx
+        learned_at: 2026-08-17
+        evidence:
+          - distinguished-entities-from-attributes-and-primary-keys-from-foreign-keys
+          - placed-the-foreign-key-on-the-many-side-for-user-to-agent
+          - modeled-agent-to-tool-and-user-to-organization-as-junction-entities
+          - placed-permission-and-role-attributes-on-the-relationship-entity
+          - selected-a-composite-uniqueness-constraint-to-prevent-duplicate-membership
+      normalization-fundamentals:
+        status: understood
+        note: docs/software-engineering/database-design-foundations.mdx
+        learned_at: 2026-08-17
+        evidence:
+          - explained-normalization-as-one-business-fact-per-clear-source-of-truth
+          - distinguished-current-model-price-from-historical-run-price-snapshot
+      index-design-fundamentals:
+        status: understood
+        note: docs/software-engineering/database-design-foundations.mdx
+        learned_at: 2026-08-17
+        evidence:
+          - designed-indexes-from-query-access-patterns-rather-than-columns-in-isolation
+          - selected-agent-id-created-at-for-latest-runs-by-agent
+          - explained-leftmost-prefix-order-read-write-tradeoff-and-selectivity
+          - distinguished-integrity-constraints-from-performance-indexes
+      transactions-and-acid:
+        status: understood
+        note: docs/software-engineering/database-design-foundations.mdx
+        learned_at: 2026-08-17
+        evidence:
+          - explained-transaction-as-business-operation-that-commits-or-rolls-back-together
+          - explained-atomicity-consistency-isolation-and-durability
+          - kept-order-database-mutations-in-a-short-transaction-and-external-email-outside
+          - recognized-database-commit-and-external-side-effect-coordination-as-a-separate-reliability-problem
+      concurrency-fundamentals:
+        status: understood
+        note: docs/software-engineering/database-design-foundations.mdx
+        learned_at: 2026-08-17
+        evidence:
+          - identified-the-read-decision-write-check-then-act-race
+          - selected-an-atomic-conditional-task-claim-update
+          - used-affected-rows-equals-one-to-identify-the-winning-worker
+      isolation-fundamentals:
+        status: understood
+        note: docs/software-engineering/database-design-foundations.mdx
+        learned_at: 2026-08-17
+        evidence:
+          - distinguished-transaction-boundary-from-isolation-and-concurrency-mechanisms
+          - explained-dirty-read-non-repeatable-read-and-phantom-read
+          - identified-read-committed-as-insufficient-for-stable-repeated-row-reads
+          - qualified-repeatable-read-and-other-isolation-semantics-by-database-engine
+    next_checkpoint: sql-vs-nosql-and-data-modeling
+    experiments: []
+    prerequisites: []
+    related:
+      - system-design
