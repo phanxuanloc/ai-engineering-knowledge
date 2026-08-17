@@ -1,0 +1,147 @@
+---
+title: System Design Fundamentals
+description: Mental model để đi từ requirements và bottleneck tới building block phù hợp cùng trade-off của nó.
+tags: [system-design, distributed-systems, scalability, reliability]
+---
+
+import {Principle, TLDR} from '@site/src/components/Learning';
+
+# System Design Fundamentals
+
+## TL;DR
+
+<TLDR>
+
+System Design không bắt đầu bằng việc chọn công nghệ. Hãy đi theo chuỗi **requirements → workload/bottleneck → architectural property → building block → trade-off**, rồi tách rõ bài toán capacity, correctness, durability và realtime delivery vì mỗi bài toán cần một cơ chế khác nhau.
+
+</TLDR>
+
+## Mental Model
+
+Một quyết định kiến trúc tốt phải trả lời tuần tự:
+
+1. Hệ thống phải làm gì và phải đạt property nào?
+2. Workload thiên về read hay write, bottleneck nằm ở đâu?
+3. Cần scale, latency thấp, availability, durability hay correctness ở mức nào?
+4. Building block nào trực tiếp tạo ra property đó?
+5. Lựa chọn này thêm complexity hoặc trade-off gì?
+
+<Principle label="Decision rule">
+Queue hay scaling giải quyết capacity; correctness cần một cơ chế consistency riêng.
+</Principle>
+
+## Core Concepts
+
+### Requirements trước technology
+
+**Functional requirements** mô tả hệ thống làm gì. **Non-functional requirements** mô tả các property như scale, latency, availability, durability và correctness. Technology chỉ nên xuất hiện sau khi requirements, workload và bottleneck đã rõ.
+
+Read-heavy và write-heavy workload dẫn tới lựa chọn khác nhau. Một Product API có khoảng `50,000 reads/s` nhưng dữ liệu chỉ đổi vài lần mỗi ngày có bottleneck ở repeated reads, nên cache trước Database trực tiếp giảm tải hơn Queue hoặc việc chia service tùy tiện.
+
+### Durable state, fast copy và horizontal scale
+
+- **Database** giữ durable state và thường là source of truth.
+- **Cache** giữ bản sao nhanh hơn để giảm latency và read load, đổi lại phải xử lý stale data, invalidation và consistency.
+- **Load Balancer + stateless service instances** cho phép phân phối request và horizontal scaling. Nếu instance giữ session hoặc routing state chỉ trong RAM, việc scale và failover trở nên khó hơn.
+- **Vertical scaling** tăng tài nguyên của một máy và có giới hạn vật lý. **Horizontal scaling** thêm instance, tăng khả năng phân phối tải nhưng cũng thêm distributed-system complexity.
+
+### Async processing: Queue, Worker và job state
+
+Queue phù hợp khi caller không cần chờ công việc dài hoặc background work hoàn tất. Với một AI Coding Agent chạy test khoảng năm phút, request có thể tạo job, nhận `job_id`, rồi đọc `status`; Worker xử lý job phía sau thay vì giữ HTTP request mở.
+
+Queue cũng có thể buffer burst. Tuy nhiên, trong concert booking có `100,000 req/s` cho 500 ghế, Queue chỉ làm phẳng tải; việc ngăn double booking vẫn cần reservation update atomic/consistent tại source of truth.
+
+### URL Shortener: read path, cache và hot key
+
+URL Shortener có hai path khác nhau:
+
+- Write path: `long URL → short key → persistent mapping`.
+- Redirect path: `short_key → original_url`.
+
+Khi redirect traffic khoảng `100,000 req/s` còn create traffic khoảng `1,000 req/s`, cache mapping `short_key → original_url` là optimization tự nhiên. Stateless Redirect Services có thể scale sau Load Balancer, trong khi Database vẫn giữ mapping bền vững.
+
+Aggregate cache capacity chưa đảm bảo tải được phân bố đều. Nếu một short URL chiếm 30% redirect traffic, đó là **hot-key/skewed-load problem**: một key hoặc cache shard có thể thành hotspot dù toàn cluster còn capacity.
+
+Short key có thể được tạo từ unique identifier rồi encode bằng alphabet gọn như Base62. Với redirect, `301` có thể đẩy mạnh caching và giảm traffic về service; `302` thường giữ nhiều control và observability hơn. Chọn semantics theo nhu cầu caching, analytics và khả năng thay đổi đích.
+
+### Rate Limiter: shared state phải đi cùng atomicity
+
+Rate Limiter bảo vệ API, downstream resources, cost, quota và fairness. Đặt nó gần edge/API Gateway giúp reject request trước khi request tiêu thụ tài nguyên sâu hơn.
+
+Counter local trên từng server không tạo ra global limit. Nếu 10 server mỗi server cho `100 requests/min/user`, một user có thể đạt gần `1,000 requests/min` khi request được phân phối qua cả 10 server. Distributed rate limiting thường cần shared state; nhưng shared state thôi chưa đủ. Khi hai server cùng đọc count `99`, thao tác **check-and-increment phải atomic** để chỉ một request vượt qua limit `100`.
+
+**Fixed Window** đơn giản nhưng có thể cho phép burst ở ranh giới hai window. **Token Bucket** cho phép controlled burst bằng bucket capacity và giới hạn tốc độ dài hạn bằng refill rate.
+
+### Notification: retry làm xuất hiện duplicate risk
+
+Notification delivery là async workload tự nhiên. Business transaction chỉ nên ghi nhận notification intent/event; Queue buffer spike và Worker giao tiếp với email, push hoặc SMS provider.
+
+Failure tạm thời có thể retry với backoff; failure đã vượt retry budget có thể chuyển sang DLQ để điều tra hoặc xử lý lại. Nhưng timeout không chứng minh side effect đã thất bại: provider có thể đã gửi email còn acknowledgement bị mất. Retry lúc này có thể gửi trùng.
+
+Mô hình thực dụng là **at-least-once delivery + ACK sau processing + idempotent processing**. At-most-once giảm duplicate nhưng có thể mất việc. Không nên tuyên bố end-to-end exactly-once chỉ từ Queue khi network và external provider vẫn có thể tạo ambiguous outcomes.
+
+### Chat: delivery channel khác durable storage
+
+WebSocket phù hợp với long-lived bidirectional realtime communication và tránh polling lặp lại. Tuy nhiên, connection location là distributed state: nếu User A ở Server 3 và User B ở Server 17, Server 3 cần shared connection registry/router để biết server nào đang giữ connection của B.
+
+WebSocket chỉ là delivery channel, không phải durable message storage. Message cần sống qua disconnect phải được persist vào Message Store; user offline nhận unread messages và đồng bộ lại sau reconnect.
+
+Delivery và ordering cũng là hai bài toán riêng. Thay vì cố tạo global order, chat thường chỉ cần order trong từng conversation; conversation ID có thể làm ordering/partition key để các message cùng conversation đi qua cùng ordered path.
+
+## Example
+
+Giả sử một concert booking system nhận burst `100,000 req/s` cho 500 ghế:
+
+1. Load Balancer phân phối request tới stateless API instances.
+2. Queue buffer burst để downstream không sụp vì tải tức thời.
+3. Worker lần lượt xử lý reservation intent.
+4. Source-of-truth store dùng atomic conditional update hoặc consistency control tương đương để một ghế chỉ được giữ một lần.
+5. Notification event được enqueue sau khi reservation thành công; notification Worker retry theo delivery policy và xử lý idempotently.
+
+Queue cải thiện capacity và decoupling, nhưng bước 4 mới bảo vệ correctness. Nếu bỏ bước 4, nhiều Worker vẫn có thể bán cùng một ghế.
+
+## When to Use
+
+- Dùng **Cache** khi read-heavy workload lặp lại dữ liệu ít thay đổi và Database read là bottleneck.
+- Dùng **Load Balancer + stateless instances** khi cần horizontal scaling cho request processing.
+- Dùng **Queue + Worker** khi công việc dài, có thể xử lý async hoặc cần buffer burst.
+- Dùng **shared atomic state** khi nhiều instance cùng enforce một global invariant như quota hoặc seat availability.
+- Dùng **WebSocket** cho realtime bidirectional delivery, nhưng kết hợp durable store khi message không được mất qua disconnect.
+- Luôn đánh giá trade-off mới: cache thêm invalidation, Queue thêm retry/duplicate/order concerns, horizontal scaling thêm distributed state và coordination.
+
+## Common Mistakes
+
+- **Chọn technology trước bottleneck:** thêm Queue, microservice hoặc cache mà chưa biết property nào cần cải thiện chỉ làm tăng complexity.
+- **Coi cache là source of truth:** cache là fast copy; invalidation và stale data phải được chấp nhận hoặc kiểm soát rõ.
+- **Coi Queue là correctness mechanism:** Queue buffer tải nhưng không tự ngăn race condition hay double booking.
+- **Coi shared state là đủ:** concurrent read-modify-write vẫn sai nếu check-and-update không atomic.
+- **Retry mù quáng sau timeout:** side effect có thể đã xảy ra; retry cần idempotency hoặc deduplication strategy.
+- **Coi WebSocket là message store:** connection có thể mất; durability phải đến từ persisted state.
+- **Đòi global ordering không cần thiết:** ordering scope rộng làm coordination đắt hơn; thường nên giới hạn theo conversation hoặc entity.
+
+## Related Knowledge
+
+- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — bổ sung semantics của HTTP request, timeout, remote failure và `Idempotency-Key`, là nền tảng để hiểu async job API và retry an toàn trong distributed systems.
+
+## Self-test
+
+1. Chuỗi reasoning nào nên đi trước việc chọn building block?
+2. Vì sao Cache phù hợp hơn Queue cho Product API read-heavy có dữ liệu ít thay đổi?
+3. Trong concert booking, Queue và atomic reservation lần lượt giải quyết vấn đề gì?
+4. Vì sao shared counter vẫn có thể enforce rate limit sai?
+5. Timeout từ email provider tạo ra rủi ro nào khi retry?
+6. WebSocket, connection registry và Message Store có ba trách nhiệm khác nhau như thế nào?
+7. Một hot URL chiếm 30% traffic cho thấy bottleneck nào?
+
+<details>
+<summary>Answers</summary>
+
+1. Requirements → workload/bottleneck → architectural property → building block → trade-off.
+2. Bottleneck là repeated Database reads; cache phục vụ bản sao nhanh ngay trên read path, còn Queue không giảm lookup đồng bộ đó.
+3. Queue buffer burst/capacity; atomic reservation bảo vệ correctness và ngăn double booking.
+4. Nhiều server có thể cùng đọc một giá trị rồi cùng update; check-and-increment phải atomic.
+5. Provider có thể đã gửi email nhưng ACK bị mất, nên retry có thể gửi trùng; processing cần idempotent hoặc deduplicate.
+6. WebSocket vận chuyển realtime, registry tìm server giữ live connection, Message Store giữ message bền vững qua disconnect.
+7. Hot-key/skewed-load hotspot ở key hoặc cache shard, không nhất thiết là thiếu aggregate Database/cache capacity.
+
+</details>

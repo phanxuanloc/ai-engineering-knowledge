@@ -47,6 +47,7 @@ const sidebars: SidebarsConfig = {
         'software-engineering/api-communication-fundamentals',
         'software-engineering/git-workflows',
         'software-engineering/search-and-ranking-fundamentals',
+        'software-engineering/system-design-fundamentals',
       ],
     },
   ],
