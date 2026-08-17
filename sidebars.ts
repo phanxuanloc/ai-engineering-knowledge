@@ -45,6 +45,7 @@ const sidebars: SidebarsConfig = {
       link: {type: 'doc', id: 'software-engineering/index'},
       items: [
         'software-engineering/api-communication-fundamentals',
+        'software-engineering/database-design-foundations',
         'software-engineering/git-workflows',
         'software-engineering/search-and-ranking-fundamentals',
         'software-engineering/system-design-fundamentals',
