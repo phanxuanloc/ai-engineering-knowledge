@@ -1,0 +1,151 @@
+---
+title: Distributed Rate Limiter System Design
+description: Thiết kế global quota từ enforcement boundary, shared state và atomicity tới burst semantics.
+tags: [system-design, rate-limiting, distributed-systems, atomicity]
+---
+
+import {Principle, TLDR} from '@site/src/components/Learning';
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
+
+# Distributed Rate Limiter System Design
+
+## TL;DR
+
+<TLDR>
+
+Distributed Rate Limiter phải trả lời ba câu hỏi: giới hạn được tính theo identity nào, trong time model nào, và nhiều server cùng cập nhật counter ra sao. Shared state tạo global view, nhưng chỉ **atomic check-and-increment** mới bảo vệ quota dưới concurrency.
+
+</TLDR>
+
+## Mental Model
+
+Mỗi request đi qua một decision point gần edge:
+
+`request identity → policy lookup → atomic allowance decision → allow/reject`
+
+Rate limiter không chỉ “đếm request”. Nó enforce một invariant kiểu: *trong scope và time model đã chọn, identity này không được tiêu thụ quá allowance*.
+
+<Principle label="Correctness boundary">Global limit cần global coordination; local counters chỉ enforce local limits.</Principle>
+
+<FlowExplainer
+  title="Atomic allowance decision qua nhiều API instances"
+  description="Shared state tạo global view; atomic check-and-increment biến policy thành một decision không có race window."
+  scenarios={[
+    {
+      id: 'atomic-limit',
+      label: 'Global limit',
+      layout: 'compact',
+      nodes: [
+        {id: 'request', label: 'Request', detail: 'user_42', role: 'client'},
+        {id: 'gateway', label: 'API Gateway', detail: 'Enforcement point', role: 'network'},
+        {id: 'limiter', label: 'Rate Limiter', detail: 'Policy decision', role: 'service'},
+        {id: 'counter', label: 'Shared Counter', detail: 'Atomic state', role: 'database'},
+        {id: 'api', label: 'Protected API', detail: 'Downstream cost', role: 'service'},
+      ],
+      edges: [
+        {id: 'request-gateway', source: 'request', target: 'gateway'},
+        {id: 'gateway-limiter', source: 'gateway', target: 'limiter'},
+        {id: 'limiter-counter', source: 'limiter', target: 'counter'},
+        {id: 'counter-limiter', source: 'counter', target: 'limiter'},
+        {id: 'limiter-api', source: 'limiter', target: 'api'},
+      ],
+      steps: [
+        {title: '1 · Identify policy scope', edgeId: 'request-gateway', from: 'request', to: 'gateway', message: 'user_42', description: 'Gateway xác định stable identity trước khi request tiêu thụ downstream resources.'},
+        {title: '2 · Ask for allowance', edgeId: 'gateway-limiter', from: 'gateway', to: 'limiter', message: '100 req/min', description: 'Limiter chọn policy theo identity, endpoint và time model.'},
+        {title: '3 · Atomic check-and-increment', edgeId: 'limiter-counter', from: 'limiter', to: 'counter', message: 'count < limit?', description: 'Compare và increment xảy ra như một atomic operation, không tách thành read rồi write.'},
+        {title: '4 · Allow decision', edgeId: 'counter-limiter', from: 'counter', to: 'limiter', message: 'allowed', description: 'Shared result áp dụng nhất quán dù request đi qua API instance nào.'},
+        {title: '5 · Enter protected path', edgeId: 'limiter-api', from: 'limiter', to: 'api', message: 'forward', description: 'Chỉ request còn allowance mới tiêu thụ downstream capacity hoặc cost.'},
+      ],
+    },
+  ]}
+/>
+
+## Core Concepts
+
+### Policy phải có scope rõ
+
+Một policy cần xác định ít nhất:
+
+- **Identity:** user, API key, tenant, IP hoặc resource nào bị giới hạn?
+- **Allowance:** bao nhiêu request/token/cost unit?
+- **Time model:** fixed interval hay refill liên tục?
+- **Decision:** reject, delay hay degrade khi hết allowance?
+
+Nếu identity hoặc scope mơ hồ, một “100 requests/minute” chưa đủ để implement nhất quán.
+
+### Enforcement gần edge
+
+Đặt Rate Limiter gần API Gateway/edge giúp reject trước khi request tiêu thụ Database connection, downstream quota hoặc model cost. Nhưng decision vẫn phải dựa trên policy đúng cho endpoint/tenant; một limiter sớm nhưng dùng sai identity không bảo vệ fairness mong muốn.
+
+### Local counter không tạo global quota
+
+Với 10 API servers, nếu mỗi server tự cho một user `100 requests/min`, Load Balancer có thể phân phối request khiến user đạt gần `1,000 requests/min`. Sticky routing có thể giảm biểu hiện này nhưng làm correctness phụ thuộc routing và complicate failover; nó không biến local state thành một global invariant mạnh.
+
+### Shared state vẫn cần atomicity
+
+Giả sử counter đang là `99` và limit là `100`. Hai server cùng read `99`, cùng kết luận request được phép rồi cùng write `100`; quota đã bị vượt dù final value trông hợp lệ. Vì vậy read → compare → increment phải là một atomic operation hoặc mechanism tương đương tại coordination store.
+
+Atomicity giải quyết race của một key, còn distribution vẫn tạo trade-off về latency, availability và hotspot. User/tenant traffic lớn có thể biến chính quota key thành hot key.
+
+### Fixed Window và Token Bucket
+
+- **Fixed Window:** counter reset theo window; dễ hiểu nhưng request có thể burst quanh boundary của hai window liên tiếp.
+- **Token Bucket:** bucket có capacity và refill rate; capacity quyết định burst được phép, refill quyết định long-term rate.
+
+Chọn algorithm từ product semantics. Nếu cần controlled burst, Token Bucket diễn đạt trực tiếp hơn; nếu boundary burst được chấp nhận và simplicity quan trọng, Fixed Window có thể đủ.
+
+### Failure decision là trade-off
+
+Khi coordination store unavailable, hệ thống phải chọn behavior phù hợp risk: cho request đi qua có thể vượt quota; chặn request có thể giảm availability. Không có default đúng cho mọi endpoint—cost-sensitive model API, login protection và low-risk read endpoint có thể ưu tiên khác nhau.
+
+## Example
+
+Policy: `100 requests/minute/user` trên 10 stateless API instances.
+
+1. Gateway xác định stable `user_id`.
+2. Limiter tạo key theo user và policy window.
+3. Shared store thực hiện atomic check-and-increment.
+4. Nếu còn allowance, request đi tiếp; nếu hết, edge trả rejection trước khi gọi downstream.
+
+Nếu chỉ chuyển counter từ RAM sang shared store nhưng vẫn tách `GET count` và `SET count`, design vẫn race dưới concurrency.
+
+## When to Use
+
+- Bảo vệ downstream capacity, paid API/model cost, quota và fairness.
+- Dùng shared atomic state khi quota phải global qua nhiều instances.
+- Dùng Fixed Window khi simplicity và coarse boundary phù hợp.
+- Dùng Token Bucket khi cần cho phép burst có kiểm soát nhưng giữ long-term rate.
+- Định nghĩa fail-open/fail-closed theo risk của từng protected operation.
+
+## Common Mistakes
+
+- **Counter local cho global policy:** tổng allowance tăng theo số instance.
+- **Shared state nhưng read-modify-write không atomic:** concurrent request cùng được allow.
+- **Không định nghĩa identity:** NAT, shared account hoặc missing auth làm quota scope sai.
+- **Nhầm burst capacity với sustained rate:** trong Token Bucket, bucket size và refill rate là hai knobs khác nhau.
+- **Không thiết kế failure behavior:** store outage bất ngờ biến thành security gap hoặc availability incident.
+
+## Related Knowledge
+
+- [System Design Fundamentals](./system-design-fundamentals.mdx) — phân biệt capacity scaling với consistency control.
+- [Database Design Foundations](./database-design-foundations.mdx) — giải thích check-then-act race và atomic conditional update.
+- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — đặt limiter tại communication boundary và làm rõ response/error semantics.
+
+## Self-test
+
+1. Một rate-limit policy cần những dimensions nào?
+2. Vì sao 10 local counters không enforce một global limit?
+3. Shared counter vẫn sai trong race `99 → 100` như thế nào?
+4. Fixed Window và Token Bucket khác nhau ở burst semantics nào?
+5. Vì sao coordination-store outage không có một default xử lý đúng cho mọi API?
+
+<details>
+<summary>Answers</summary>
+
+1. Identity/scope, allowance, time model và action khi hết allowance.
+2. Mỗi instance cấp allowance riêng, nên tổng effective quota tăng theo số instance nhận traffic.
+3. Hai server có thể cùng read 99 và cùng allow; check-and-increment phải atomic.
+4. Fixed Window có boundary burst; Token Bucket biểu diễn burst bằng capacity và sustained rate bằng refill.
+5. Fail-open ưu tiên availability nhưng có thể vượt quota; fail-closed bảo vệ quota nhưng có thể từ chối traffic hợp lệ.
+
+</details>

@@ -1,0 +1,174 @@
+---
+title: URL Shortener System Design
+description: Thiết kế read-heavy redirect service từ access path, key generation và cache tới hot-key trade-off.
+tags: [system-design, url-shortener, caching, scalability]
+---
+
+import {Principle, TLDR} from '@site/src/components/Learning';
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
+
+# URL Shortener System Design
+
+## TL;DR
+
+<TLDR>
+
+URL Shortener là bài toán **write mapping một lần, read redirect rất nhiều lần**. Design nên tách create path khỏi redirect path, giữ mapping bền vững trong Database, đặt cache trên redirect path và kiểm tra hot-key skew thay vì chỉ tính aggregate capacity.
+
+</TLDR>
+
+## Mental Model
+
+Hãy xem short URL như một immutable lookup key:
+
+`long URL → unique ID → compact key → durable mapping`
+
+Sau đó redirect path chỉ cần:
+
+`short key → cache lookup → persistent mapping khi miss → redirect`
+
+<Principle label="Primary design pressure">Tối ưu path có traffic lớn nhất, nhưng không để fast path làm mất source of truth.</Principle>
+
+<FlowExplainer
+  title="Redirect path: Cache hit và Cache miss"
+  description="Cache rút Database khỏi hot path khi hit; Database vẫn là durable fallback khi miss."
+  scenarios={[
+    {
+      id: 'cache-hit',
+      label: 'Cache hit',
+      layout: 'compact',
+      nodes: [
+        {id: 'client', label: 'Browser', detail: 'GET /abc123', role: 'client'},
+        {id: 'redirect', label: 'Redirect Service', detail: 'Stateless lookup', role: 'service'},
+        {id: 'cache', label: 'Cache', detail: 'Fast mapping copy', role: 'data'},
+        {id: 'database', label: 'Database', detail: 'Source of truth', role: 'database'},
+      ],
+      edges: [
+        {id: 'client-redirect', source: 'client', target: 'redirect'},
+        {id: 'redirect-cache', source: 'redirect', target: 'cache'},
+        {id: 'cache-redirect', source: 'cache', target: 'redirect'},
+        {id: 'redirect-client', source: 'redirect', target: 'client'},
+      ],
+      steps: [
+        {title: '1 · Redirect request', edgeId: 'client-redirect', from: 'client', to: 'redirect', message: 'GET /abc123', description: 'Browser gửi short key tới một stateless Redirect Service.'},
+        {title: '2 · Lookup fast copy', edgeId: 'redirect-cache', from: 'redirect', to: 'cache', message: 'abc123', description: 'Service kiểm tra cache trước vì redirect là dominant read path.'},
+        {title: '3 · Cache hit', edgeId: 'cache-redirect', from: 'cache', to: 'redirect', message: 'original URL', description: 'Mapping có sẵn nên Database không chịu tải cho request này.'},
+        {title: '4 · Return redirect', edgeId: 'redirect-client', from: 'redirect', to: 'client', message: '301 / 302', description: 'Redirect semantics được chọn theo caching, analytics và mutability requirements.'},
+      ],
+    },
+    {
+      id: 'cache-miss',
+      label: 'Cache miss',
+      layout: 'compact',
+      nodes: [
+        {id: 'client', label: 'Browser', detail: 'GET /new-key', role: 'client'},
+        {id: 'redirect', label: 'Redirect Service', detail: 'Stateless lookup', role: 'service'},
+        {id: 'cache', label: 'Cache', detail: 'No mapping yet', role: 'data'},
+        {id: 'database', label: 'Database', detail: 'Source of truth', role: 'database'},
+      ],
+      edges: [
+        {id: 'client-redirect', source: 'client', target: 'redirect'},
+        {id: 'redirect-cache', source: 'redirect', target: 'cache'},
+        {id: 'cache-redirect', source: 'cache', target: 'redirect'},
+        {id: 'redirect-database', source: 'redirect', target: 'database'},
+        {id: 'database-redirect', source: 'database', target: 'redirect'},
+        {id: 'redirect-cache-populate', source: 'redirect', target: 'cache'},
+        {id: 'redirect-client', source: 'redirect', target: 'client'},
+      ],
+      steps: [
+        {title: '1 · Redirect request', edgeId: 'client-redirect', from: 'client', to: 'redirect', message: 'GET /new-key', description: 'Request tới Redirect Service như bình thường.'},
+        {title: '2 · Cache miss', edgeId: 'redirect-cache', from: 'redirect', to: 'cache', message: 'lookup miss', description: 'Cache trả miss về Redirect Service; fast copy chưa có mapping.'},
+        {title: '3 · Read source of truth', edgeId: 'redirect-database', from: 'redirect', to: 'database', message: 'new-key', description: 'Service fallback sang durable store; cache loss không làm mất URL.'},
+        {title: '4 · Receive durable mapping', edgeId: 'database-redirect', from: 'database', to: 'redirect', message: 'original URL', description: 'Database trả canonical mapping cho request hiện tại.'},
+        {title: '5 · Populate cache', edgeId: 'redirect-cache-populate', from: 'redirect', to: 'cache', message: 'mapping', description: 'Service đưa mapping vào cache để repeated reads sau đi theo fast path.'},
+        {title: '6 · Return redirect', edgeId: 'redirect-client', from: 'redirect', to: 'client', message: '301 / 302', description: 'Request miss chậm hơn nhưng khôi phục fast path cho traffic tiếp theo.'},
+      ],
+    },
+  ]}
+/>
+
+## Core Concepts
+
+### Requirements và access paths
+
+Functional core gồm tạo short URL và redirect về destination. Khi redirect traffic khoảng `100,000 req/s` còn create traffic khoảng `1,000 req/s`, hai path không nên bị xem như một workload đồng nhất:
+
+- **Create path:** validate URL, cấp short key, ghi mapping bền vững.
+- **Redirect path:** lookup key với latency thấp, rồi trả redirect response.
+
+Tách path giúp scale Redirect Service độc lập và ưu tiên optimization đúng bottleneck.
+
+### Key generation và collision boundary
+
+Một hướng đơn giản là cấp unique identifier rồi encode bằng alphabet gọn như Base62. Uniqueness được giải quyết ở bước cấp ID; encoding chỉ làm representation ngắn hơn. Nếu dùng một cơ chế tạo key khác, design vẫn phải chỉ rõ nơi collision được phát hiện và xử lý—không thể giả định key ngắn tự nhiên là unique.
+
+### Cache là fast copy, Database là source of truth
+
+Cache giữ `short_key → original_url` cho repeated reads. Cache hit loại Database khỏi request path; cache miss đọc Database rồi có thể populate lại cache. Vì mapping bền vững vẫn ở Database, cache loss không làm mất URL mà chỉ làm tăng latency/load tạm thời.
+
+Cache strategy phải gắn với semantics của mapping. Nếu destination có thể thay đổi, TTL và invalidation cần giới hạn thời gian stale. Nếu mapping immutable, cache policy đơn giản hơn nhưng vẫn cần tính eviction và cold-start behavior.
+
+### Hot key và skewed load
+
+Một short URL viral chiếm 30% redirect traffic tạo ra **hot key**. Vấn đề không còn là tổng cache memory mà là traffic tập trung vào một key, node hoặc shard. Vì vậy capacity review cần hỏi cả:
+
+- Tổng reads/s là bao nhiêu?
+- Key distribution có đều không?
+- Một key nóng nhất tạo bao nhiêu traffic?
+- Cache layer có biến một hotspot Database thành hotspot cache/shard khác không?
+
+### Redirect semantics là product trade-off
+
+`301` có thể khuyến khích caching mạnh hơn và giảm traffic quay lại service. `302` thường giữ nhiều control và observability hơn khi destination hoặc analytics cần đi qua service. Đây không chỉ là HTTP detail: lựa chọn status ảnh hưởng load, khả năng thay đổi đích và lượng redirect event hệ thống còn quan sát được.
+
+## Example
+
+Giả sử mapping `abc123 → https://example.com/articles/system-design`:
+
+1. Client gọi `GET /abc123`.
+2. Redirect Service lookup `abc123` trong cache.
+3. Nếu hit, service trả redirect ngay; nếu miss, service đọc Database rồi populate cache.
+4. Nếu `abc123` viral, monitor phải nhìn per-key/per-shard load chứ không chỉ cluster-wide hit rate.
+
+Design này scale Redirect Service bằng stateless instances sau Load Balancer, trong khi mapping và cache state nằm ngoài process để instance có thể thay thế/failover.
+
+## When to Use
+
+- Dùng cache khi redirect path read-heavy và mapping được đọc lặp lại.
+- Scale stateless Redirect Service khi request processing là bottleneck.
+- Tách create/redirect capacity khi read/write ratio chênh lệch lớn.
+- Đánh giá hot-key mitigation khi traffic distribution bị skew, dù aggregate capacity vẫn còn.
+- Chọn `301` hoặc `302` từ yêu cầu caching, analytics và mutability của destination.
+
+## Common Mistakes
+
+- **Thiết kế theo average URL:** viral key có thể phá giả định phân phối đều.
+- **Dùng cache như durable store:** cache eviction hoặc restart sẽ làm mất mapping nếu không có source of truth.
+- **Không chỉ rõ collision handling:** key space lớn chỉ làm collision ít hơn, không tự định nghĩa correctness.
+- **Scale service nhưng giữ state local:** local mapping làm routing/failover phụ thuộc instance.
+- **Chọn redirect status theo thói quen:** bỏ qua tác động tới caching, analytics và thay đổi destination.
+
+## Related Knowledge
+
+- [System Design Fundamentals](./system-design-fundamentals.mdx) — cung cấp framework requirements → bottleneck → building block → trade-off.
+- [Database Design Foundations](./database-design-foundations.mdx) — giải thích source of truth, index/access pattern và durability của persistent mapping.
+- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — bổ sung HTTP semantics đứng sau redirect response.
+
+## Self-test
+
+1. Vì sao create path và redirect path nên được capacity-plan riêng?
+2. Unique ID và Base62 encoding giải quyết hai việc khác nhau thế nào?
+3. Cache miss và cache loss ảnh hưởng hệ thống khác nhau ra sao?
+4. Vì sao aggregate cache capacity không chứng minh hệ thống chịu được viral URL?
+5. Yêu cầu nào có thể làm lựa chọn giữa `301` và `302` thay đổi?
+
+<details>
+<summary>Answers</summary>
+
+1. Chúng có traffic ratio, latency sensitivity và operation khác nhau; redirect thường là dominant read path.
+2. ID cấp uniqueness; Base62 chỉ biểu diễn ID ngắn hơn.
+3. Miss làm một request đọc Database; cache loss tạo nhiều miss và tăng backend load nhưng mapping vẫn còn trong durable store.
+4. Một key có thể tập trung traffic vào một shard/node dù toàn cluster còn memory và throughput.
+5. Browser/intermediary caching, analytics visibility, khả năng thay đổi destination và mức control muốn giữ tại service.
+
+</details>

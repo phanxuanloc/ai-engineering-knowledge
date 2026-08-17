@@ -87,10 +87,16 @@ const sidebars: SidebarsConfig = {
             type: 'generated-index',
             title: 'System Design',
             description:
-              'Thiết kế hệ thống từ requirements, workload và bottleneck tới building blocks cùng trade-off.',
+              'Learning path từ fundamentals tới các design chuyên sâu đã được checkpoint.',
             slug: '/software-engineering/system-design',
           },
-          items: ['software-engineering/system-design-fundamentals'],
+          items: [
+            'software-engineering/system-design-fundamentals',
+            'software-engineering/url-shortener-system-design',
+            'software-engineering/distributed-rate-limiter-system-design',
+            'software-engineering/notification-system-design',
+            'software-engineering/chat-system-design',
+          ],
         },
         {
           type: 'category',

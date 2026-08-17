@@ -239,28 +239,28 @@ topics:
           - selected-queue-worker-job-model-for-long-running-agent-task
       url-shortener:
         status: understood
-        note: docs/software-engineering/system-design-fundamentals.mdx
+        note: docs/software-engineering/url-shortener-system-design.mdx
         learned_at: 2026-08-17
         evidence:
           - selected-cache-for-read-heavy-url-redirects
           - identified-hot-key-skew-in-url-shortener
       rate-limiter:
         status: understood
-        note: docs/software-engineering/system-design-fundamentals.mdx
+        note: docs/software-engineering/distributed-rate-limiter-system-design.mdx
         learned_at: 2026-08-17
         evidence:
           - identified-local-rate-limit-counters-as-invalid-global-state
           - selected-atomic-check-and-increment-for-distributed-rate-limit
       notification-system:
         status: understood
-        note: docs/software-engineering/system-design-fundamentals.mdx
+        note: docs/software-engineering/notification-system-design.mdx
         learned_at: 2026-08-17
         evidence:
           - identified-retry-timeout-duplicate-notification-risk
           - selected-at-least-once-with-idempotent-processing
       chat-system:
         status: understood
-        note: docs/software-engineering/system-design-fundamentals.mdx
+        note: docs/software-engineering/chat-system-design.mdx
         learned_at: 2026-08-17
         evidence:
           - identified-distributed-websocket-connection-routing-state

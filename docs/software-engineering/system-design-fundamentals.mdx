@@ -1,10 +1,10 @@
 ---
 title: System Design Fundamentals
-description: Mental model để đi từ requirements và bottleneck tới building block phù hợp cùng trade-off của nó.
+description: Mental model và learning map để đi từ requirements, workload và bottleneck tới system design phù hợp.
 tags: [system-design, distributed-systems, scalability, reliability]
 ---
 
-import {Principle, TLDR} from '@site/src/components/Learning';
+import {ConceptCard, ConceptGrid, Principle, TLDR} from '@site/src/components/Learning';
 import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 # System Design Fundamentals
@@ -13,84 +13,42 @@ import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 <TLDR>
 
-System Design không bắt đầu bằng việc chọn công nghệ. Hãy đi theo chuỗi **requirements → workload/bottleneck → architectural property → building block → trade-off**, rồi tách rõ bài toán capacity, correctness, durability và realtime delivery vì mỗi bài toán cần một cơ chế khác nhau.
+System Design không bắt đầu bằng việc chọn technology. Hãy đi theo chuỗi **requirements → workload/bottleneck → architectural property → building block → trade-off**, rồi tách capacity, correctness, durability và realtime delivery thành các vấn đề riêng vì chúng cần những cơ chế khác nhau.
 
 </TLDR>
 
 ## Mental Model
 
-Một quyết định kiến trúc tốt phải trả lời tuần tự:
+Một bản design tốt phải nối được từng quyết định kỹ thuật với vấn đề mà nó giải quyết:
 
-1. Hệ thống phải làm gì và phải đạt property nào?
-2. Workload thiên về read hay write, bottleneck nằm ở đâu?
-3. Cần scale, latency thấp, availability, durability hay correctness ở mức nào?
-4. Building block nào trực tiếp tạo ra property đó?
-5. Lựa chọn này thêm complexity hoặc trade-off gì?
+1. Hệ thống phải làm gì và property nào không được vi phạm?
+2. Read path, write path hoặc async path nào chịu tải chính?
+3. State nào là durable source of truth, state nào chỉ là fast copy hoặc routing state?
+4. Failure nào có thể xảy ra giữa các bước và retry sẽ tạo hệ quả gì?
+5. Building block được chọn tạo ra property nào và thêm trade-off nào?
 
-<Principle label="Decision rule">{'Queue hay scaling giải quyết capacity; correctness cần một cơ chế consistency riêng.'}</Principle>
+<Principle label="Decision rule">Queue và scaling giải quyết capacity; correctness cần consistency control riêng; realtime transport không thay thế durable storage.</Principle>
 
 <FlowExplainer
-  title="Chọn building block theo vấn đề cần giải quyết"
-  description="Ba runtime story cho thấy Cache, Queue và atomic source of truth tạo ra các property khác nhau; không thể thay thế lẫn nhau chỉ vì cùng nằm trên request path."
+  title="Cùng một request path, ba trách nhiệm khác nhau"
+  description="Capacity, correctness và side-effect delivery xuất hiện nối tiếp nhưng không thể thay thế lẫn nhau."
   scenarios={[
     {
-      id: 'read-heavy-cache',
-      label: 'Read-heavy API',
+      id: 'booking-boundaries',
+      label: 'Booking burst',
       layout: 'compact',
       nodes: [
-        {id: 'client', label: 'Client', detail: 'Repeated product reads', role: 'client'},
-        {id: 'api', label: 'Product API', detail: 'Stateless service', role: 'service'},
-        {id: 'cache', label: 'Cache', detail: 'Fast copy', role: 'data'},
-        {id: 'database', label: 'Database', detail: 'Source of truth', role: 'database'},
-      ],
-      edges: [
-        {id: 'client-api', source: 'client', target: 'api'},
-        {id: 'api-cache', source: 'api', target: 'cache'},
-        {id: 'cache-database', source: 'cache', target: 'database'},
-        {id: 'cache-api', source: 'cache', target: 'api'},
-        {id: 'api-client', source: 'api', target: 'client'},
-      ],
-      steps: [
-        {title: '1 · Product request', edgeId: 'client-api', from: 'client', to: 'api', message: 'GET /products/42', description: 'Client yêu cầu dữ liệu được đọc lặp lại thường xuyên.'},
-        {title: '2 · Check fast copy', edgeId: 'api-cache', from: 'api', to: 'cache', message: 'lookup key', description: 'API kiểm tra Cache trước để giảm repeated reads tới Database.'},
-        {title: '3 · Cache hit', edgeId: 'cache-api', from: 'cache', to: 'api', message: 'cached product', description: 'Khi hit, Cache trả fast copy; Database không nằm trên request path này.'},
-        {title: '4 · Return response', edgeId: 'api-client', from: 'api', to: 'client', message: '200 OK', description: 'Cache trực tiếp giảm read latency và Database load.'},
-      ],
-    },
-    {
-      id: 'async-job',
-      label: 'Long-running job',
-      layout: 'compact',
-      nodes: [
-        {id: 'api', label: 'Agent API', detail: 'Creates job', role: 'service'},
-        {id: 'queue', label: 'Queue', detail: 'Buffers work', role: 'data'},
-        {id: 'worker', label: 'Worker', detail: 'Runs tests', role: 'service'},
-        {id: 'job-store', label: 'Job Store', detail: 'Durable status', role: 'database'},
-      ],
-      steps: [
-        {title: '1 · Enqueue work', from: 'api', to: 'queue', message: 'job_id', description: 'API tạo job và trả identifier thay vì giữ HTTP request mở trong nhiều phút.'},
-        {title: '2 · Worker consumes', from: 'queue', to: 'worker', message: 'job payload', description: 'Queue buffer burst và decouple request handling khỏi background processing.'},
-        {title: '3 · Persist status', from: 'worker', to: 'job-store', message: 'RUNNING → DONE', description: 'Durable Job Store giữ state để client có thể kiểm tra tiến trình và kết quả.'},
-      ],
-    },
-    {
-      id: 'booking-correctness',
-      label: 'Concert booking',
-      layout: 'compact',
-      nodes: [
-        {id: 'load-balancer', label: 'Load Balancer', detail: 'Distributes burst', role: 'network'},
-        {id: 'api', label: 'Booking API', detail: 'Stateless instances', role: 'service'},
-        {id: 'queue', label: 'Queue', detail: 'Buffers intents', role: 'data'},
-        {id: 'worker', label: 'Worker', detail: 'Processes booking', role: 'service'},
+        {id: 'api', label: 'Booking API', detail: 'Accepts intent', role: 'service'},
+        {id: 'queue', label: 'Queue', detail: 'Buffers burst', role: 'data'},
+        {id: 'worker', label: 'Worker', detail: 'Processes intent', role: 'service'},
         {id: 'database', label: 'Database', detail: 'Atomic reservation', role: 'database'},
         {id: 'notification', label: 'Notification', detail: 'Idempotent delivery', role: 'service'},
       ],
       steps: [
-        {title: '1 · Absorb request burst', from: 'load-balancer', to: 'api', message: 'booking request', description: 'Load Balancer phân phối traffic tới các stateless API instances.'},
-        {title: '2 · Buffer booking intent', from: 'api', to: 'queue', message: 'reservation intent', description: 'Queue làm phẳng burst và bảo vệ downstream capacity.'},
-        {title: '3 · Consume intent', from: 'queue', to: 'worker', message: 'booking job', description: 'Worker lấy intent để xử lý; bước này chưa tự bảo đảm ghế là duy nhất.'},
-        {title: '4 · Protect correctness', from: 'worker', to: 'database', message: 'atomic reserve', description: 'Atomic conditional update tại source of truth mới là bước ngăn hai Workers bán cùng một ghế.'},
-        {title: '5 · Deliver side effect', from: 'database', to: 'notification', message: 'reservation confirmed', description: 'Sau khi reservation thành công, notification được xử lý theo retry policy và cần idempotency.'},
+        {title: '1 · Accept intent', from: 'api', to: 'queue', message: 'reservation intent', description: 'Queue hấp thụ burst và tách request handling khỏi processing.'},
+        {title: '2 · Consume work', from: 'queue', to: 'worker', message: 'booking job', description: 'Worker xử lý intent; dequeue chưa có nghĩa ghế đã được giữ đúng.'},
+        {title: '3 · Protect invariant', from: 'worker', to: 'database', message: 'atomic reserve', description: 'Atomic update tại source of truth mới ngăn hai Worker bán cùng một ghế.'},
+        {title: '4 · Deliver side effect', from: 'database', to: 'notification', message: 'confirmed event', description: 'Notification có retry policy riêng và phải xử lý duplicate risk.'},
       ],
     },
   ]}
@@ -98,117 +56,69 @@ Một quyết định kiến trúc tốt phải trả lời tuần tự:
 
 ## Core Concepts
 
-### Requirements trước technology
+### Requirements và workload trước architecture
 
-**Functional requirements** mô tả hệ thống làm gì. **Non-functional requirements** mô tả các property như scale, latency, availability, durability và correctness. Technology chỉ nên xuất hiện sau khi requirements, workload và bottleneck đã rõ.
+**Functional requirements** mô tả hệ thống làm gì. **Non-functional requirements** mô tả scale, latency, availability, durability và correctness. Sau đó mới ước lượng read/write ratio, peak traffic, data size, hot-key risk và những operation cần atomicity. Không có workload thì “scale tốt” chỉ là một tuyên bố mơ hồ.
 
-Read-heavy và write-heavy workload dẫn tới lựa chọn khác nhau. Một Product API có khoảng `50,000 reads/s` nhưng dữ liệu chỉ đổi vài lần mỗi ngày có bottleneck ở repeated reads, nên cache trước Database trực tiếp giảm tải hơn Queue hoặc việc chia service tùy tiện.
+### Phân loại state theo trách nhiệm
 
-### Durable state, fast copy và horizontal scale
+<ConceptGrid>
+  <ConceptCard title="Durable state">Database hoặc persistent store giữ business fact phải sống qua restart và thường là source of truth.</ConceptCard>
+  <ConceptCard title="Fast copy">Cache giảm latency và repeated read load, đổi lại có stale data, invalidation và skew.</ConceptCard>
+  <ConceptCard title="Coordination state">Counter, connection registry hoặc lock giúp nhiều instance cùng enforce một global rule.</ConceptCard>
+  <ConceptCard title="Buffered work">Queue giữ work intent để decouple producer/consumer và absorb burst, nhưng không tự bảo vệ business invariant.</ConceptCard>
+</ConceptGrid>
 
-- **Database** giữ durable state và thường là source of truth.
-- **Cache** giữ bản sao nhanh hơn để giảm latency và read load, đổi lại phải xử lý stale data, invalidation và consistency.
-- **Load Balancer + stateless service instances** cho phép phân phối request và horizontal scaling. Nếu instance giữ session hoặc routing state chỉ trong RAM, việc scale và failover trở nên khó hơn.
-- **Vertical scaling** tăng tài nguyên của một máy và có giới hạn vật lý. **Horizontal scaling** thêm instance, tăng khả năng phân phối tải nhưng cũng thêm distributed-system complexity.
+### Bốn deep dive đã học
 
-### Async processing: Queue, Worker và job state
+- [URL Shortener](./url-shortener-system-design.mdx) — thiết kế read-heavy redirect path, key generation, cache và hot-key skew.
+- [Distributed Rate Limiter](./distributed-rate-limiter-system-design.mdx) — thiết kế global quota với shared state và atomic check-and-increment.
+- [Notification System](./notification-system-design.mdx) — thiết kế async delivery, retry, acknowledgement, DLQ và idempotency.
+- [Chat System](./chat-system-design.mdx) — tách realtime WebSocket delivery, distributed connection routing và durable message storage.
 
-Queue phù hợp khi caller không cần chờ công việc dài hoặc background work hoàn tất. Với một AI Coding Agent chạy test khoảng năm phút, request có thể tạo job, nhận `job_id`, rồi đọc `status`; Worker xử lý job phía sau thay vì giữ HTTP request mở.
-
-Queue cũng có thể buffer burst. Tuy nhiên, trong concert booking có `100,000 req/s` cho 500 ghế, Queue chỉ làm phẳng tải; việc ngăn double booking vẫn cần reservation update atomic/consistent tại source of truth.
-
-### URL Shortener: read path, cache và hot key
-
-URL Shortener có hai path khác nhau:
-
-- Write path: `long URL → short key → persistent mapping`.
-- Redirect path: `short_key → original_url`.
-
-Khi redirect traffic khoảng `100,000 req/s` còn create traffic khoảng `1,000 req/s`, cache mapping `short_key → original_url` là optimization tự nhiên. Stateless Redirect Services có thể scale sau Load Balancer, trong khi Database vẫn giữ mapping bền vững.
-
-Aggregate cache capacity chưa đảm bảo tải được phân bố đều. Nếu một short URL chiếm 30% redirect traffic, đó là **hot-key/skewed-load problem**: một key hoặc cache shard có thể thành hotspot dù toàn cluster còn capacity.
-
-Short key có thể được tạo từ unique identifier rồi encode bằng alphabet gọn như Base62. Với redirect, `301` có thể đẩy mạnh caching và giảm traffic về service; `302` thường giữ nhiều control và observability hơn. Chọn semantics theo nhu cầu caching, analytics và khả năng thay đổi đích.
-
-### Rate Limiter: shared state phải đi cùng atomicity
-
-Rate Limiter bảo vệ API, downstream resources, cost, quota và fairness. Đặt nó gần edge/API Gateway giúp reject request trước khi request tiêu thụ tài nguyên sâu hơn.
-
-Counter local trên từng server không tạo ra global limit. Nếu 10 server mỗi server cho `100 requests/min/user`, một user có thể đạt gần `1,000 requests/min` khi request được phân phối qua cả 10 server. Distributed rate limiting thường cần shared state; nhưng shared state thôi chưa đủ. Khi hai server cùng đọc count `99`, thao tác **check-and-increment phải atomic** để chỉ một request vượt qua limit `100`.
-
-**Fixed Window** đơn giản nhưng có thể cho phép burst ở ranh giới hai window. **Token Bucket** cho phép controlled burst bằng bucket capacity và giới hạn tốc độ dài hạn bằng refill rate.
-
-### Notification: retry làm xuất hiện duplicate risk
-
-Notification delivery là async workload tự nhiên. Business transaction chỉ nên ghi nhận notification intent/event; Queue buffer spike và Worker giao tiếp với email, push hoặc SMS provider.
-
-Failure tạm thời có thể retry với backoff; failure đã vượt retry budget có thể chuyển sang DLQ để điều tra hoặc xử lý lại. Nhưng timeout không chứng minh side effect đã thất bại: provider có thể đã gửi email còn acknowledgement bị mất. Retry lúc này có thể gửi trùng.
-
-Mô hình thực dụng là **at-least-once delivery + ACK sau processing + idempotent processing**. At-most-once giảm duplicate nhưng có thể mất việc. Không nên tuyên bố end-to-end exactly-once chỉ từ Queue khi network và external provider vẫn có thể tạo ambiguous outcomes.
-
-### Chat: delivery channel khác durable storage
-
-WebSocket phù hợp với long-lived bidirectional realtime communication và tránh polling lặp lại. Tuy nhiên, connection location là distributed state: nếu User A ở Server 3 và User B ở Server 17, Server 3 cần shared connection registry/router để biết server nào đang giữ connection của B.
-
-WebSocket chỉ là delivery channel, không phải durable message storage. Message cần sống qua disconnect phải được persist vào Message Store; user offline nhận unread messages và đồng bộ lại sau reconnect.
-
-Delivery và ordering cũng là hai bài toán riêng. Thay vì cố tạo global order, chat thường chỉ cần order trong từng conversation; conversation ID có thể làm ordering/partition key để các message cùng conversation đi qua cùng ordered path.
+Đây là **Learning Map của phần đã được checkpoint**, không phải danh sách mọi System Design có thể tồn tại. Feed/Timeline vẫn là checkpoint tiếp theo, chưa được biểu diễn như kiến thức đã học.
 
 ## Example
 
-Giả sử một concert booking system nhận burst `100,000 req/s` cho 500 ghế:
+Với Product API có `50,000 reads/s` nhưng dữ liệu chỉ đổi vài lần mỗi ngày, bottleneck là repeated Database reads. Cache trực tiếp tối ưu read path; Queue không làm lookup đồng bộ nhanh hơn. Ngược lại, với concert booking có `100,000 req/s` cho 500 ghế, Queue giúp absorb burst nhưng atomic reservation tại source of truth mới bảo vệ correctness.
 
-1. Load Balancer phân phối request tới stateless API instances.
-2. Queue buffer burst để downstream không sụp vì tải tức thời.
-3. Worker lần lượt xử lý reservation intent.
-4. Source-of-truth store dùng atomic conditional update hoặc consistency control tương đương để một ghế chỉ được giữ một lần.
-5. Notification event được enqueue sau khi reservation thành công; notification Worker retry theo delivery policy và xử lý idempotently.
-
-Queue cải thiện capacity và decoupling, nhưng bước 4 mới bảo vệ correctness. Nếu bỏ bước 4, nhiều Worker vẫn có thể bán cùng một ghế.
+Hai case dùng building block khác nhau vì vấn đề cần giải quyết khác nhau, không phải vì một architecture “hiện đại” hơn architecture còn lại.
 
 ## When to Use
 
-- Dùng **Cache** khi read-heavy workload lặp lại dữ liệu ít thay đổi và Database read là bottleneck.
-- Dùng **Load Balancer + stateless instances** khi cần horizontal scaling cho request processing.
-- Dùng **Queue + Worker** khi công việc dài, có thể xử lý async hoặc cần buffer burst.
-- Dùng **shared atomic state** khi nhiều instance cùng enforce một global invariant như quota hoặc seat availability.
-- Dùng **WebSocket** cho realtime bidirectional delivery, nhưng kết hợp durable store khi message không được mất qua disconnect.
-- Luôn đánh giá trade-off mới: cache thêm invalidation, Queue thêm retry/duplicate/order concerns, horizontal scaling thêm distributed state và coordination.
+- Dùng framework này khi bắt đầu một design mới hoặc review một architecture proposal.
+- Tách read, write, async và realtime path khi mỗi path có workload hoặc failure mode khác nhau.
+- Truy ngược từng component về property mà nó tạo ra; component không có trách nhiệm rõ là signal của over-design.
+- Mở deep dive tương ứng khi vấn đề chính là read-heavy lookup, global quota, reliable side effect hoặc realtime messaging.
 
 ## Common Mistakes
 
-- **Chọn technology trước bottleneck:** thêm Queue, microservice hoặc cache mà chưa biết property nào cần cải thiện chỉ làm tăng complexity.
-- **Coi cache là source of truth:** cache là fast copy; invalidation và stale data phải được chấp nhận hoặc kiểm soát rõ.
-- **Coi Queue là correctness mechanism:** Queue buffer tải nhưng không tự ngăn race condition hay double booking.
-- **Coi shared state là đủ:** concurrent read-modify-write vẫn sai nếu check-and-update không atomic.
-- **Retry mù quáng sau timeout:** side effect có thể đã xảy ra; retry cần idempotency hoặc deduplication strategy.
-- **Coi WebSocket là message store:** connection có thể mất; durability phải đến từ persisted state.
-- **Đòi global ordering không cần thiết:** ordering scope rộng làm coordination đắt hơn; thường nên giới hạn theo conversation hoặc entity.
+- **Chọn technology trước bottleneck:** thêm cache, Queue hoặc microservice mà chưa biết property cần cải thiện.
+- **Coi một building block giải quyết mọi thứ:** Queue không thay atomicity; WebSocket không thay Message Store; cache không phải source of truth.
+- **Chỉ nhìn average traffic:** peak burst và hot-key skew có thể làm một shard quá tải dù aggregate capacity còn dư.
+- **Bỏ qua ambiguous failure:** timeout không chứng minh remote side effect chưa xảy ra; retry có thể tạo duplicate.
+- **Đòi global guarantee khi scope nhỏ hơn đã đủ:** global ordering hoặc global coordination thường đắt hơn per-conversation/per-user scope.
 
 ## Related Knowledge
 
-- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — bổ sung semantics của HTTP request, timeout, remote failure và `Idempotency-Key`, là nền tảng để hiểu async job API và retry an toàn trong distributed systems.
-- [Database Design Foundations](./database-design-foundations.mdx) — đi sâu vào atomic conditional update, transaction boundary và isolation đứng sau các consistency control ở source of truth.
+- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — bổ sung semantics của timeout, retry, idempotency và remote failure trên communication boundary.
+- [Database Design Foundations](./database-design-foundations.mdx) — đi sâu vào atomic conditional update, transaction boundary và isolation tại source of truth.
 
 ## Self-test
 
-1. Chuỗi reasoning nào nên đi trước việc chọn building block?
-2. Vì sao Cache phù hợp hơn Queue cho Product API read-heavy có dữ liệu ít thay đổi?
-3. Trong concert booking, Queue và atomic reservation lần lượt giải quyết vấn đề gì?
-4. Vì sao shared counter vẫn có thể enforce rate limit sai?
-5. Timeout từ email provider tạo ra rủi ro nào khi retry?
-6. WebSocket, connection registry và Message Store có ba trách nhiệm khác nhau như thế nào?
-7. Một hot URL chiếm 30% traffic cho thấy bottleneck nào?
+1. Chuỗi reasoning nào nên đi trước việc chọn technology?
+2. Capacity, correctness, durability và realtime delivery khác nhau ở trách nhiệm nào?
+3. Vì sao Queue không ngăn double booking?
+4. Cache, coordination state và durable state khác nhau thế nào?
+5. Khi nào nên mở từng deep dive trong Learning Map?
 
 <details>
 <summary>Answers</summary>
 
 1. Requirements → workload/bottleneck → architectural property → building block → trade-off.
-2. Bottleneck là repeated Database reads; cache phục vụ bản sao nhanh ngay trên read path, còn Queue không giảm lookup đồng bộ đó.
-3. Queue buffer burst/capacity; atomic reservation bảo vệ correctness và ngăn double booking.
-4. Nhiều server có thể cùng đọc một giá trị rồi cùng update; check-and-increment phải atomic.
-5. Provider có thể đã gửi email nhưng ACK bị mất, nên retry có thể gửi trùng; processing cần idempotent hoặc deduplicate.
-6. WebSocket vận chuyển realtime, registry tìm server giữ live connection, Message Store giữ message bền vững qua disconnect.
-7. Hot-key/skewed-load hotspot ở key hoặc cache shard, không nhất thiết là thiếu aggregate Database/cache capacity.
+2. Capacity xử lý lượng work; correctness bảo vệ invariant; durability giữ state qua failure; realtime delivery vận chuyển dữ liệu với latency thấp.
+3. Queue buffer và phân phối work, nhưng nhiều Worker vẫn có thể tranh cùng business state nếu source of truth không enforce atomicity.
+4. Cache là fast copy; coordination state giúp nhiều instance thống nhất một rule/routing decision; durable state giữ business fact lâu dài.
+5. URL Shortener cho read-heavy lookup; Rate Limiter cho global quota; Notification cho retryable side effect; Chat cho realtime delivery kết hợp durable history.
 
 </details>
