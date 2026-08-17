@@ -17,6 +17,7 @@ const sidebars: SidebarsConfig = {
             'ai-fundamentals/evaluation-dataset-and-test-cases',
             'ai-fundamentals/evaluation-metrics-and-aggregation',
             'ai-fundamentals/evaluation-reliability-and-statistical-confidence',
+            'ai-fundamentals/evaluation-regression-gates-and-production-workflow',
           ],
         },
       ],

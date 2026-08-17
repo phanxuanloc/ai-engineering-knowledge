@@ -2,90 +2,93 @@ import type {ReactNode} from 'react';
 import Link from '@docusaurus/Link';
 import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
-import {KnowledgeMap, TopicPath} from '@site/src/components/Learning';
-import {contextPath, featuredArticle, knowledgeAreas} from '@site/src/data/knowledge';
+import {featuredPaths, knowledgeAreas, knowledgeStats, latestKnowledge} from '@site/src/data/knowledge';
 import styles from './index.module.css';
-
-const mapLevels = [
-  [{title: 'AI Fundamentals', description: 'Nền tảng của AI systems'}],
-  [{title: 'AI Coding', description: 'AI trong software workflows'}],
-  [{title: 'Context Engineering', description: 'Knowledge đã xuất bản', href: featuredArticle.href}],
-  [
-    {title: 'RAG', description: 'Retrieval và external knowledge'},
-    {title: 'Coding Agents', description: 'Context trong agentic development'},
-    {title: 'AI Agents', description: 'Context qua các iterative decisions'},
-  ],
-  [{title: 'Experiments', description: 'Kiểm chứng thực tế'}],
-];
 
 export default function Home(): ReactNode {
   return (
-    <Layout title="Kiến thức AI Engineering thực tiễn" description="Mental model, kiến thức và experiment thực tiễn để xây dựng AI-powered software.">
+    <Layout
+      title="AI Engineering Knowledge"
+      description="Knowledge base về AI Engineering, Context Engineering, Evaluation và Software Engineering."
+    >
       <main>
         <header className={styles.hero}>
-          <div className="container">
-            <div className={styles.heroGrid}>
-              <div>
-                <div className={styles.kicker}>Kho kiến thức engineering công khai</div>
-                <Heading as="h1">AI Engineering<br />Knowledge</Heading>
-                <p>Kiến thức, mental model và experiment thực tiễn<br className={styles.desktopBreak} /> để xây dựng AI-powered software.</p>
-                <div className={styles.heroActions}>
-                  <Link className={styles.primaryButton} to={featuredArticle.href}>Bắt đầu tại đây <span aria-hidden="true">→</span></Link>
-                  <Link className={styles.ghostButton} to="#find-knowledge-by-area">Khám phá kiến thức</Link>
-                </div>
+          <div className={`container ${styles.heroInner}`}>
+            <div className={styles.heroCopy}>
+              <span className={styles.kicker}>Learn · Connect · Apply</span>
+              <Heading as="h1">Engineering knowledge<br />for the AI era.</Heading>
+              <p>Mental models, decision frameworks và practical notes để xây AI-powered software đáng tin cậy — được tổ chức từ foundation tới application.</p>
+              <div className={styles.heroActions}>
+                <Link className={styles.primaryButton} to="/docs/ai-fundamentals">Khám phá knowledge base <span aria-hidden="true">↗</span></Link>
+                <Link className={styles.textButton} to="/#paths-title">Xem learning paths <span aria-hidden="true">↓</span></Link>
               </div>
-              <aside className={styles.heroModel} aria-label="Cấu trúc learning note">
-                <span>Cách kiến thức được trình bày</span>
-                <ol>
-                  {['Concept', 'Mental Model', 'Practical Explanation', 'Example', 'Experiment', 'Self-Test'].map((item, index) => <li key={item}><small>{String(index + 1).padStart(2, '0')}</small><strong>{item}</strong></li>)}
-                </ol>
-              </aside>
             </div>
+
+            <aside className={styles.heroOverview} aria-label="Tổng quan knowledge base">
+              <div className={styles.overviewHeader}><span>Knowledge index</span><span className={styles.liveDot}>Current</span></div>
+              <div className={styles.statsGrid}>
+                {knowledgeStats.map((stat) => <div key={stat.label}><strong>{stat.value}</strong><span>{stat.label}</span></div>)}
+              </div>
+              <div className={styles.coverageList}>
+                {knowledgeAreas.map((area) => (
+                  <Link to={area.href} key={area.title}><span>{area.accent}</span><strong>{area.title}</strong><small>{area.articleCount} indexed</small></Link>
+                ))}
+              </div>
+            </aside>
           </div>
         </header>
 
-        <section className={styles.section}>
+        <section className={styles.section} aria-labelledby="domains-title">
           <div className="container">
-            <div className={styles.sectionHeading}><div><span className={styles.sectionKicker}>Khám phá AI Engineering</span><Heading as="h2" id="find-knowledge-by-area">Tìm kiến thức theo lĩnh vực</Heading><p>Duyệt các concept, system và experiment hỗ trợ xây dựng AI-powered software đáng tin cậy.</p></div></div>
-            <div className={styles.areaGrid}>
-              {knowledgeAreas.map((area) => area.href ? (
-                <Link className={styles.areaCard} to={area.href} key={area.title}><span className={styles.areaState}>Knowledge đã xuất bản</span><strong>{area.title}</strong><p>{area.description}</p><small>Khám phá lĩnh vực <span aria-hidden="true">→</span></small></Link>
-              ) : (
-                <article className={`${styles.areaCard} ${styles.areaCardQuiet}`} key={area.title}><span className={styles.areaState}>Lĩnh vực kiến thức</span><strong>{area.title}</strong><p>{area.description}</p><small>Chưa có article được xuất bản</small></article>
+            <div className={styles.sectionHeading}>
+              <div><span className={styles.kicker}>Knowledge domains</span><Heading as="h2" id="domains-title">Bắt đầu từ đúng lớp kiến thức</Heading></div>
+              <p>Ba domain hiện có phản ánh đúng knowledge đã được capture. Mỗi domain dẫn tới các topic và article thực sự tồn tại.</p>
+            </div>
+            <div className={styles.domainGrid}>
+              {knowledgeAreas.map((area) => (
+                <Link className={styles.domainCard} to={area.href} key={area.title}>
+                  <div className={styles.cardTop}><span>{area.accent}</span><small>{area.articleCount} indexed notes</small></div>
+                  <Heading as="h3">{area.title}</Heading>
+                  <p>{area.description}</p>
+                  <ul>{area.paths.map((path) => <li key={path}>{path}</li>)}</ul>
+                  <strong className={styles.cardLink}>Explore domain <span aria-hidden="true">→</span></strong>
+                </Link>
               ))}
             </div>
           </div>
         </section>
 
-        <section className={`${styles.section} ${styles.mutedSection}`}>
+        <section className={`${styles.section} ${styles.contrastSection}`} id="learning-paths" aria-labelledby="paths-title">
           <div className="container">
-            <div className={styles.sectionHeading}><div><span className={styles.sectionKicker}>Bắt đầu tại đây</span><Heading as="h2">Xây mental model tốt hơn về context</Heading><p>Entry point thực tiễn để hiểu vì sao information được cung cấp cho LLM ảnh hưởng tới reasoning, behavior và output quality.</p></div></div>
-            <div className={styles.startGrid}>
-              <article className={styles.startCard}>
-                <span className={styles.articleCategory}>{featuredArticle.category}</span>
-                <Heading as="h3">{featuredArticle.title}</Heading>
-                <p>{featuredArticle.description}</p>
-                <Link className={styles.primaryButton} to={featuredArticle.href}>Đọc Context Engineering <span aria-hidden="true">→</span></Link>
-              </article>
-              <TopicPath title="Learning path" items={contextPath} />
+            <div className={styles.sectionHeading}>
+              <div><span className={styles.kicker}>Curated learning paths</span><Heading as="h2" id="paths-title">Đi theo một mental model hoàn chỉnh</Heading></div>
+              <p>Mỗi path gom các note có cùng reader question thành một hành trình ngắn, tránh đọc knowledge base như danh sách rời rạc.</p>
+            </div>
+            <div className={styles.pathList}>
+              {featuredPaths.map((path, index) => (
+                <Link className={styles.pathRow} to={path.href} key={path.title}>
+                  <span className={styles.pathIndex}>{String(index + 1).padStart(2, '0')}</span>
+                  <div><small>{path.eyebrow}</small><Heading as="h3">{path.title}</Heading><p>{path.description}</p></div>
+                  <div className={styles.pathMeta}><span>{path.meta}</span><strong aria-hidden="true">↗</strong></div>
+                </Link>
+              ))}
             </div>
           </div>
         </section>
 
-        <section className={styles.section} id="knowledge-map">
+        <section className={styles.section} aria-labelledby="latest-title">
           <div className="container">
-            <div className={styles.sectionHeading}><div><span className={styles.sectionKicker}>Learning Map</span><Heading as="h2">Các lĩnh vực dự kiến kết nối thế nào</Heading><p>Map này thể hiện learning journey dự kiến; chỉ node có link mới đại diện cho knowledge đã được xuất bản.</p></div></div>
-            <KnowledgeMap levels={mapLevels} label="Learning Map dự kiến từ AI Engineering foundations tới practical experiments" />
-          </div>
-        </section>
-
-        <section className={`${styles.section} ${styles.mutedSection}`}>
-          <div className="container">
-            <div className={styles.sectionHeading}><div><span className={styles.sectionKicker}>Knowledge nổi bật</span><Heading as="h2">Learning path nên khám phá</Heading></div></div>
-            <Link className={styles.featuredCard} to={featuredArticle.href}>
-              <div><span>{featuredArticle.category}</span><Heading as="h3">{featuredArticle.title}</Heading><p>{featuredArticle.description}</p></div>
-              <span className={styles.featuredArrow} aria-hidden="true">→</span>
-            </Link>
+            <div className={styles.sectionHeading}>
+              <div><span className={styles.kicker}>Recently captured</span><Heading as="h2" id="latest-title">Knowledge mới nhất</Heading></div>
+              <Link className={styles.textButton} to="/docs/ai-fundamentals">Browse all docs <span aria-hidden="true">→</span></Link>
+            </div>
+            <div className={styles.latestGrid}>
+              {latestKnowledge.map((item) => (
+                <Link className={styles.latestCard} to={item.href} key={item.title}>
+                  <time>{item.date}</time><Heading as="h3">{item.title}</Heading><p>{item.description}</p><span>Read note →</span>
+                </Link>
+              ))}
+            </div>
           </div>
         </section>
       </main>
