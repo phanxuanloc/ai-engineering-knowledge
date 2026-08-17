@@ -5,6 +5,7 @@ tags: [programming, code-design, coupling, cohesion]
 ---
 
 import {Principle, TLDR} from '@site/src/components/Learning';
+import {ExcalidrawDiagram} from '@site/src/components/Diagrams';
 
 # Coupling & Cohesion
 
@@ -25,6 +26,15 @@ import {Principle, TLDR} from '@site/src/components/Learning';
 3. Khi một dependency đổi, bao nhiêu business logic phải đổi theo?
 
 <Principle label="Change rule">Tách file chỉ thay đổi vị trí code; giảm coupling đòi hỏi thay đổi dependency boundary.</Principle>
+
+<ExcalidrawDiagram
+  aspectRatio={1098.7707691187184 / 529.75}
+  src="/img/diagrams/excalidraw/coupling-and-cohesion.svg"
+  mobileSrc="/img/diagrams/excalidraw/coupling-and-cohesion-mobile.svg"
+  mobileAspectRatio={511.34 / 1004.5}
+  alt="Một UserService ôm validation, password, PostgreSQL, SendGrid, Kafka và audit khiến thay đổi lan rộng; khi tách thành các cohesive boundary, thay đổi provider được cô lập."
+  caption="Tách responsibility theo reason to change mới thu hẹp blast radius; chỉ chuyển cùng dependency sang nhiều file không đạt hiệu quả này."
+/>
 
 ## Core Concepts
 

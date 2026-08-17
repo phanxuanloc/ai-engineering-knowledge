@@ -5,6 +5,7 @@ tags: [programming, code-design, composition, inheritance]
 ---
 
 import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
+import {ExcalidrawDiagram} from '@site/src/components/Diagrams';
 
 # Composition vs Inheritance
 
@@ -26,6 +27,15 @@ Inheritance phù hợp khi subtype có quan hệ **IS-A** thật sự và giữ 
 />
 
 <Principle label="Default question">Behavior này là identity ổn định của subtype, hay chỉ là capability mà object đang sử dụng?</Principle>
+
+<ExcalidrawDiagram
+  aspectRatio={1056.3521179293102 / 545.25}
+  src="/img/diagrams/excalidraw/composition-vs-inheritance.svg"
+  mobileSrc="/img/diagrams/excalidraw/composition-vs-inheritance-mobile.svg"
+  mobileAspectRatio={466.68 / 1007.25}
+  alt="Deep inheritance staircase tạo subclass mới cho từng tổ hợp feature; composition giữ DocumentProcessor ổn định và cho phép thay Parser, OCR, Embedder hoặc VectorStore độc lập."
+  caption="Inheritance gắn behavior vào subtype tree; composition biến Parser, OCR, Embedder và VectorStore thành các capability có thể thay riêng."
+/>
 
 ## Core Concepts
 

@@ -149,6 +149,95 @@ function contextQuality(vertical) {
   ]};
 }
 
+function couplingAndCohesion(vertical) {
+  if (vertical) return {width: 390, height: 1050, elements: [
+    note(195, 18, 'CHANGE BLAST RADIUS', 25, '#5f3dc4', 'center'),
+    note(195, 60, 'BEFORE · one overloaded boundary', 18, '#c92a2a', 'center'),
+    shape('rectangle', 43, 102, 304, 330, {...sketchPresets.conceptBox, backgroundColor: '#ffe8cc', strokeColor: '#c92a2a'}, {angle: -.012}),
+    note(195, 126, 'UserService', 27, '#343a40', 'center'),
+    note(195, 174, 'validate input', 18, '#343a40', 'center'),
+    note(195, 212, 'hash password', 18, '#343a40', 'center'),
+    note(195, 250, 'PostgreSQL queries', 18, '#343a40', 'center'),
+    note(195, 288, 'SendGrid email', 18, '#c92a2a', 'center'),
+    note(195, 326, 'Kafka events', 18, '#343a40', 'center'),
+    note(195, 364, 'audit logging', 18, '#343a40', 'center'),
+    sketchLine([[65, 277], [327, 315]]), sketchLine([[326, 276], [66, 316]]),
+    note(195, 404, 'one provider change shakes the whole class', 15, '#c92a2a', 'center'),
+    ...sketchArrow([[195, 446], [205, 472], [195, 500]], 'separate reasons to change'),
+    note(195, 520, 'AFTER · cohesive boundaries', 18, '#2b8a3e', 'center'),
+    shape('ellipse', 95, 564, 200, 68, sketchPresets.importantConcept, {angle: .01}),
+    note(195, 585, 'User workflow', 22, '#343a40', 'center'),
+    shape('rectangle', 38, 666, 145, 70, sketchPresets.conceptBox, {angle: -.018}), note(110, 687, 'Validation', 18, '#343a40', 'center'),
+    shape('ellipse', 208, 654, 150, 70, sketchPresets.conceptContainer, {angle: .015}), note(283, 675, 'Password', 18, '#343a40', 'center'),
+    shape('rectangle', 37, 772, 148, 70, sketchPresets.conceptHighlight, {angle: .012}), note(111, 793, 'User repo', 18, '#343a40', 'center'),
+    shape('ellipse', 207, 760, 152, 70, sketchPresets.llmNode, {angle: -.014}), note(283, 781, 'Notification', 17, '#343a40', 'center'),
+    shape('rectangle', 38, 878, 145, 70, sketchPresets.conceptContainer, {angle: -.01}), note(110, 899, 'Events', 18, '#343a40', 'center'),
+    shape('ellipse', 210, 866, 145, 70, sketchPresets.conceptBox, {angle: .018}), note(282, 887, 'Audit', 18, '#343a40', 'center'),
+    note(195, 976, 'change stays behind one boundary', 18, '#2b8a3e', 'center'),
+  ]};
+  return {width: 1120, height: 610, elements: [
+    note(560, 18, 'CHANGE BLAST RADIUS', 28, '#5f3dc4', 'center'),
+    note(238, 68, 'BEFORE · one overloaded boundary', 19, '#c92a2a', 'center'),
+    shape('rectangle', 55, 112, 365, 390, {...sketchPresets.conceptBox, backgroundColor: '#ffe8cc', strokeColor: '#c92a2a'}, {angle: -.012}),
+    note(237, 140, 'UserService', 29, '#343a40', 'center'),
+    note(237, 196, 'validate input', 19, '#343a40', 'center'), note(237, 238, 'hash password', 19, '#343a40', 'center'),
+    note(237, 280, 'PostgreSQL queries', 19, '#343a40', 'center'), note(237, 322, 'SendGrid email', 19, '#c92a2a', 'center'),
+    note(237, 364, 'Kafka events', 19, '#343a40', 'center'), note(237, 406, 'audit logging', 19, '#343a40', 'center'),
+    sketchLine([[88, 310], [386, 350]]), sketchLine([[386, 308], [88, 352]]),
+    note(237, 462, 'one provider change shakes the whole class', 16, '#c92a2a', 'center'),
+    note(494, 228, 'split', 17, '#5f3dc4', 'center'),
+    ...sketchArrow([[440, 310], [500, 288], [548, 310]], null),
+    note(827, 68, 'AFTER · cohesive boundaries', 19, '#2b8a3e', 'center'),
+    shape('ellipse', 718, 112, 218, 76, sketchPresets.importantConcept, {angle: .01}), note(827, 136, 'User workflow', 23, '#343a40', 'center'),
+    shape('rectangle', 585, 242, 160, 76, sketchPresets.conceptBox, {angle: -.018}), note(665, 266, 'Validation', 19, '#343a40', 'center'),
+    shape('ellipse', 794, 220, 166, 76, sketchPresets.conceptContainer, {angle: .015}), note(877, 244, 'Password', 19, '#343a40', 'center'),
+    shape('rectangle', 958, 255, 145, 76, sketchPresets.conceptHighlight, {angle: .012}), note(1030, 279, 'User repo', 18, '#343a40', 'center'),
+    shape('ellipse', 590, 375, 170, 76, sketchPresets.llmNode, {angle: -.014}), note(675, 399, 'Notification', 18, '#343a40', 'center'),
+    shape('rectangle', 806, 360, 145, 76, sketchPresets.conceptContainer, {angle: -.01}), note(878, 384, 'Events', 19, '#343a40', 'center'),
+    shape('ellipse', 968, 390, 130, 70, sketchPresets.conceptBox, {angle: .018}), note(1033, 411, 'Audit', 18, '#343a40', 'center'),
+    note(827, 500, 'change stays behind one boundary', 19, '#2b8a3e', 'center'),
+  ]};
+}
+
+function compositionVsInheritance(vertical) {
+  if (vertical) return {width: 390, height: 1080, elements: [
+    note(195, 18, 'REUSE OR REPLACE?', 25, '#5f3dc4', 'center'),
+    note(195, 62, 'INHERITANCE · feature staircase', 18, '#c92a2a', 'center'),
+    shape('rectangle', 34, 104, 185, 58, sketchPresets.conceptBox, {angle: -.012}), note(126, 122, 'BaseProcessor', 18, '#343a40', 'center'),
+    shape('rectangle', 68, 178, 202, 58, sketchPresets.conceptBox, {angle: .014}), note(169, 196, 'PDFProcessor', 18, '#343a40', 'center'),
+    shape('rectangle', 101, 252, 220, 58, {...sketchPresets.conceptBox, backgroundColor: '#ffe8cc'}, {angle: -.01}), note(211, 270, 'OCRPDFProcessor', 17, '#343a40', 'center'),
+    shape('rectangle', 133, 326, 230, 58, {...sketchPresets.conceptBox, backgroundColor: '#ffe8cc'}, {angle: .012}), note(248, 344, 'EmbeddingOCRPDF', 16, '#343a40', 'center'),
+    ...sketchArrow([[224, 394], [195, 421], [195, 450]], null, sketchPresets.rejectedNoise),
+    note(195, 454, 'new combination → new subclass', 17, '#c92a2a', 'center'),
+    note(195, 520, 'COMPOSITION · plug in capabilities', 18, '#2b8a3e', 'center'),
+    shape('rectangle', 49, 564, 292, 390, sketchPresets.conceptContainer, {angle: -.01}),
+    note(195, 590, 'DocumentProcessor', 25, '#343a40', 'center'),
+    shape('ellipse', 84, 654, 222, 58, sketchPresets.conceptBox, {angle: .015}), note(195, 672, 'Parser', 19, '#343a40', 'center'),
+    shape('rectangle', 84, 730, 222, 58, sketchPresets.llmNode, {angle: -.014}), note(195, 748, 'OCR Engine ↻', 19, '#343a40', 'center'),
+    shape('ellipse', 84, 806, 222, 58, sketchPresets.conceptHighlight, {angle: .012}), note(195, 824, 'Embedder', 19, '#343a40', 'center'),
+    shape('rectangle', 84, 882, 222, 58, sketchPresets.conceptBox, {angle: -.016}), note(195, 900, 'VectorStore', 19, '#343a40', 'center'),
+    note(195, 980, 'replace one capability, keep the processor', 17, '#2b8a3e', 'center'),
+  ]};
+  return {width: 1120, height: 620, elements: [
+    note(560, 18, 'REUSE OR REPLACE?', 28, '#5f3dc4', 'center'),
+    note(245, 68, 'INHERITANCE · feature staircase', 19, '#c92a2a', 'center'),
+    shape('rectangle', 45, 120, 190, 62, sketchPresets.conceptBox, {angle: -.012}), note(140, 139, 'BaseProcessor', 19, '#343a40', 'center'),
+    shape('rectangle', 90, 205, 210, 62, sketchPresets.conceptBox, {angle: .014}), note(195, 224, 'PDFProcessor', 19, '#343a40', 'center'),
+    shape('rectangle', 135, 290, 228, 62, {...sketchPresets.conceptBox, backgroundColor: '#ffe8cc'}, {angle: -.01}), note(249, 309, 'OCRPDFProcessor', 18, '#343a40', 'center'),
+    shape('rectangle', 180, 375, 248, 62, {...sketchPresets.conceptBox, backgroundColor: '#ffe8cc'}, {angle: .012}), note(304, 394, 'EmbeddingOCRPDF', 17, '#343a40', 'center'),
+    ...sketchArrow([[300, 455], [330, 480], [300, 510]], null, sketchPresets.rejectedNoise),
+    note(300, 518, 'new combination → new subclass', 17, '#c92a2a', 'center'),
+    note(812, 68, 'COMPOSITION · plug in capabilities', 19, '#2b8a3e', 'center'),
+    shape('rectangle', 555, 118, 520, 400, sketchPresets.conceptContainer, {angle: -.01}),
+    note(815, 145, 'DocumentProcessor', 26, '#343a40', 'center'),
+    shape('ellipse', 600, 225, 190, 68, sketchPresets.conceptBox, {angle: .015}), note(695, 246, 'Parser', 20, '#343a40', 'center'),
+    shape('rectangle', 835, 215, 190, 68, sketchPresets.llmNode, {angle: -.014}), note(930, 236, 'OCR Engine ↻', 19, '#343a40', 'center'),
+    shape('ellipse', 600, 345, 190, 68, sketchPresets.conceptHighlight, {angle: .012}), note(695, 366, 'Embedder', 20, '#343a40', 'center'),
+    shape('rectangle', 835, 335, 190, 68, sketchPresets.conceptBox, {angle: -.016}), note(930, 356, 'VectorStore', 19, '#343a40', 'center'),
+    note(815, 465, 'replace one capability, keep the processor', 18, '#2b8a3e', 'center'),
+  ]};
+}
+
 function scene(name, data) {
   return {type: 'excalidraw', version: 2, source: 'https://github.com/phanxuanloc/ai-engineering-knowledge', elements: data.elements, appState: {gridSize: null, viewBackgroundColor: '#fffdfa'}, files: {}, name};
 }
@@ -173,6 +262,8 @@ const exportScene = await createExporter();
 for (const [name, data] of [
   ['context-window-mental-model', contextWindow(false)], ['context-window-mental-model-mobile', contextWindow(true)],
   ['context-quality', (sequence = 51, contextQuality(false))], ['context-quality-mobile', (sequence = 78, contextQuality(true))],
+  ['coupling-and-cohesion', (sequence = 110, couplingAndCohesion(false))], ['coupling-and-cohesion-mobile', (sequence = 150, couplingAndCohesion(true))],
+  ['composition-vs-inheritance', (sequence = 190, compositionVsInheritance(false))], ['composition-vs-inheritance-mobile', (sequence = 225, compositionVsInheritance(true))],
 ]) {
   const sceneData = scene(name, data);
   await writeFile(path.join(outputDir, `${name}.excalidraw`), `${JSON.stringify(sceneData, null, 2)}\n`);

@@ -54,6 +54,8 @@ Before finalizing a route, run the repository's visual-routing gate: inspect the
 
 These are existing role responsibilities. Do not invent an Excalidraw, React Flow, or animation role; assign the correct existing role and attach the required skill.
 
+For every new or substantially expanded learning note, the owning route must record a visual-coverage decision. When a visual materially shortens the path to understanding the main mental model, structure, runtime behavior, or quantitative relationship, the route is incomplete until the correctly classified visual is created and independently reviewed. A prose-only exception needs a concrete 3–5 second teaching-test justification; convenience and “the text is already short” are insufficient.
+
 For a learning request such as `Học tiếp Evaluation`, Orchestrator should normally route to Tutor first. Builder participates only when practical evidence is needed; Reviewer participates when evidence/artifacts need independent validation; Researcher, Publisher, and Consultant stay out unless the objective actually requires them.
 
 ## Shared state and gates
