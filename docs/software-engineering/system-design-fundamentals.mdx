@@ -5,6 +5,7 @@ tags: [system-design, distributed-systems, scalability, reliability]
 ---
 
 import {Principle, TLDR} from '@site/src/components/Learning';
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 # System Design Fundamentals
 
@@ -26,9 +27,74 @@ Một quyết định kiến trúc tốt phải trả lời tuần tự:
 4. Building block nào trực tiếp tạo ra property đó?
 5. Lựa chọn này thêm complexity hoặc trade-off gì?
 
-<Principle label="Decision rule">
-Queue hay scaling giải quyết capacity; correctness cần một cơ chế consistency riêng.
-</Principle>
+<Principle label="Decision rule">{'Queue hay scaling giải quyết capacity; correctness cần một cơ chế consistency riêng.'}</Principle>
+
+<FlowExplainer
+  title="Chọn building block theo vấn đề cần giải quyết"
+  description="Ba runtime story cho thấy Cache, Queue và atomic source of truth tạo ra các property khác nhau; không thể thay thế lẫn nhau chỉ vì cùng nằm trên request path."
+  scenarios={[
+    {
+      id: 'read-heavy-cache',
+      label: 'Read-heavy API',
+      layout: 'compact',
+      nodes: [
+        {id: 'client', label: 'Client', detail: 'Repeated product reads', role: 'client'},
+        {id: 'api', label: 'Product API', detail: 'Stateless service', role: 'service'},
+        {id: 'cache', label: 'Cache', detail: 'Fast copy', role: 'data'},
+        {id: 'database', label: 'Database', detail: 'Source of truth', role: 'database'},
+      ],
+      edges: [
+        {id: 'client-api', source: 'client', target: 'api'},
+        {id: 'api-cache', source: 'api', target: 'cache'},
+        {id: 'cache-database', source: 'cache', target: 'database'},
+        {id: 'cache-api', source: 'cache', target: 'api'},
+        {id: 'api-client', source: 'api', target: 'client'},
+      ],
+      steps: [
+        {title: '1 · Product request', edgeId: 'client-api', from: 'client', to: 'api', message: 'GET /products/42', description: 'Client yêu cầu dữ liệu được đọc lặp lại thường xuyên.'},
+        {title: '2 · Check fast copy', edgeId: 'api-cache', from: 'api', to: 'cache', message: 'lookup key', description: 'API kiểm tra Cache trước để giảm repeated reads tới Database.'},
+        {title: '3 · Cache hit', edgeId: 'cache-api', from: 'cache', to: 'api', message: 'cached product', description: 'Khi hit, Cache trả fast copy; Database không nằm trên request path này.'},
+        {title: '4 · Return response', edgeId: 'api-client', from: 'api', to: 'client', message: '200 OK', description: 'Cache trực tiếp giảm read latency và Database load.'},
+      ],
+    },
+    {
+      id: 'async-job',
+      label: 'Long-running job',
+      layout: 'compact',
+      nodes: [
+        {id: 'api', label: 'Agent API', detail: 'Creates job', role: 'service'},
+        {id: 'queue', label: 'Queue', detail: 'Buffers work', role: 'data'},
+        {id: 'worker', label: 'Worker', detail: 'Runs tests', role: 'service'},
+        {id: 'job-store', label: 'Job Store', detail: 'Durable status', role: 'database'},
+      ],
+      steps: [
+        {title: '1 · Enqueue work', from: 'api', to: 'queue', message: 'job_id', description: 'API tạo job và trả identifier thay vì giữ HTTP request mở trong nhiều phút.'},
+        {title: '2 · Worker consumes', from: 'queue', to: 'worker', message: 'job payload', description: 'Queue buffer burst và decouple request handling khỏi background processing.'},
+        {title: '3 · Persist status', from: 'worker', to: 'job-store', message: 'RUNNING → DONE', description: 'Durable Job Store giữ state để client có thể kiểm tra tiến trình và kết quả.'},
+      ],
+    },
+    {
+      id: 'booking-correctness',
+      label: 'Concert booking',
+      layout: 'compact',
+      nodes: [
+        {id: 'load-balancer', label: 'Load Balancer', detail: 'Distributes burst', role: 'network'},
+        {id: 'api', label: 'Booking API', detail: 'Stateless instances', role: 'service'},
+        {id: 'queue', label: 'Queue', detail: 'Buffers intents', role: 'data'},
+        {id: 'worker', label: 'Worker', detail: 'Processes booking', role: 'service'},
+        {id: 'database', label: 'Database', detail: 'Atomic reservation', role: 'database'},
+        {id: 'notification', label: 'Notification', detail: 'Idempotent delivery', role: 'service'},
+      ],
+      steps: [
+        {title: '1 · Absorb request burst', from: 'load-balancer', to: 'api', message: 'booking request', description: 'Load Balancer phân phối traffic tới các stateless API instances.'},
+        {title: '2 · Buffer booking intent', from: 'api', to: 'queue', message: 'reservation intent', description: 'Queue làm phẳng burst và bảo vệ downstream capacity.'},
+        {title: '3 · Consume intent', from: 'queue', to: 'worker', message: 'booking job', description: 'Worker lấy intent để xử lý; bước này chưa tự bảo đảm ghế là duy nhất.'},
+        {title: '4 · Protect correctness', from: 'worker', to: 'database', message: 'atomic reserve', description: 'Atomic conditional update tại source of truth mới là bước ngăn hai Workers bán cùng một ghế.'},
+        {title: '5 · Deliver side effect', from: 'database', to: 'notification', message: 'reservation confirmed', description: 'Sau khi reservation thành công, notification được xử lý theo retry policy và cần idempotency.'},
+      ],
+    },
+  ]}
+/>
 
 ## Core Concepts
 

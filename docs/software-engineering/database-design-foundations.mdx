@@ -6,6 +6,7 @@ sidebar_position: 4
 ---
 
 import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 # Database Design Foundations
 
@@ -23,9 +24,7 @@ Database Design nối business facts với schema và access patterns: mô hình
 
 Schema trả lời **facts nào tồn tại và liên hệ ra sao**. Index trả lời **query nào cần đường truy cập nhanh**. Transaction trả lời **những DB operations nào tạo thành một business operation**; Isolation trả lời **các transaction chạy đồng thời được phép quan sát và tác động lẫn nhau như thế nào**.
 
-<Principle label="Source of truth">
-  Một business fact nên có một source of truth rõ ràng; hai giá trị giống nhau chỉ là duplication khi chúng đại diện cho cùng một fact.
-</Principle>
+<Principle label="Source of truth">{'Một business fact nên có một source of truth rõ ràng; hai giá trị giống nhau chỉ là duplication khi chúng đại diện cho cùng một fact.'}</Principle>
 
 ## Core Concepts
 
@@ -110,6 +109,54 @@ Commit DB state và phát external side effect một cách atomic là một reli
 ### Concurrency: tránh check-then-act race
 
 Chuỗi `READ → application decision → WRITE` mở một race window: operation khác có thể thay đổi state sau READ nhưng trước WRITE.
+
+<FlowExplainer
+  title="Hai Workers cùng claim một task"
+  description="So sánh check-then-act dễ race với conditional UPDATE gộp condition và mutation thành một atomic database operation."
+  scenarios={[
+    {
+      id: 'check-then-act-race',
+      label: 'Unsafe: check then act',
+      layout: 'compact',
+      nodes: [
+        {id: 'worker-a', label: 'Worker A', detail: 'Reads PENDING', role: 'client'},
+        {id: 'task', label: 'Task Row', detail: 'status = PENDING', role: 'database'},
+        {id: 'worker-b', label: 'Worker B', detail: 'Reads same state', role: 'client'},
+        {id: 'conflict', label: 'Duplicate Claim', detail: 'Both decided to run', role: 'data'},
+      ],
+      edges: [
+        {id: 'a-task', source: 'worker-a', target: 'task'},
+        {id: 'b-task', source: 'worker-b', target: 'task'},
+        {id: 'task-conflict', source: 'task', target: 'conflict'},
+      ],
+      steps: [
+        {title: '1 · Worker A reads', edgeId: 'a-task', from: 'worker-a', to: 'task', message: 'READ PENDING', description: 'Worker A đọc state nhưng chưa thay đổi row.'},
+        {title: '2 · Worker B reads stale state', edgeId: 'b-task', from: 'worker-b', to: 'task', message: 'READ PENDING', description: 'Trước khi A ghi, Worker B cũng quan sát cùng state PENDING.'},
+        {title: '3 · Both act', edgeId: 'task-conflict', from: 'task', to: 'conflict', message: 'two claims', description: 'Hai application decisions cùng dựa trên state cũ nên task có thể bị xử lý hai lần.'},
+      ],
+    },
+    {
+      id: 'atomic-conditional-update',
+      label: 'Safe: atomic update',
+      layout: 'compact',
+      nodes: [
+        {id: 'worker-a', label: 'Worker A', detail: 'Conditional UPDATE', role: 'client'},
+        {id: 'database', label: 'Database', detail: 'Atomic check + write', role: 'database'},
+        {id: 'worker-b', label: 'Worker B', detail: 'Conditional UPDATE', role: 'client'},
+        {id: 'result', label: 'Single Winner', detail: 'affected_rows: 1 vs 0', role: 'data'},
+      ],
+      edges: [
+        {id: 'a-db', source: 'worker-a', target: 'database'},
+        {id: 'b-db', source: 'worker-b', target: 'database'},
+        {id: 'db-result', source: 'database', target: 'result'},
+      ],
+      steps: [
+        {title: '1 · Competing conditional writes', transitions: [{edgeId: 'a-db', from: 'worker-a', to: 'database', message: 'UPDATE … WHERE PENDING'}, {edgeId: 'b-db', from: 'worker-b', to: 'database', message: 'UPDATE … WHERE PENDING'}], active: ['database'], description: 'Cả hai Workers gửi cùng conditional UPDATE; database serialize conflict theo atomicity guarantee của operation.'},
+        {title: '2 · One update wins', edgeId: 'db-result', from: 'database', to: 'result', message: '1 winner', description: 'Chỉ operation đầu tiên đổi PENDING thành RUNNING và nhận affected_rows = 1; operation còn lại nhận 0.'},
+      ],
+    },
+  ]}
+/>
 
 <Comparison
   label="Conflict strategy"

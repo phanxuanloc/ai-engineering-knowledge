@@ -6,6 +6,7 @@ sidebar_position: 3
 ---
 
 import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 # Search & Ranking Fundamentals
 
@@ -19,13 +20,36 @@ Search/Retrieval trả lời **những item nào có thể phù hợp**; Ranking
 
 ## Mental Model
 
-`Large Search Space → Search/Retrieve → Candidates → Score/Rank → Top-K → Consumer/LLM`
-
 Mỗi stage thu hẹp hoặc tổ chức information cho stage sau. Search/Retrieval không cần trả toàn bộ corpus; Ranking chỉ làm việc trên candidates đã tìm được; Top-K chỉ chuyển tiếp số kết quả mà consumer thực sự có thể dùng.
 
-<Principle label="Decision rule">
-  Tìm candidates trước, xếp hạng đúng phạm vi candidates, rồi chỉ lấy K item mà consumer cần.
-</Principle>
+<Principle label="Decision rule">{'Tìm candidates trước, xếp hạng đúng phạm vi candidates, rồi chỉ lấy K item mà consumer cần.'}</Principle>
+
+<FlowExplainer
+  title="Từ search space lớn tới context hữu hạn"
+  description="Quan sát phạm vi dữ liệu được thu hẹp: Retrieval tạo candidates, Ranking ưu tiên chúng, còn Top-K chỉ chuyển tiếp số item consumer có thể dùng."
+  scenarios={[
+    {
+      id: 'retrieve-rank-select',
+      label: 'Retrieve → Rank → Top-K',
+      layout: 'compact',
+      nodes: [
+        {id: 'corpus', label: 'Search Space', detail: '1,000,000 chunks', role: 'database'},
+        {id: 'retrieval', label: 'Retrieval', detail: 'Candidate generation', role: 'service'},
+        {id: 'candidates', label: 'Candidates', detail: '2,000 chunks', role: 'data'},
+        {id: 'ranking', label: 'Ranking', detail: 'Relevance ordering', role: 'service'},
+        {id: 'top-k', label: 'Top-K', detail: 'Select 10 chunks', role: 'service'},
+        {id: 'consumer', label: 'Context Window', detail: 'Bounded consumer', role: 'model'},
+      ],
+      steps: [
+        {title: '1 · Retrieve candidates', from: 'corpus', to: 'retrieval', message: 'query', description: 'Retrieval tìm trong corpus lớn để tạo một candidate set có khả năng liên quan.'},
+        {title: '2 · Materialize candidate set', from: 'retrieval', to: 'candidates', message: '2,000 candidates', description: 'Chỉ candidates được chuyển sang stage tiếp theo; phần còn lại của corpus không đi tiếp.'},
+        {title: '3 · Score and rank', from: 'candidates', to: 'ranking', message: 'relevance signals', description: 'Ranking so sánh candidates theo signal phù hợp với query và task.'},
+        {title: '4 · Select only K', from: 'ranking', to: 'top-k', message: 'best 10', description: 'Top-K giữ đúng số item downstream consumer có capacity sử dụng.'},
+        {title: '5 · Fill bounded context', from: 'top-k', to: 'consumer', message: '10 chunks', description: 'Context Window nhận selected information thay vì toàn bộ candidates hoặc corpus.'},
+      ],
+    },
+  ]}
+/>
 
 ## Core Concepts
 

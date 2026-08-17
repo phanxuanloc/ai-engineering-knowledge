@@ -44,11 +44,66 @@ const sidebars: SidebarsConfig = {
       label: 'Software Engineering',
       link: {type: 'doc', id: 'software-engineering/index'},
       items: [
-        'software-engineering/api-communication-fundamentals',
-        'software-engineering/database-design-foundations',
-        'software-engineering/git-workflows',
-        'software-engineering/search-and-ranking-fundamentals',
-        'software-engineering/system-design-fundamentals',
+        {
+          type: 'category',
+          label: 'Algorithms & Data Structures',
+          link: {
+            type: 'generated-index',
+            title: 'Algorithms & Data Structures',
+            description:
+              'Các mental model và kỹ thuật nền tảng để tổ chức, tìm kiếm và xử lý dữ liệu hiệu quả.',
+            slug: '/software-engineering/algorithms-and-data-structures',
+          },
+          items: ['software-engineering/search-and-ranking-fundamentals'],
+        },
+        {
+          type: 'category',
+          label: 'API & Integration',
+          link: {
+            type: 'generated-index',
+            title: 'API & Integration',
+            description:
+              'Cách các client và services giao tiếp qua những communication boundary khác nhau.',
+            slug: '/software-engineering/api-and-integration',
+          },
+          items: ['software-engineering/api-communication-fundamentals'],
+        },
+        {
+          type: 'category',
+          label: 'Databases',
+          link: {
+            type: 'generated-index',
+            title: 'Databases',
+            description:
+              'Data modeling, indexing, transactions và các cơ chế giữ correctness cho persistent state.',
+            slug: '/software-engineering/databases',
+          },
+          items: ['software-engineering/database-design-foundations'],
+        },
+        {
+          type: 'category',
+          label: 'System Design',
+          link: {
+            type: 'generated-index',
+            title: 'System Design',
+            description:
+              'Thiết kế hệ thống từ requirements, workload và bottleneck tới building blocks cùng trade-off.',
+            slug: '/software-engineering/system-design',
+          },
+          items: ['software-engineering/system-design-fundamentals'],
+        },
+        {
+          type: 'category',
+          label: 'Development Workflows',
+          link: {
+            type: 'generated-index',
+            title: 'Development Workflows',
+            description:
+              'Các workflow giúp team tích hợp, kiểm thử và release software an toàn.',
+            slug: '/software-engineering/development-workflows',
+          },
+          items: ['software-engineering/git-workflows'],
+        },
       ],
     },
   ],
