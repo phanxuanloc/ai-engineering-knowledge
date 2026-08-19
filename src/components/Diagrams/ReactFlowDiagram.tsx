@@ -43,6 +43,8 @@ export type DiagramNode = {
   size?: DiagramNodeSize;
   width?: number;
   height?: number;
+  x?: number;
+  y?: number;
 };
 
 export type DiagramEdge = {
@@ -79,7 +81,7 @@ export type ReactFlowDiagramProps = {
   rankSpacing?: number;
 };
 
-type DocsNodeData = Omit<DiagramNode, 'id' | 'height'>;
+type DocsNodeData = Omit<DiagramNode, 'id' | 'height' | 'x' | 'y'>;
 type DocsNode = Node<DocsNodeData, 'docs' | 'fit-spacer'>;
 type PacketEdgeData = {label?: string; pathType?: 'straight' | 'step' | 'smoothstep' | 'bezier'};
 
@@ -199,10 +201,38 @@ export function ReactFlowDiagram({ariaLabel, background = false, caption, classN
     });
   }, [edges, effectiveDirection, primaryPath]);
 
-  const layout = useMemo(() => layoutGraph<DocsNode>(nodes.map(({id, height: authoredHeight, ...data}) => {
-    const width = resolveNodeWidth({id, height: authoredHeight, ...data});
-    return {id, type: 'docs', data: {...data, width}, position: {x: 0, y: 0}, width, height: estimateNodeHeight({id, height: authoredHeight, ...data})};
-  }), flowEdges, {direction: effectiveDirection, layout: layoutMode, nodeSpacing, primaryPath, rankSpacing}), [effectiveDirection, flowEdges, layoutMode, nodeSpacing, nodes, primaryPath, rankSpacing]);
+  const layout = useMemo(() => {
+    const authoredNodes = nodes.map(({id, height: authoredHeight, x, y, ...data}) => {
+      const width = resolveNodeWidth({id, height: authoredHeight, x, y, ...data});
+      return {
+        id,
+        type: 'docs' as const,
+        data: {...data, width},
+        position: {x: x ?? 0, y: y ?? 0},
+        width,
+        height: estimateNodeHeight({id, height: authoredHeight, x, y, ...data}),
+      };
+    });
+
+    const useAuthoredPositions = !mobile && nodes.length > 0 && nodes.every((node) => Number.isFinite(node.x) && Number.isFinite(node.y));
+    if (!useAuthoredPositions) {
+      return layoutGraph<DocsNode>(authoredNodes, flowEdges, {direction: effectiveDirection, layout: layoutMode, nodeSpacing, primaryPath, rankSpacing});
+    }
+
+    const minX = Math.min(...authoredNodes.map((node) => node.position.x));
+    const minY = Math.min(...authoredNodes.map((node) => node.position.y));
+    const normalized = authoredNodes.map((node) => ({
+      ...node,
+      position: {x: node.position.x - minX, y: node.position.y - minY},
+    }));
+    return {
+      nodes: normalized,
+      bounds: {
+        width: Math.max(...normalized.map((node) => node.position.x + (node.width ?? 168))),
+        height: Math.max(...normalized.map((node) => node.position.y + (node.height ?? 76))),
+      },
+    };
+  }, [effectiveDirection, flowEdges, layoutMode, mobile, nodeSpacing, nodes, primaryPath, rankSpacing]);
   useMemo(() => assertDiagramQuality({direction: effectiveDirection, edges, kind, nodes, primaryPath}, layout.nodes, layout.bounds), [effectiveDirection, edges, kind, layout.bounds, layout.nodes, nodes, primaryPath]);
   const hasFeedback = edges.some(({route}) => route === 'feedback');
   const fitPadding = hasFeedback ? 0.08 : mobile ? 0.08 : 0.1;
