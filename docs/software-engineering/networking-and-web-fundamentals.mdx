@@ -19,85 +19,43 @@ Một web request không nhảy thẳng từ client vào business logic. Hãy de
 
 ## Mental Model
 
-Thay vì ép cả 11 bước vào một canvas dài, mental model được trải thành ba hàng lớn. Đọc lần lượt từ hàng 1 xuống hàng 3; mỗi hàng vẫn đi **trái → phải**.
-
-### 1 · Find the destination
-
 <ReactFlowDiagram
-  ariaLabel="Networking request path part 1: domain to routing"
-  caption="Trước tiên xác định destination: domain được resolve thành IP, sau đó routing quyết định đường đi tới destination đó."
+  ariaLabel="End-to-end networking and web request path wrapped across three rows"
+  caption="Một flow duy nhất được wrap thành 4–4–3 node để giữ node đủ lớn: hàng 1 đi trái → phải, nối xuống hàng 2 đi phải → trái, rồi nối xuống hàng 3 đi trái → phải."
   direction="LR"
   fullscreen
-  height={300}
+  height={650}
   interactive={false}
   kind="pipeline"
-  nodeSpacing={72}
-  rankSpacing={88}
-  primaryPath={['domain', 'dns', 'ip', 'routing']}
+  primaryPath={['domain', 'dns', 'ip', 'routing', 'network', 'tcp', 'tls', 'http', 'proxy', 'application', 'cache']}
   nodes={[
-    {id: 'domain', eyebrow: 'START', label: 'Domain', detail: 'api.company.com', role: 'source', size: 'standard'},
-    {id: 'dns', eyebrow: 'RESOLVE', label: 'DNS', detail: 'Name → IP', role: 'process', size: 'standard'},
-    {id: 'ip', eyebrow: 'DESTINATION', label: 'IP', detail: '203.0.113.20', role: 'state', size: 'standard'},
-    {id: 'routing', eyebrow: 'PATH', label: 'Routing', detail: 'Which next hop?', role: 'process', size: 'standard'},
+    {id: 'domain', eyebrow: 'START', label: 'Domain', detail: 'api.company.com', role: 'source', width: 210, x: 0, y: 0},
+    {id: 'dns', eyebrow: 'RESOLVE', label: 'DNS', detail: 'Name → IP', role: 'process', width: 210, x: 270, y: 0},
+    {id: 'ip', eyebrow: 'DESTINATION', label: 'IP', detail: '203.0.113.20', role: 'state', width: 210, x: 540, y: 0},
+    {id: 'routing', eyebrow: 'PATH', label: 'Routing', detail: 'Which next hop?', role: 'process', width: 210, x: 810, y: 0},
+
+    {id: 'network', eyebrow: 'NETWORK POLICY', label: 'Firewall / NAT', detail: 'Allowed? translated?', role: 'constraint', width: 210, x: 810, y: 190},
+    {id: 'tcp', eyebrow: 'TRANSPORT', label: 'TCP : port', detail: 'Connection', role: 'process', emphasis: true, width: 210, x: 540, y: 190},
+    {id: 'tls', eyebrow: 'SECURITY', label: 'TLS', detail: 'HTTPS handshake', role: 'process', width: 210, x: 270, y: 190},
+    {id: 'http', eyebrow: 'WEB PROTOCOL', label: 'HTTP', detail: 'Request / response', role: 'process', width: 210, x: 0, y: 190},
+
+    {id: 'proxy', eyebrow: 'ENTRY', label: 'Proxy / LB', detail: 'Route traffic', role: 'process', width: 210, x: 0, y: 380},
+    {id: 'application', eyebrow: 'APP', label: 'Application', detail: 'Auth + business logic', role: 'process', emphasis: true, width: 210, x: 270, y: 380},
+    {id: 'cache', eyebrow: 'STATE', label: 'Cache / Data', detail: 'Fresh or stale?', role: 'output', width: 210, x: 540, y: 380},
   ]}
   edges={[
-    {source: 'domain', target: 'dns', route: 'primary'},
-    {source: 'dns', target: 'ip', route: 'primary'},
-    {source: 'ip', target: 'routing', route: 'primary'},
+    {source: 'domain', target: 'dns', route: 'primary', sourceHandle: 'right', targetHandle: 'left'},
+    {source: 'dns', target: 'ip', route: 'primary', sourceHandle: 'right', targetHandle: 'left'},
+    {source: 'ip', target: 'routing', route: 'primary', sourceHandle: 'right', targetHandle: 'left'},
+    {source: 'routing', target: 'network', route: 'primary', sourceHandle: 'bottom', targetHandle: 'top', type: 'smoothstep'},
+    {source: 'network', target: 'tcp', route: 'primary', sourceHandle: 'left', targetHandle: 'right'},
+    {source: 'tcp', target: 'tls', route: 'primary', sourceHandle: 'left', targetHandle: 'right'},
+    {source: 'tls', target: 'http', route: 'primary', sourceHandle: 'left', targetHandle: 'right'},
+    {source: 'http', target: 'proxy', route: 'primary', sourceHandle: 'bottom', targetHandle: 'top', type: 'smoothstep'},
+    {source: 'proxy', target: 'application', route: 'primary', sourceHandle: 'right', targetHandle: 'left'},
+    {source: 'application', target: 'cache', route: 'primary', sourceHandle: 'right', targetHandle: 'left'},
   ]}
 />
-
-### 2 · Establish secure transport
-
-<ReactFlowDiagram
-  ariaLabel="Networking request path part 2: firewall and NAT through HTTP"
-  caption="Có đường đi chưa đủ: traffic còn phải được phép, thiết lập transport connection và hoàn thành TLS trước khi HTTP request/response thực sự chạy."
-  direction="LR"
-  fullscreen
-  height={300}
-  interactive={false}
-  kind="pipeline"
-  nodeSpacing={72}
-  rankSpacing={88}
-  primaryPath={['network', 'tcp', 'tls', 'http']}
-  nodes={[
-    {id: 'network', eyebrow: 'NETWORK POLICY', label: 'Firewall / NAT', detail: 'Allowed? translated?', role: 'constraint', size: 'standard'},
-    {id: 'tcp', eyebrow: 'TRANSPORT', label: 'TCP : port', detail: 'Connection', role: 'process', emphasis: true, size: 'standard'},
-    {id: 'tls', eyebrow: 'SECURITY', label: 'TLS', detail: 'HTTPS handshake', role: 'process', size: 'standard'},
-    {id: 'http', eyebrow: 'WEB PROTOCOL', label: 'HTTP', detail: 'Request / response', role: 'process', size: 'standard'},
-  ]}
-  edges={[
-    {source: 'network', target: 'tcp', route: 'primary'},
-    {source: 'tcp', target: 'tls', route: 'primary'},
-    {source: 'tls', target: 'http', route: 'primary'},
-  ]}
-/>
-
-### 3 · Reach application and data
-
-<ReactFlowDiagram
-  ariaLabel="Networking request path part 3: proxy to application and cache data"
-  caption="Sau HTTP, request có thể đi qua proxy/load balancer tới application; cuối cùng correctness còn phụ thuộc application state và cache/data freshness."
-  direction="LR"
-  fullscreen
-  height={280}
-  interactive={false}
-  kind="pipeline"
-  nodeSpacing={88}
-  rankSpacing={96}
-  primaryPath={['proxy', 'application', 'cache']}
-  nodes={[
-    {id: 'proxy', eyebrow: 'ENTRY', label: 'Proxy / LB', detail: 'Route traffic', role: 'process', size: 'standard'},
-    {id: 'application', eyebrow: 'APP', label: 'Application', detail: 'Auth + business logic', role: 'process', emphasis: true, size: 'standard'},
-    {id: 'cache', eyebrow: 'STATE', label: 'Cache / Data', detail: 'Fresh or stale?', role: 'output', size: 'standard'},
-  ]}
-  edges={[
-    {source: 'proxy', target: 'application', route: 'primary'},
-    {source: 'application', target: 'cache', route: 'primary'},
-  ]}
-/>
-
-**End-to-end path:** `Domain → DNS → IP → Routing → Firewall/NAT → TCP:port → TLS → HTTP → Proxy/LB → Application → Cache/Data`.
 
 Điểm quan trọng nhất không phải thuộc lòng nhiều protocol mà là biết **request đang chết ở layer nào**. DNS resolve thành công không chứng minh TCP kết nối được; TCP kết nối được không chứng minh authentication đúng; HTTP `200` cũng chưa chứng minh dữ liệu browser đang thấy là fresh.
 
