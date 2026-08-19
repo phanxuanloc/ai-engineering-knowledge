@@ -84,7 +84,12 @@ const sidebars: SidebarsConfig = {
           type: 'category',
           label: 'Networking & Web Fundamentals',
           link: {type: 'doc', id: 'software-engineering/networking-and-web-fundamentals'},
-          items: [],
+          items: [
+            'software-engineering/network-addressing-and-routing',
+            'software-engineering/transport-tls-and-http',
+            'software-engineering/proxies-load-balancing-and-client-ip',
+            'software-engineering/cors-caching-and-cdn',
+          ],
         },
         {
           type: 'category',
