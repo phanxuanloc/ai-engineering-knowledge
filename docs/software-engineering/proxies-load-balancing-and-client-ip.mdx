@@ -1,0 +1,120 @@
+---
+title: Proxies, Load Balancing & Client IP
+description: Forward proxy, reverse proxy, load balancing, health checks và original client IP trong production web architecture.
+tags: [proxy, reverse-proxy, load-balancing, client-ip]
+---
+
+import {Comparison, TLDR} from '@site/src/components/Learning';
+
+# Proxies, Load Balancing & Client IP
+
+## TL;DR
+
+<TLDR>
+
+Production traffic thường không đi thẳng từ client tới backend instance. Proxy và load balancer đứng giữa để route, terminate TLS, distribute traffic và hide backend topology; vì vậy backend có thể không nhìn thấy original client IP trực tiếp.
+
+</TLDR>
+
+## Mental Model
+
+Tách theo responsibility:
+
+- **Forward proxy:** đại diện/intermediate cho client khi đi ra ngoài.
+- **Reverse proxy:** đứng trước backend và nhận request thay backend.
+- **Load balancing:** phân phối traffic giữa nhiều backend instances.
+
+Một component có thể làm nhiều responsibility cùng lúc; đừng học theo product name, hãy học theo vai trò.
+
+## Core Concepts
+
+### Forward proxy vs reverse proxy
+
+<Comparison items={[
+  {title: 'Forward proxy', description: 'Đứng phía client; server bên ngoài thấy proxy là network peer.'},
+  {title: 'Reverse proxy', description: 'Đứng phía server; client chỉ biết public/server-facing endpoint.'},
+]} />
+
+### Load balancing
+
+Load balancer phân phối request tới nhiều backend instances để scale và tăng availability.
+
+```text
+Client
+  ↓
+Load Balancer
+  ├─ API #1
+  ├─ API #2
+  └─ API #3
+```
+
+### Health checks
+
+Nếu `API #2` crash và health check fail, behavior hợp lý là ngừng route traffic tới instance đó và tiếp tục dùng các instance healthy.
+
+### Original client IP
+
+Nếu flow là:
+
+```text
+Client 14.1.2.9
+  ↓
+Load Balancer 10.0.1.5
+  ↓
+Backend 10.0.2.10
+```
+
+Backend có thể thấy direct network peer là load balancer, không phải original client. Proxy thường truyền original-client information qua header như `X-Forwarded-For`.
+
+### Trust boundary
+
+Không nên mù quáng tin `X-Forwarded-For` từ Internet. Header này chỉ đáng tin khi trusted proxy/load balancer của hệ thống kiểm soát hoặc normalize nó.
+
+## Example
+
+Một public API dùng load balancer trước ba instances. `API #2` unhealthy:
+
+```text
+LB
+├─ API #1 ✓
+├─ API #2 ✗
+└─ API #3 ✓
+```
+
+Load balancer nên tạm loại `API #2` khỏi routing pool. Client không cần biết instance cụ thể nào đang xử lý request.
+
+## When to Use
+
+- Khi scale backend horizontally.
+- Khi cần một entry point chung cho nhiều services/instances.
+- Khi debug backend log thấy source IP khác client thực tế.
+- Khi thiết kế health checks và failover routing.
+
+## Common Mistakes
+
+- **Reverse proxy và load balancer là hai product loại trừ nhau:** một component có thể làm cả hai responsibility.
+- **Backend luôn thấy original client IP:** proxy/LB thường trở thành network peer trực tiếp.
+- **Tin mọi `X-Forwarded-For`:** chỉ trust dưới trusted-proxy configuration.
+- **Client phải tự chọn healthy instance:** load balancer thường che topology này khỏi client.
+
+## Related Knowledge
+
+- [Networking & Web Fundamentals](./networking-and-web-fundamentals.mdx) — vị trí proxy/LB trong end-to-end request path.
+- [System Design Fundamentals](./system-design-fundamentals.mdx) — load balancing trong broader system architecture.
+
+## Self-test
+
+1. Forward proxy đại diện cho phía nào?
+2. Khi một backend fail health check, load balancer nên làm gì?
+3. Tại sao backend có thể thấy IP của load balancer thay vì client?
+4. Khi nào có thể trust `X-Forwarded-For`?
+
+<details>
+<summary>Answers</summary>
+
+1. Client.
+2. Ngừng route traffic tới backend unhealthy và dùng các backend healthy.
+3. Vì TCP connection cuối cùng tới backend được tạo từ proxy/LB.
+4. Khi header đi qua trusted proxy boundary được cấu hình kiểm soát đúng.
+
+</details>
