@@ -13,15 +13,15 @@ import {ConceptCard, ConceptGrid, TLDR} from '@site/src/components/Learning';
 
 <TLDR>
 
-Một web request đi qua nhiều boundary trước khi chạm business logic. Mental model nền tảng là **Domain → DNS → IP → Routing → Firewall/NAT → TCP:port → TLS → HTTP → Proxy/LB → Application → Cache/Data**; debug đúng layer giúp tránh sửa application khi request còn chưa tới HTTP.
+Đừng hiểu networking như 11 thiết bị mà một packet lần lượt chui qua. Mental model hữu ích hơn là **4 phase**: **Resolve Destination → Reach Destination → Establish Communication → Process Request**. Mỗi phase gồm các responsibility khác nhau để một web request hoàn thành.
 
 </TLDR>
 
 ## Mental Model
 
 <ReactFlowDiagram
-  ariaLabel="End-to-end networking and web request path"
-  caption="Một request, một diagram, nhưng được wrap thành nhiều hàng để mỗi node vẫn đủ lớn: xác định destination → thiết lập transport/security → đi vào web/application/data."
+  ariaLabel="Four phases of an end-to-end web request"
+  caption="Một request được hiểu qua 4 phase. DNS tìm destination; routing/network đưa traffic tới destination; TCP/TLS thiết lập communication; HTTP/proxy/application xử lý web request và data. Các box là responsibility/giai đoạn, không nhất thiết là các thiết bị vật lý riêng biệt."
   fullscreen
   height={760}
   interactive={false}
@@ -29,17 +29,20 @@ Một web request đi qua nhiều boundary trước khi chạm business logic. M
   layout="authored"
   primaryPath={['domain', 'dns', 'ip', 'routing', 'network', 'tcp', 'tls', 'http', 'proxy', 'application', 'cache']}
   nodes={[
-    {id: 'domain', x: 0, y: 0, eyebrow: 'START', label: 'Domain', detail: 'api.company.com', role: 'source', size: 'standard'},
-    {id: 'dns', x: 300, y: 0, eyebrow: 'RESOLVE', label: 'DNS', detail: 'Name → IP', role: 'process', size: 'standard'},
-    {id: 'ip', x: 600, y: 0, eyebrow: 'DESTINATION', label: 'IP', detail: '203.0.113.20', role: 'state', size: 'standard'},
-    {id: 'routing', x: 900, y: 0, eyebrow: 'PATH', label: 'Routing', detail: 'Which next hop?', role: 'process', size: 'standard'},
-    {id: 'network', x: 900, y: 220, eyebrow: 'POLICY', label: 'Firewall / NAT', detail: 'Allowed? translated?', role: 'constraint', size: 'standard'},
-    {id: 'tcp', x: 600, y: 220, eyebrow: 'TRANSPORT', label: 'TCP : port', detail: 'Connection', role: 'process', emphasis: true, size: 'standard'},
-    {id: 'tls', x: 300, y: 220, eyebrow: 'SECURITY', label: 'TLS', detail: 'HTTPS handshake', role: 'process', size: 'standard'},
-    {id: 'http', x: 0, y: 220, eyebrow: 'WEB', label: 'HTTP', detail: 'Request / response', role: 'process', size: 'standard'},
-    {id: 'proxy', x: 0, y: 440, eyebrow: 'ENTRY', label: 'Proxy / LB', detail: 'Route traffic', role: 'process', size: 'standard'},
-    {id: 'application', x: 300, y: 440, eyebrow: 'APP', label: 'Application', detail: 'Auth + business logic', role: 'process', size: 'standard'},
-    {id: 'cache', x: 600, y: 440, eyebrow: 'STATE', label: 'Cache / Data', detail: 'Fresh or stale?', role: 'output', size: 'standard'},
+    {id: 'domain', x: 0, y: 0, eyebrow: '1 · RESOLVE DESTINATION', label: 'Domain', detail: 'api.company.com', role: 'source', size: 'standard'},
+    {id: 'dns', x: 300, y: 0, eyebrow: '1 · RESOLVE DESTINATION', label: 'DNS', detail: 'Which IP?', role: 'process', size: 'standard'},
+    {id: 'ip', x: 600, y: 0, eyebrow: '1 · RESOLVE DESTINATION', label: 'Destination IP', detail: '203.0.113.20', role: 'state', size: 'standard'},
+
+    {id: 'routing', x: 900, y: 0, eyebrow: '2 · REACH DESTINATION', label: 'Routing', detail: 'Which path / next hop?', role: 'process', size: 'standard'},
+    {id: 'network', x: 900, y: 220, eyebrow: '2 · REACH DESTINATION', label: 'Firewall / NAT', detail: 'Allowed? translated?', role: 'constraint', size: 'standard'},
+
+    {id: 'tcp', x: 600, y: 220, eyebrow: '3 · ESTABLISH COMMUNICATION', label: 'TCP : port', detail: 'Connect endpoints', role: 'process', emphasis: true, size: 'standard'},
+    {id: 'tls', x: 300, y: 220, eyebrow: '3 · ESTABLISH COMMUNICATION', label: 'TLS', detail: 'Secure channel', role: 'process', size: 'standard'},
+    {id: 'http', x: 0, y: 220, eyebrow: '3 · ESTABLISH COMMUNICATION', label: 'HTTP Request', detail: 'GET /users', role: 'process', size: 'standard'},
+
+    {id: 'proxy', x: 0, y: 440, eyebrow: '4 · PROCESS REQUEST', label: 'Proxy / LB', detail: 'Route to backend', role: 'process', size: 'standard'},
+    {id: 'application', x: 300, y: 440, eyebrow: '4 · PROCESS REQUEST', label: 'Application', detail: 'Auth + business logic', role: 'process', size: 'standard'},
+    {id: 'cache', x: 600, y: 440, eyebrow: '4 · PROCESS REQUEST', label: 'Cache / Data', detail: 'Read / write state', role: 'output', size: 'standard'},
   ]}
   edges={[
     {source: 'domain', target: 'dns', route: 'primary', sourceHandle: 'right', targetHandle: 'left'},
@@ -55,7 +58,34 @@ Một web request đi qua nhiều boundary trước khi chạm business logic. M
   ]}
 />
 
-Mental model dùng để hỏi một câu rất thực dụng: **request đang chết ở đâu?** DNS success chưa chứng minh TCP thông; TCP thông chưa chứng minh authentication đúng; HTTP `200` cũng chưa chứng minh dữ liệu client thấy là fresh.
+### Cách đọc diagram
+
+**1 · Resolve Destination — “Đích là đâu?”**
+
+Client bắt đầu với domain như `api.company.com`. DNS resolve tên đó thành destination IP, ví dụ `203.0.113.20`. DNS làm nhiệm vụ **name → IP**; nó không quyết định packet sẽ đi qua router nào.
+
+**2 · Reach Destination — “Đi đường nào tới IP đó?”**
+
+Khi đã biết destination IP, operating system/network dùng routing để chọn path/next hop. Trên đường đi, firewall/security policy có thể allow hoặc block traffic; NAT có thể translate private source IP thành outbound IP. Routing, firewall và NAT là các **network responsibilities** và có thể cùng tồn tại trên một router/gateway/firewall appliance — không nhất thiết là ba máy đứng nối tiếp nhau.
+
+**3 · Establish Communication — “Hai endpoint nói chuyện được chưa?”**
+
+Client thiết lập TCP connection tới `destination IP:port`, ví dụ `203.0.113.20:443`. Với HTTPS, TLS handshake sau đó tạo secure channel. Khi transport/security boundary đã sẵn sàng, HTTP request mới được trao đổi qua channel đó.
+
+**4 · Process Request — “Server xử lý request thế nào?”**
+
+HTTP request có thể tới reverse proxy/load balancer trước, được route tới application instance, rồi application thực hiện authentication/business logic và đọc/ghi cache hoặc database. Response sau đó quay trở lại client qua communication path.
+
+Mental model debug tương ứng:
+
+```text
+1. Resolve destination   Domain → DNS → Destination IP
+2. Reach destination     IP → Routing → Firewall/NAT → destination:port
+3. Establish communication   TCP → TLS → HTTP request
+4. Process request       Proxy/LB → Application → Cache/Data
+```
+
+Điểm quan trọng: đây là **logical request lifecycle**, không phải danh sách 11 physical hops. DNS success chưa chứng minh route/TCP thông; TCP thông chưa chứng minh TLS/authentication đúng; HTTP `200` cũng chưa chứng minh dữ liệu client thấy là fresh.
 
 ## Core Concepts
 
@@ -109,10 +139,10 @@ Partner allowlist          14.1.2.3 only
 
 ## Common Mistakes
 
+- **Hiểu diagram như physical topology:** các box mô tả responsibility/giai đoạn; router, firewall và NAT có thể nằm trên cùng infrastructure component.
 - **Gọi mọi failure là “API lỗi”:** nhiều failure xảy ra trước HTTP/application.
 - **Debug sai layer:** có `401` mà vẫn bắt đầu từ DNS/firewall, hoặc TCP timeout mà sửa JSON.
-- **Trộn responsibility:** NAT, proxy, TLS, HTTP và CORS giải quyết các boundary khác nhau.
-- **Đọc page overview như một bài chi tiết:** overview chỉ là mental map; chi tiết nằm ở bốn bài con canonical phía trên.
+- **Trộn responsibility:** DNS tìm destination; routing tìm path; TCP tạo connection; TLS bảo vệ channel; HTTP định nghĩa web request/response.
 
 ## Related Knowledge
 
@@ -121,17 +151,17 @@ Partner allowlist          14.1.2.3 only
 
 ## Self-test
 
-1. DNS resolve đúng nhưng `IP:443` timeout: bạn đang ở nhóm bài nào?
-2. Nhận `HTTP 401`: nên ưu tiên network hay authentication?
-3. Curl thành công nhưng browser báo CORS: failure thuộc network connectivity hay browser policy?
-4. Backend data mới nhưng browser vẫn cũ: layer nào nên được nghi vấn?
+1. DNS trả về `203.0.113.20`. DNS đã cho bạn biết **đường đi** tới IP đó chưa?
+2. Domain resolve đúng nhưng `IP:443` timeout: nên ưu tiên phase nào?
+3. Nhận `HTTP 401`: request đã vượt qua những phase nền tảng nào?
+4. Curl thành công nhưng browser báo CORS: failure thuộc network connectivity hay browser policy?
 
 <details>
 <summary>Answers</summary>
 
-1. Network Addressing & Routing / transport connectivity boundary.
-2. Authentication/application layer.
-3. Browser CORS/Same-Origin Policy.
-4. Cache/CDN freshness/invalidation.
+1. Chưa. DNS chỉ resolve destination; routing quyết định path/next hop.
+2. Reach Destination / Establish Communication: routing, network policy và TCP connectivity trước application body.
+3. Resolve/Reach/transport đã tiến đủ xa để nhận HTTP response; ưu tiên authentication/application boundary.
+4. Browser CORS/Same-Origin Policy.
 
 </details>
