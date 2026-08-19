@@ -1,0 +1,120 @@
+---
+title: CORS, Caching & CDN
+description: Browser cross-origin policy, HTTP cache freshness và CDN edge caching trong practical web debugging.
+tags: [cors, browser, cache, cdn, http]
+---
+
+import {TLDR} from '@site/src/components/Learning';
+
+# CORS, Caching & CDN
+
+## TL;DR
+
+<TLDR>
+
+Browser web failures không phải lúc nào cũng là network failures. **CORS** quyết định browser JavaScript có được truy cập cross-origin response hay không; **HTTP cache/CDN** có thể trả dữ liệu nhanh nhưng stale nếu freshness/invalidation không đúng.
+
+</TLDR>
+
+## Mental Model
+
+Sau khi network/TLS/HTTP đều hoạt động, vẫn còn hai nhóm vấn đề dễ gây nhầm:
+
+- **Browser policy:** request có thể tới server nhưng JavaScript vẫn bị CORS chặn đọc response.
+- **Cached state:** backend/database đã mới nhưng browser/CDN vẫn trả response cũ.
+
+Vì vậy `HTTP 200` chưa đủ để kết luận user đang nhìn đúng dữ liệu.
+
+## Core Concepts
+
+### Origin và Same-Origin Policy
+
+Origin được xác định bởi:
+
+`scheme + host + port`
+
+Ví dụ `https://app.company.com` và `https://api.company.com` khác origin vì host khác nhau.
+
+### CORS
+
+CORS là browser cross-origin security mechanism, không phải basic firewall/network connectivity.
+
+Một signal thực tế:
+
+- `curl` gọi API được `200`;
+- backend log thấy browser request;
+- browser JavaScript báo CORS error.
+
+Khi đó nên điều tra CORS/Same-Origin Policy trước DNS/TCP/firewall.
+
+### Preflight
+
+Một số cross-origin requests khiến browser gửi `OPTIONS` trước để hỏi server có cho phép method/headers/origin tương ứng hay không. Actual request chỉ tiếp tục khi policy phù hợp.
+
+### Cache HIT và MISS
+
+- **HIT:** cache đã có response phù hợp và có thể trả trực tiếp.
+- **MISS:** cache phải đi tới origin/backend.
+
+### Cache-Control
+
+`Cache-Control: max-age=3600` cho phép response được coi là fresh trong khoảng thời gian tương ứng theo policy.
+
+### CDN
+
+CDN đặt edge/cache gần user để giảm latency và origin load. Khi edge có cached response phù hợp, request có thể không cần chạy tới origin.
+
+### Stale data
+
+Trade-off quan trọng nhất của cache là freshness. Nếu database đã là `New Name`, GET trả `200`, nhưng browser hiện `Old Name` và response có cache lifetime dài, stale cache/invalidation là nghi vấn mạnh.
+
+## Example
+
+```text
+DNS                         ✓
+TCP :443                    ✓
+TLS                         ✓
+OPTIONS /profile            204
+GET /profile                200
+Database                    New Name
+Browser                     Old Name
+Cache-Control               max-age=3600
+```
+
+Network và CORS preflight đều đã hoạt động. Signal mạnh nhất nằm ở cache freshness, không phải DNS/firewall/TLS.
+
+## When to Use
+
+- Khi browser fail nhưng curl/Postman hoạt động.
+- Khi debug cross-origin frontend/backend integration.
+- Khi client thấy stale data dù backend/database đã cập nhật.
+- Khi dùng CDN/static caching để giảm latency và origin load.
+
+## Common Mistakes
+
+- **CORS = firewall:** request có thể đã tới backend nhưng browser vẫn chặn JavaScript đọc response.
+- **Curl thành công nghĩa browser chắc chắn thành công:** curl không thực thi Same-Origin Policy như browser JavaScript.
+- **Cache mọi thứ lâu để tối ưu performance:** stale data có thể trở thành correctness problem.
+- **HTTP 200 = dữ liệu fresh:** response có thể đến từ browser cache/CDN edge.
+
+## Related Knowledge
+
+- [Networking & Web Fundamentals](./networking-and-web-fundamentals.mdx) — mental map end-to-end và vị trí browser/cache trong debugging flow.
+- [Transport, TLS & HTTP](./transport-tls-and-http.mdx) — HTTP request/response trước khi browser policy/cache được xét.
+
+## Self-test
+
+1. Curl nhận `200` nhưng browser báo CORS. Bạn nghi vấn gì trước?
+2. Origin được xác định bởi ba thành phần nào?
+3. `OPTIONS` preflight dùng để làm gì?
+4. Database mới nhưng browser cũ và `max-age` còn hiệu lực. Nghi vấn nào mạnh nhất?
+
+<details>
+<summary>Answers</summary>
+
+1. CORS/Same-Origin Policy configuration.
+2. Scheme + host + port.
+3. Browser kiểm tra trước server có cho phép cross-origin request tương ứng hay không.
+4. Stale cached response/cache invalidation.
+
+</details>
