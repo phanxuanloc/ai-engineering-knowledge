@@ -1,0 +1,125 @@
+---
+title: Network Addressing & Routing
+description: DNS, IP, port, subnet/CIDR, private/public IP, NAT, routing và firewall trong mental model debug network thực tế.
+tags: [networking, dns, ip, cidr, routing, nat]
+---
+
+import {Comparison, TLDR} from '@site/src/components/Learning';
+
+# Network Addressing & Routing
+
+## TL;DR
+
+<TLDR>
+
+Trước khi HTTP có thể chạy, client phải biết **đích là IP nào**, **đi đường nào**, và **traffic có được phép đi qua hay không**. Mental model thực dụng là: `DNS → IP/port → Routing → Firewall/NAT`.
+
+</TLDR>
+
+## Mental Model
+
+Hãy tách bốn câu hỏi:
+
+1. **DNS:** domain này map tới IP nào?
+2. **IP + port:** destination host/service là gì?
+3. **Routing:** packet đi qua next hop nào để tới destination?
+4. **Firewall/NAT:** traffic có được phép và source/destination có bị translate không?
+
+Nếu DNS resolve đúng nhưng `IP:443` vẫn timeout, request có thể còn chưa tới HTTP layer.
+
+## Core Concepts
+
+### DNS, IP và port
+
+- **DNS** map tên như `api.example.com` tới IP như `203.0.113.20`.
+- **IP** xác định network destination.
+- **Port** xác định service endpoint trên host. Ví dụ quen thuộc: HTTP `80`, HTTPS `443`, SSH `22`.
+
+Mental model: **IP = tòa nhà, port = số phòng**.
+
+### Private IP, public IP và NAT
+
+Private IPv4 ranges thường gặp:
+
+- `10.0.0.0/8`
+- `172.16.0.0/12`
+- `192.168.0.0/16`
+
+Một server có thể có private IP `10.10.1.15`, nhưng khi đi Internet lại được NAT thành public outbound IP `14.1.2.9`. Partner trên Internet làm source-IP allowlist thường cần **outbound IP họ thực sự nhìn thấy**, không phải private IP nội bộ.
+
+### Subnet và CIDR
+
+CIDR như `10.20.30.0/24` mô tả một network/range, không phải chỉ host `.0`. Prefix càng lớn thì range càng nhỏ; `/32` biểu diễn một IPv4 address duy nhất.
+
+Ví dụ, `10.20.30.57` thuộc `10.20.30.0/24`.
+
+### Routing
+
+<Comparison items={[
+  {title: 'DNS', description: 'Destination là IP nào?'},
+  {title: 'Routing', description: 'Đi đường/next hop nào để tới destination đó?'},
+]} />
+
+DNS có thể resolve đúng nhưng request vẫn fail nếu máy không có route hợp lệ tới destination.
+
+### Firewall rule không chỉ có source IP
+
+Một network rule có thể xét đồng thời:
+
+- source IP/subnet;
+- destination IP;
+- port;
+- protocol.
+
+Vì vậy “IP thuộc subnet được allow” chưa có nghĩa mọi traffic từ IP đó đều được phép.
+
+## Example
+
+Partner API:
+
+```text
+DNS → 203.0.113.20             ✓
+Route to Internet              ✓
+TCP 203.0.113.20:443           timeout
+Server private IP              10.10.1.15
+NAT public outbound IP         14.1.2.9
+Partner allowlist              14.1.2.3 only
+```
+
+Reasoning đúng: partner đang allow sai outbound source IP. Cần allow `14.1.2.9` rồi test lại connectivity tới `203.0.113.20:443`.
+
+## When to Use
+
+- Khi service call timeout trước khi có HTTP status.
+- Khi cần xác định IP nào phải whitelist.
+- Khi debug route giữa private networks/VPC/subnets.
+- Khi phân biệt DNS failure với routing/firewall failure.
+
+## Common Mistakes
+
+- **Whitelist private IP cho partner Internet:** external service thường thấy outbound IP sau NAT/proxy.
+- **DNS resolve được = network hoạt động:** DNS success chưa chứng minh có route hoặc TCP connectivity.
+- **Timeout = chắc chắn thiếu whitelist:** routing, firewall, network ACL hoặc service listening state đều có thể gây timeout.
+- **CIDR `.0/24` chỉ là một IP:** đây là một network range.
+
+## Related Knowledge
+
+- [Networking & Web Fundamentals](./networking-and-web-fundamentals.mdx) — mental map end-to-end của toàn request path.
+- [Transport, TLS & HTTP](./transport-tls-and-http.mdx) — bước tiếp theo sau khi destination/network path đã thông.
+
+## Self-test
+
+1. DNS resolve đúng nhưng destination `:443` timeout. Bạn kiểm tra nhóm layer nào trước HTTP body?
+2. Server private IP là `10.0.1.5`, outbound NAT là `203.0.113.8`; partner Internet cần allowlist IP nào?
+3. `10.20.30.57` có thuộc `10.20.30.0/24` không?
+4. DNS và routing khác nhau ở câu hỏi nào?
+
+<details>
+<summary>Answers</summary>
+
+1. Routing/firewall/NAT/TCP connectivity tới destination port.
+2. `203.0.113.8`.
+3. Có.
+4. DNS trả lời “IP nào?”, routing trả lời “đi đường nào?”.
+
+</details>
