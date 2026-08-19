@@ -1,0 +1,140 @@
+---
+title: Transport, TLS & HTTP
+description: TCP/UDP, TLS/HTTPS và HTTP request-response trong cùng một mental model transport-to-application.
+tags: [networking, tcp, udp, tls, https, http]
+---
+
+import {Comparison, TLDR} from '@site/src/components/Learning';
+
+# Transport, TLS & HTTP
+
+## TL;DR
+
+<TLDR>
+
+Sau khi biết destination và có network path, client còn phải thiết lập transport, bảo vệ connection bằng TLS khi dùng HTTPS, rồi mới trao đổi HTTP request/response. Mental model: `TCP/UDP → TLS → HTTP`.
+
+</TLDR>
+
+## Mental Model
+
+Đừng gộp ba layer thành “API call”. Hãy tách:
+
+- **TCP/UDP:** dữ liệu được vận chuyển thế nào?
+- **TLS:** connection được bảo vệ/xác thực thế nào?
+- **HTTP:** client và server trao đổi request/response theo semantics nào?
+
+Một lỗi ở transport có thể khiến HTTP chưa bao giờ xảy ra.
+
+## Core Concepts
+
+### TCP vs UDP
+
+<Comparison items={[
+  {title: 'TCP', description: 'Reliable ordered byte stream; có connection state và retransmission.'},
+  {title: 'UDP', description: 'Datagram transport; không cung cấp cùng guarantee về delivery/ordering như TCP.'},
+]} />
+
+HTTP/1.1 và HTTP/2 thường chạy trên TCP. HTTP/3 dùng QUIC trên UDP. DNS thường dùng UDP trong nhiều trường hợp phổ biến.
+
+### TCP reliability không phải business exactly-once
+
+Payment có thể đã charge thành công nhưng response bị mất. Client retry vẫn có thể tạo duplicate business operation. Idempotency key giải quyết vấn đề application-level khác với transport reliability.
+
+### TLS và HTTPS
+
+Mental model giản lược:
+
+`HTTP → TLS → TCP → IP`
+
+TLS cung cấp:
+
+- confidentiality/encryption in transit;
+- integrity;
+- server authentication thông qua certificate.
+
+HTTPS không sửa authorization sai, SQL injection hay secret bị log ra ngoài.
+
+### HTTP request/response
+
+Request thường có:
+
+- method;
+- path;
+- query;
+- headers;
+- optional body.
+
+Response thường có:
+
+- status;
+- headers;
+- body.
+
+### HTTP statelessness và identity
+
+HTTP về cơ bản là stateless, nên identity/session cần cơ chế bổ sung.
+
+- **Cookie** là browser storage/transmission mechanism.
+- **Session** là state của phiên làm việc, thường server-side và được tham chiếu bằng session ID.
+- **Token-based auth** có thể gửi credential qua `Authorization: Bearer ...`.
+
+### Debug HTTP status theo layer
+
+Nếu nhận được `HTTP 401 Unauthorized`, request đã đi đủ xa để có HTTP response. Ưu tiên authentication credential/token/cookie trước DNS/routing/firewall.
+
+Nếu `IP:443` timeout thì HTTP endpoint, JSON body và business logic có thể còn chưa được chạm tới.
+
+## Example
+
+Payment API dùng HTTPS:
+
+```text
+Client
+  ↓
+TCP connection
+  ↓
+TLS handshake
+  ↓
+POST /payments
+  ↓
+HTTP response
+```
+
+Nếu server charge thành công nhưng response bị mất, retry có thể duplicate payment dù TCP là reliable transport. Cần application-level idempotency.
+
+## When to Use
+
+- Khi phân biệt connection timeout với HTTP error.
+- Khi debug TLS/certificate/HTTPS issues.
+- Khi cần hiểu vì sao 401/403/500 cho biết request đã qua network stack đủ xa.
+- Khi thiết kế retry cho operations có side effect.
+
+## Common Mistakes
+
+- **HTTP = TCP:** HTTP/3 cho thấy application protocol và transport protocol là hai layer khác nhau.
+- **TCP reliable = operation exactly-once:** sai boundary; business idempotency vẫn cần xử lý riêng.
+- **HTTPS = application secure:** TLS chỉ bảo vệ data in transit và peer authentication ở boundary của nó.
+- **401 = firewall:** đã có HTTP response thì nên ưu tiên authentication/application investigation.
+
+## Related Knowledge
+
+- [Network Addressing & Routing](./network-addressing-and-routing.mdx) — destination/path trước khi transport được thiết lập.
+- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — HTTP semantics và API styles ở layer cao hơn.
+
+## Self-test
+
+1. TCP và HTTP giải quyết hai responsibility khác nhau thế nào?
+2. HTTPS thêm layer nào giữa HTTP và TCP?
+3. Tại sao TCP không ngăn double charge khi client retry?
+4. Nhận `401` thì nên debug network hay authentication trước?
+
+<details>
+<summary>Answers</summary>
+
+1. TCP vận chuyển reliable byte stream; HTTP định nghĩa request/response semantics.
+2. TLS.
+3. Vì business operation có thể đã hoàn thành trước khi response bị mất; retry là application-level behavior.
+4. Authentication trước.
+
+</details>
