@@ -1,4 +1,35 @@
 topics:
+  networking-and-web:
+    title: Networking & Web
+    category: Software Engineering
+    status: learning
+    note: docs/software-engineering/networking-and-web-fundamentals.mdx
+    learned_at: 2026-08-19
+    last_reviewed: null
+    confidence: 3
+    checkpoints:
+      - networking-and-web-fundamentals
+    checkpoint_progress:
+      networking-and-web-fundamentals:
+        status: understood
+        note: docs/software-engineering/networking-and-web-fundamentals.mdx
+        learned_at: 2026-08-19
+        evidence:
+          - identified-tcp-network-connectivity-as-first-investigation-when-dns-resolved-but-destination-port-443-timed-out
+          - selected-nat-public-outbound-ip-rather-than-private-server-ip-for-internet-partner-source-ip-allowlist
+          - correctly-identified-an-address-as-belonging-to-a-24-subnet
+          - identified-missing-routing-as-a-network-layer-problem-rather-than-dns-or-http
+          - selected-tcp-over-raw-udp-for-reliable-payment-api-transport
+          - diagnosed-http-401-at-authentication-application-layer-rather-than-dns-or-firewall
+          - selected-removal-of-an-unhealthy-backend-from-load-balancer-routing
+          - diagnosed-browser-only-cross-origin-failure-as-cors-when-curl-and-backend-connectivity-succeeded
+          - diagnosed-stale-http-caching-when-backend-data-was-fresh-but-browser-received-old-cached-data
+    next_checkpoint: websocket-and-realtime-communication-fundamentals
+    experiments: []
+    prerequisites: []
+    related:
+      - api-communication
+      - system-design
   programming-and-code-design:
     title: Programming & Code Design
     category: Software Engineering

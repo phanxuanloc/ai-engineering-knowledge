@@ -1,11 +1,230 @@
 ---
-title: "Networking & Web Fundamentals"
-description: "Structural landing page cho Networking & Web Fundamentals."
-slug: /software-engineering/networking-and-web-fundamentals
+title: Networking & Web Fundamentals
+description: Mental model thực dụng để hiểu một web request đi từ domain tới application và debug lỗi theo đúng network/web layer.
+tags: [networking, web, http, tcp, dns]
 ---
+
+import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+import {Comparison, TLDR} from '@site/src/components/Learning';
 
 # Networking & Web Fundamentals
 
-Topic này bao phủ network và web foundations.
+## TL;DR
 
-Learning notes sẽ được bổ sung sau khi learner thực sự học và checkpoint topic này.
+<TLDR>
+
+Một web request không nhảy thẳng từ client vào business logic. Hãy debug theo chuỗi **Domain → DNS → IP → Routing → Firewall/NAT → TCP:port → TLS → HTTP → Proxy/LB → Application → Cache/Data** và chỉ điều tra layer phía trên khi layer phía dưới đã đủ evidence là hoạt động.
+
+</TLDR>
+
+## Mental Model
+
+<ReactFlowDiagram
+  ariaLabel="End-to-end networking and web request path"
+  caption="Debug theo layer: timeout ở TCP thì chưa nên sửa JSON; có HTTP 401 thì request đã đi đủ xa để ưu tiên authentication thay vì DNS hoặc firewall."
+  direction="LR"
+  fullscreen
+  height={440}
+  interactive={false}
+  kind="pipeline"
+  primaryPath={['domain', 'dns', 'ip', 'routing', 'network', 'tcp', 'tls', 'http', 'proxy', 'application', 'cache']}
+  nodes={[
+    {id: 'domain', label: 'Domain', detail: 'api.company.com', role: 'source', size: 'compact'},
+    {id: 'dns', label: 'DNS', detail: 'Name → IP', role: 'process', size: 'compact'},
+    {id: 'ip', label: 'IP', detail: 'Destination', role: 'state', size: 'compact'},
+    {id: 'routing', label: 'Routing', detail: 'Which path?', role: 'process', size: 'compact'},
+    {id: 'network', label: 'Firewall / NAT', detail: 'Allowed? translated?', role: 'constraint', size: 'standard'},
+    {id: 'tcp', label: 'TCP : port', detail: 'Connection', role: 'process', emphasis: true, size: 'compact'},
+    {id: 'tls', label: 'TLS', detail: 'HTTPS security', role: 'process', size: 'compact'},
+    {id: 'http', label: 'HTTP', detail: 'Request / response', role: 'process', size: 'compact'},
+    {id: 'proxy', label: 'Proxy / LB', detail: 'Route traffic', role: 'process', size: 'compact'},
+    {id: 'application', label: 'Application', detail: 'Auth + business logic', role: 'process', size: 'standard'},
+    {id: 'cache', label: 'Cache / Data', detail: 'Fresh or stale?', role: 'output', size: 'compact'},
+  ]}
+  edges={[
+    {source: 'domain', target: 'dns', route: 'primary'},
+    {source: 'dns', target: 'ip', route: 'primary'},
+    {source: 'ip', target: 'routing', route: 'primary'},
+    {source: 'routing', target: 'network', route: 'primary'},
+    {source: 'network', target: 'tcp', route: 'primary'},
+    {source: 'tcp', target: 'tls', route: 'primary'},
+    {source: 'tls', target: 'http', route: 'primary'},
+    {source: 'http', target: 'proxy', route: 'primary'},
+    {source: 'proxy', target: 'application', route: 'primary'},
+    {source: 'application', target: 'cache', route: 'primary'},
+  ]}
+/>
+
+Điểm quan trọng nhất không phải thuộc lòng nhiều protocol mà là biết **request đang chết ở layer nào**. DNS resolve thành công không chứng minh TCP kết nối được; TCP kết nối được không chứng minh authentication đúng; HTTP `200` cũng chưa chứng minh dữ liệu browser đang thấy là fresh.
+
+## Core Concepts
+
+### DNS, IP và port
+
+- **DNS** trả lời câu hỏi “domain này map tới IP nào?”. Ví dụ `api.example.com → 203.0.113.10`.
+- **IP** xác định network destination.
+- **Port** xác định service endpoint trên host. Một vài port quen thuộc: HTTP `80`, HTTPS `443`, SSH `22`.
+
+Mental model ngắn: **IP = tòa nhà, port = số phòng**.
+
+### Private IP, public IP và NAT
+
+Private IPv4 ranges thường gặp:
+
+- `10.0.0.0/8`
+- `172.16.0.0/12`
+- `192.168.0.0/16`
+
+Một server có thể mang private IP `10.10.1.15` nhưng traffic đi Internet lại được NAT thành public outbound IP `14.1.2.9`. Vì vậy partner trên Internet làm source-IP allowlist thường cần IP mà họ thực sự nhìn thấy sau NAT, không phải private IP nội bộ.
+
+### Subnet và CIDR
+
+CIDR như `10.20.30.0/24` mô tả một network/range chứ không phải riêng host `.0`. Prefix càng lớn thì address range càng nhỏ; `/32` biểu diễn một IPv4 address duy nhất.
+
+Firewall rule có thể xét đồng thời source subnet, destination, port và protocol. Vì thế “IP thuộc subnet được allow” chưa đồng nghĩa mọi traffic từ IP đó đều được phép.
+
+### Routing
+
+<Comparison items={[
+  {title: 'DNS', description: 'IP nào là destination?'},
+  {title: 'Routing', description: 'Đi đường/next hop nào để tới destination đó?'},
+]} />
+
+DNS có thể resolve đúng trong khi request vẫn timeout vì không có route hợp lệ tới destination.
+
+### TCP và UDP
+
+**TCP** cung cấp reliable ordered byte stream và cơ chế retransmission khi dữ liệu bị mất. HTTP/1.1 và HTTP/2 thường chạy trên TCP.
+
+**UDP** gửi datagram mà transport layer không cung cấp cùng guarantee về delivery và ordering như TCP. DNS thường dùng UDP; HTTP/3 dùng QUIC trên UDP.
+
+Một distinction quan trọng: **TCP reliability không có nghĩa business operation exactly-once**. Payment có thể đã charge thành công nhưng response bị mất; retry application-level vẫn có thể tạo duplicate operation. Idempotency key giải quyết một vấn đề khác với TCP.
+
+### TLS và HTTPS
+
+Mental model giản lược:
+
+`HTTP → TLS → TCP → IP`
+
+TLS cung cấp encryption/confidentiality in transit, integrity và server authentication thông qua certificate. HTTPS không sửa được authorization sai, SQL injection hay secret bị log ra ngoài; nó bảo vệ một boundary khác.
+
+### HTTP request/response và statelessness
+
+Một HTTP request thường có:
+
+- method
+- path
+- query
+- headers
+- optional body
+
+Response thường có status, headers và body. HTTP về cơ bản là stateless, nên identity/session cần cơ chế bổ sung.
+
+**Cookie ≠ Session**:
+
+- Cookie là browser storage/transmission mechanism.
+- Session là state của phiên làm việc, thường nằm server-side và được tham chiếu bằng một session ID trong cookie.
+- Token-based auth có thể gửi credential qua `Authorization: Bearer ...`.
+
+### Debug HTTP status theo layer
+
+Nếu nhận được `HTTP 401 Unauthorized`, request đã đi đủ xa để có HTTP response. Ưu tiên kiểm tra authentication credential/token/cookie trước DNS, routing hay firewall.
+
+Ngược lại, nếu `IP:443` timeout thì HTTP endpoint, JSON body và business logic có thể còn chưa được chạm tới.
+
+### Forward proxy, reverse proxy và load balancer
+
+- **Forward proxy** đại diện/intermediate cho client khi đi ra ngoài.
+- **Reverse proxy** đứng trước backend và nhận request thay backend.
+- **Load balancing** phân phối traffic giữa nhiều backend instances.
+
+Một component như Nginx có thể làm nhiều responsibility cùng lúc; đừng học theo product name, hãy học theo vai trò.
+
+Load balancer thường health-check backend và ngừng route traffic vào unhealthy instance. Backend cũng có thể nhìn thấy proxy/LB là direct network peer thay vì original client. Header như `X-Forwarded-For` có thể truyền original-client information, nhưng chỉ đáng tin khi trusted-proxy boundary được cấu hình đúng.
+
+### CORS và Same-Origin Policy
+
+Origin được xác định bởi:
+
+`scheme + host + port`
+
+CORS chủ yếu là browser cross-origin security mechanism, **không phải firewall/network connectivity**. Một scenario rất hữu ích:
+
+- `curl` gọi API được `200`;
+- backend thấy browser request;
+- browser JavaScript vẫn báo CORS error.
+
+Khi đó nên điều tra CORS/Same-Origin Policy trước DNS/TCP/firewall.
+
+Một số cross-origin request có **preflight**: browser gửi `OPTIONS`, kiểm tra CORS policy response rồi mới gửi actual request.
+
+### HTTP cache và CDN
+
+- **Cache HIT:** cache có response phù hợp và có thể phục vụ trực tiếp.
+- **Cache MISS:** phải đi tới origin/backend.
+- `Cache-Control: max-age=3600` cho phép response được coi là fresh trong khoảng thời gian tương ứng theo cache policy.
+- CDN đặt cache/edge gần user hơn để giảm latency và origin load.
+
+Trade-off lớn nhất là **stale data**. Nếu database đã là `New Name`, request HTTP vẫn `200`, nhưng browser hiện `Old Name` và response được cache lâu, cache/invalidation là nghi vấn mạnh hơn DNS hay TLS.
+
+## Example
+
+Partner API incident:
+
+```text
+https://partner.example.com/orders
+DNS → 203.0.113.20             ✓
+Route to Internet              ✓
+TCP 203.0.113.20:443           timeout
+Server private IP              10.10.1.15
+NAT public outbound IP         14.1.2.9
+Partner allowlist              14.1.2.3 only
+```
+
+Cách reasoning đúng:
+
+1. DNS đã resolve nên không bắt đầu bằng DNS.
+2. Request chết ở TCP `:443`, nên chưa ưu tiên `/orders`, JSON hay business logic.
+3. Partner chỉ allow `14.1.2.3` nhưng traffic thực tế đi ra bằng `14.1.2.9`.
+4. Yêu cầu partner allow đúng outbound IP `14.1.2.9` rồi test lại connectivity tới `203.0.113.20:443`.
+5. Chỉ khi TCP/TLS thông và nhận HTTP response mới chuyển lên HTTP/application debugging.
+
+## When to Use
+
+- Khi API/service call timeout, connection refused, TLS fail hoặc HTTP status bất thường.
+- Khi cần phân biệt lỗi whitelist/firewall/routing với lỗi application.
+- Khi browser fail nhưng `curl`/Postman thành công.
+- Khi backend data đúng nhưng client vẫn thấy dữ liệu cũ.
+- Khi thiết kế service behind proxy/load balancer và cần hiểu original client IP.
+
+## Common Mistakes
+
+- **Gọi mọi failure là “API lỗi”:** nếu TCP chưa connect thì request có thể chưa hề tới API layer.
+- **Whitelist private IP cho partner Internet:** cần xác định outbound IP mà partner quan sát sau NAT/proxy.
+- **Thấy timeout là kết luận thiếu whitelist:** route, firewall/security rule, service listening state và network ACL đều có thể gây timeout.
+- **Thấy CORS error là sửa firewall:** CORS là browser policy; backend request có thể đã tới server.
+- **Tin `X-Forwarded-For` từ mọi nguồn:** chỉ trust khi proxy boundary của hệ thống kiểm soát header đó.
+- **Cho rằng TCP tránh duplicate payment:** transport reliability và business idempotency là hai vấn đề khác nhau.
+- **Cache mọi thứ lâu để nhanh hơn:** freshness/invalidation có thể trở thành correctness problem.
+
+## Related Knowledge
+
+- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — HTTP semantics, REST/gRPC/GraphQL và idempotency nằm phía trên networking foundation này.
+- [System Design Fundamentals](./system-design-fundamentals.mdx) — load balancing, distributed service boundaries và production architecture dựa trên các network/web primitives này.
+
+## Self-test
+
+1. Domain resolve được nhưng `IP:443` timeout. Bạn debug layer nào trước HTTP body?
+2. Server private IP là `10.0.1.5`, NAT outbound IP là `203.0.113.8`; partner Internet hỏi IP để allowlist. Gửi IP nào và vì sao?
+3. `curl` nhận `200`, backend log có request, nhưng browser JavaScript báo CORS. Nghi vấn đầu tiên là gì?
+4. Database có dữ liệu mới, GET trả `200`, browser vẫn hiện dữ liệu cũ và response có `Cache-Control: max-age=3600`. Nghi vấn nào hợp lý nhất?
+
+<details>
+<summary>Answers</summary>
+
+1. Network/TCP connectivity tới destination port; HTTP có thể chưa xảy ra.
+2. `203.0.113.8`, vì đó là source outbound IP partner nhìn thấy sau NAT.
+3. CORS/Same-Origin Policy configuration ở browser/server boundary.
+4. Cached/stale response và cache invalidation/freshness policy.
+
+</details>
