@@ -332,7 +332,7 @@ export function FlowExplainer({ title, description, scenarios, stepDurationMs = 
   const scenarioEdges = scenario.edges ?? inferEdges(scenario.nodes);
   const compactSequence = scenario.layout === "compact" || (!scenario.edges && scenario.nodes.length >= 4 && scenario.layout !== "trace");
   const traceSequence = scenario.layout === "trace";
-  const wideStage = scenario.nodes.length >= 4;
+  const wideStage = scenario.nodes.length >= 3;
   const presentation = scenario.presentation ?? (scenario.layout === "compact" ? "progressive" : "overview");
 
   const positionById = new Map(scenario.nodes.map((node, index) => [node.id, resolveScenarioPosition(node, index, mobile, compactSequence, traceSequence, wideStage)]));
