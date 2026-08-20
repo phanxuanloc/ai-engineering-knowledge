@@ -12,30 +12,19 @@ import {Comparison, ConceptCard, ConceptGrid, Principle, TLDR} from '@site/src/c
 # Tên technical concept
 
 <!--
-Ngôn ngữ chính của phần giải thích là tiếng Việt. Giữ nguyên những technical term
-tiếng Anh mà software engineer thường sử dụng. Explain locally, link when learned:
-giải thích term đủ để note tự hiểu được; chỉ link tới learning note thực sự đã tồn
-tại và cung cấp thêm understanding. Không tạo note cho concept chưa học chỉ để có
-link. Không dịch code, API, class, configuration, command, filename, protocol hoặc
-identifier. Giữ nguyên các section
-heading tiếng Anh bên dưới để toàn bộ knowledge base nhất quán.
+Ngôn ngữ chính là tiếng Việt; giữ English technical terms. Trước khi author hoặc
+refactor note, bắt buộc chạy docs-visual-density để audit từng prose block, bullet
+cluster và fenced text block; sau đó dùng docs-diagram để route renderer.
 
-Markdown first. Dùng Excalidraw-style SVG cho mental model/conceptual explanation;
-dùng shared ReactFlowDiagram cho node-edge flow, pipeline hoặc data movement.
-Trước khi chọn renderer, dùng docs-diagram để xác định teaching intent, grounded
-entities/relationships, primary path và layered validation. Với React Flow, khai
-báo kind và primaryPath khi có để shared validator kiểm tra semantic structure.
-Chỉ dùng Mermaid như rare exception cho tiny relationship mà topology là toàn bộ
-lesson; không dùng text code block thay diagram và
-không tạo component riêng nếu shared abstraction đã đáp ứng được. Mỗi diagram cần
-alt text và explanation/caption ngắn; caption nêu insight thay vì kể lại từng node.
-Với React Flow, dùng semantic node role, giữ action và data/state thành các bước
-riêng khi distinction có giá trị học tập, và chỉ emphasis một concept quan trọng.
-Không mặc định xếp mọi node thành một hàng ngang: 5+ stages cần cân nhắc vertical,
-multi-rank hoặc semantic groups để giữ consecutive edges ngắn và topology rõ.
-Normalize graph bounds và giữ outer padding cân bằng; fan-out tới các leaf tương
-đương nên dùng compact cluster thay vì để leaf stack quyết định toàn canvas.
-Giữ normal MDX nếu 2–4 dòng đã đủ rõ.
+Visual-first rule: nếu nội dung chủ yếu biểu diễn flow/lifecycle, topology/hierarchy,
+state transition, causality, comparison hoặc quantitative change và shared renderer
+có thể biểu diễn đúng semantics, phải dùng visual. Không dùng ASCII/pseudo-diagram
+thay cho ReactFlowDiagram, FlowExplainer, Excalidraw, Comparison hoặc chart trừ khi
+literal terminal/text output là chính nội dung cần dạy. Sau khoảng hai substantial
+conceptual blocks liên tiếp không có visual anchor, re-run visual-density audit.
+
+Giữ prose cho exact definition, caveat, invariant, code/config/API example và phần
+đã rõ trong 2–4 dòng. Visual phải dạy nhanh hơn text, không được chỉ trang trí.
 -->
 
 ## TL;DR
@@ -46,73 +35,44 @@ Tóm tắt takeaway quan trọng nhất trong hai hoặc ba câu. Nêu concept l
 
 </TLDR>
 
-<!-- Dùng khi article có một invariant hoặc decision rule thật sự đáng nhớ.
-<Principle label="Principle">
-Viết principle ngắn, cụ thể và có thể recall độc lập.
-</Principle>
--->
-
 ## Mental Model
 
-Giải thích mental model đơn giản nhất để concept trở nên trực quan. Kết nối input, behavior và outcome. Dùng `ConceptGrid` + `ConceptCard` cho một nhóm nhỏ các vai trò; dùng `ExcalidrawDiagram` khi hand-drawn mental model giúp hiểu nhanh hơn; dùng `ReactFlowDiagram` khi cần thể hiện structured flow.
-
-<!-- Optional diagram; remove when it does not improve understanding. Keep only
-node/edge data in the article and keep implementation in src/components/Diagrams. -->
+Giải thích mental model đơn giản nhất. Nếu mental model có structure/behavior/spatial relationship, visual là default; prose-only cần lý do cụ thể vì sao visual không giúp hiểu nhanh hơn.
 
 ## Core Concepts
 
-- **Concept:** Định nghĩa đủ ngữ cảnh ngay tại đây và giải thích vì sao nó quan trọng. Với term đơn giản, một hoặc hai câu là đủ.
-- **Learned related concept:** Tóm tắt ngắn để note vẫn tự hiểu được, rồi thêm internal link tới canonical learning note nếu link cung cấp understanding sâu hơn.
-- **Unlearned supporting concept:** Chỉ giải thích mức tối thiểu cần cho topic hiện tại; không tạo article hoặc progress entry chỉ để có link.
-
-<!-- Dùng Comparison khi comparison là cách hiểu tự nhiên nhất, không dùng thay prose mặc định.
-<Comparison
-  items={[
-    {title: 'Concept A', description: 'Điểm phân biệt quan trọng.'},
-    {title: 'Concept B', description: 'Điểm phân biệt quan trọng.'},
-  ]}
-/>
--->
+- **Concept:** Định nghĩa đủ ngữ cảnh và giải thích vì sao quan trọng.
+- **Related concept:** Tóm tắt ngắn rồi link canonical learning note khi thực sự hữu ích.
+- Không tạo note cho concept chưa học chỉ để có link.
 
 ## Example
 
-Đưa ra một ví dụ nhỏ và cụ thể. Ưu tiên executable code, sample data hoặc scenario thực tế thể hiện được mental model.
+Đưa ra một ví dụ nhỏ và cụ thể. Ưu tiên executable code/sample data cho exact mechanics; ưu tiên flow/diagram cho behavior hoặc structure.
 
 ```ts
-// Minimal example; keep code and identifiers in their original language.
+// Minimal exact code example when code itself is the lesson.
 ```
 
 ## When to Use
 
-- Tình huống phù hợp với approach này.
-- Signal cho thấy nên chọn nó.
-- Trade-off có thể khiến approach khác phù hợp hơn.
-
-<!-- Optional: dùng :::tip cho practical takeaway hoặc best practice nổi bật. -->
+- Tình huống phù hợp.
+- Signal cho thấy nên chọn approach.
+- Trade-off làm thay đổi quyết định.
 
 ## Common Mistakes
 
-- **Mistake:** Giải thích vì sao lỗi này xảy ra và cách tránh hoặc phát hiện nó.
-
-<!-- Optional: dùng :::warning khi một misconception hoặc risk cần được nhấn mạnh. -->
+- **Mistake:** Giải thích vì sao lỗi xảy ra và cách tránh/phát hiện.
 
 ## Related Knowledge
 
-<!--
-Chỉ link tới learning note thực sự đã tồn tại. Chọn quan hệ có ý nghĩa, giải thích
-mối liên hệ sau mỗi link và thêm reciprocal link khi hữu ích. Nếu chưa có related
-note đã học, nói rõ khoảng trống thay vì để placeholder hoặc tạo knowledge giả.
-
-Example khi target thực sự tồn tại:
-- [Related note đã học](../category/related-note.mdx) — giải thích mối liên hệ và giá trị understanding bổ sung của target note.
--->
+Chỉ link tới learning note thực sự tồn tại và có giá trị bổ sung.
 
 ## Self-test
 
-1. Câu hỏi kiểm tra recall?
-2. Câu hỏi kiểm tra khả năng giải thích mental model?
-3. Câu hỏi kiểm tra khả năng áp dụng trong scenario mới?
-4. Trade-off nào sẽ làm thay đổi quyết định?
+1. Recall question?
+2. Mental-model question?
+3. Application scenario?
+4. Trade-off question?
 
 <details>
 <summary>Answers</summary>

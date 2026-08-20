@@ -5,125 +5,113 @@ slug: /software-engineering/operating-systems-and-concurrency
 ---
 
 import {ConceptCard, ConceptGrid, Principle, TLDR} from '@site/src/components/Learning';
+import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 
 # Operating Systems & Concurrency
 
 ## TL;DR
 
 <TLDR>
-
-Operating Systems & Concurrency giải thích **execution chạy ở đâu, chia sẻ resource thế nào, chờ cái gì và vì sao correctness/performance có thể hỏng khi nhiều work cùng tồn tại**. Mental map hiện tại gồm năm phần đã học: process/thread & race condition, synchronization & deadlock, async I/O, memory management và CPU scheduling.
-
+Operating Systems & Concurrency giải thích **execution chạy ở đâu, chia sẻ resource thế nào, chờ cái gì và vì sao correctness/performance có thể hỏng khi nhiều work cùng tồn tại**. Mental map hiện tại gồm process/thread, synchronization, async I/O, memory management và CPU scheduling.
 </TLDR>
 
-<Principle label="Mental map">
-Shared state → correctness. Waiting → async/concurrency. Compute → CPU parallelism. Memory → capacity. Scheduler → ai thực sự nhận CPU time.
-</Principle>
+<Principle label="Mental map">Shared state → correctness. Waiting → async/concurrency. Compute → CPU parallelism. Memory → capacity. Scheduler → ai thực sự nhận CPU time.</Principle>
 
 ## Mental Model
 
-```text
-Operating Systems & Concurrency
-│
-├── Execution
-│   └── Process / Thread / Concurrency
-│
-├── Correctness
-│   └── Race / Critical Section / Lock / Deadlock
-│
-├── Waiting
-│   └── Async I/O / Event Loop / Thread Pool
-│
-├── Memory
-│   └── Stack / Heap / Virtual Memory / OOM
-│
-└── Compute
-    └── Scheduler / Context Switch / Worker Sizing
-```
+<ReactFlowDiagram
+  ariaLabel="Operating Systems and Concurrency learning map"
+  direction="TB"
+  interactive={false}
+  kind="relationship"
+  nodes={[
+    {id: 'os', label: 'OS & Concurrency', detail: 'execution + resources', role: 'group', emphasis: true},
+    {id: 'execution', label: 'Execution', detail: 'process · thread · concurrency', role: 'process'},
+    {id: 'correctness', label: 'Correctness', detail: 'race · critical section · deadlock', role: 'constraint'},
+    {id: 'waiting', label: 'Waiting', detail: 'async I/O · event loop · thread pool', role: 'state'},
+    {id: 'memory', label: 'Memory', detail: 'stack · heap · virtual memory · OOM', role: 'storage'},
+    {id: 'compute', label: 'Compute', detail: 'scheduler · context switch · workers', role: 'process'},
+  ]}
+  edges={[
+    {source: 'os', target: 'execution'},
+    {source: 'os', target: 'correctness'},
+    {source: 'os', target: 'waiting'},
+    {source: 'os', target: 'memory'},
+    {source: 'os', target: 'compute'},
+  ]}
+  caption="Một production problem thường rơi vào một trong bốn câu hỏi: state có an toàn không, work đang chờ gì, memory có đủ không, và CPU đang được chia thế nào."
+/>
 
 <ConceptGrid>
   <ConceptCard title="Execution boundary">Process tạo isolation/resource boundary; thread tạo execution path bên trong process.</ConceptCard>
   <ConceptCard title="Shared-state correctness">Race condition xuất hiện khi logical operations bị interleave trên shared mutable state.</ConceptCard>
-  <ConceptCard title="Waiting model">Async I/O tận dụng thời gian task chờ network/database/LLM thay vì giữ execution resource không cần thiết.</ConceptCard>
-  <ConceptCard title="Capacity model">Memory và CPU đều hữu hạn; concurrency phải được bounded theo resource thực sự bị giới hạn.</ConceptCard>
+  <ConceptCard title="Waiting model">Async I/O tận dụng thời gian task chờ network/database/LLM.</ConceptCard>
+  <ConceptCard title="Capacity model">Memory và CPU đều hữu hạn; concurrency phải được bounded theo resource thật sự bị giới hạn.</ConceptCard>
 </ConceptGrid>
 
 ## Core Concepts
 
 ### 1. Process, Thread & Concurrency
-
-[Process, Thread & Concurrency](./process-thread-and-concurrency.mdx) xây foundation: process vs thread, concurrency vs parallelism, shared mutable state, interleaving và race condition. Đây là bài cần đọc trước các concurrency mechanics khác.
+[Process, Thread & Concurrency](./process-thread-and-concurrency.mdx) xây foundation: process vs thread, concurrency vs parallelism, shared mutable state, interleaving và race condition.
 
 ### 2. Synchronization & Deadlocks
-
-[Synchronization & Deadlocks](./synchronization-and-deadlocks.mdx) giải thích critical section, mutex, lock contention, deadlock và consistent lock ordering. Trọng tâm là bảo vệ đúng invariant mà không serialize quá nhiều unrelated work.
+[Synchronization & Deadlocks](./synchronization-and-deadlocks.mdx) giải thích critical section, mutex, lock contention, deadlock và consistent lock ordering.
 
 ### 3. Async I/O & Event Loop
-
-[Async I/O & Event Loop](./async-io-and-event-loop.mdx) phân biệt blocking với non-blocking waiting, event loop, `async/await`, thread pool và bounded concurrency. Mental rule chính: I/O-bound tối ưu waiting; CPU-bound tối ưu compute.
+[Async I/O & Event Loop](./async-io-and-event-loop.mdx) phân biệt blocking/non-blocking waiting, event loop, `async/await`, thread pool và bounded concurrency.
 
 ### 4. Memory Management
-
-[Memory Management](./memory-management.mdx) phân biệt stack, heap, virtual memory, memory leak, stack overflow và OOM. Phần này đặc biệt hữu ích khi debug container memory limit, GC baseline growth và peak memory pressure.
+[Memory Management](./memory-management.mdx) phân biệt stack, heap, virtual memory, memory leak, stack overflow và OOM.
 
 ### 5. CPU Scheduling & Context Switching
-
-[CPU Scheduling & Context Switching](./cpu-scheduling-and-context-switching.mdx) giải thích runnable vs running, scheduler, context-switch cost và vì sao tăng CPU-bound workers quá mức có thể làm latency tệ hơn.
+[CPU Scheduling & Context Switching](./cpu-scheduling-and-context-switching.mdx) giải thích runnable vs running, scheduler, context-switch cost và worker sizing.
 
 ## Example
 
-Một AI service có thể chứa cả năm vấn đề cùng lúc:
-
-```text
-Agent process
-│
-├── many concurrent requests
-│   ├── shared state → race/synchronization concern
-│   └── LLM/DB waits → async I/O concern
-│
-├── per-request working set → memory pressure
-│
-└── CPU-heavy preprocessing
-    └── worker sizing / scheduling concern
-```
-
-Một production diagnosis tốt không bắt đầu từ “thêm thread hay thêm CPU?”, mà bắt đầu từ câu hỏi **work đang chờ gì, state nằm ở đâu và resource nào đang saturated**.
+<ReactFlowDiagram
+  ariaLabel="AI service production diagnosis map"
+  direction="TB"
+  interactive={false}
+  kind="workflow"
+  nodes={[
+    {id: 'service', label: 'AI Service', detail: 'requests + tools + preprocessing', role: 'source'},
+    {id: 'state', label: 'Shared state', detail: 'race / synchronization?', role: 'constraint'},
+    {id: 'io', label: 'LLM / DB waits', detail: 'async I/O?', role: 'state'},
+    {id: 'memory', label: 'Working set', detail: 'pressure / leak / OOM?', role: 'storage'},
+    {id: 'cpu', label: 'CPU-heavy work', detail: 'worker sizing / scheduling?', role: 'process'},
+  ]}
+  edges={[
+    {source: 'service', target: 'state'},
+    {source: 'service', target: 'io'},
+    {source: 'service', target: 'memory'},
+    {source: 'service', target: 'cpu'},
+  ]}
+  caption="Đừng bắt đầu bằng ‘thêm thread hay thêm CPU?’. Trước hết xác định work đang chờ gì, state nằm ở đâu và resource nào đang saturated."
+/>
 
 ## When to Use
-
-- Debug API/worker latency khi chưa rõ đang CPU-bound, I/O-bound hay lock-bound.
-- Debug race condition, lost update hoặc deadlock trong concurrent code.
-- Thiết kế AI Agent fan-out tool calls và bounded concurrency.
-- Điều tra OOM, memory leak, stack overflow hoặc high peak working set.
-- Sizing worker pools cho CPU-heavy preprocessing hoặc background jobs.
+- Debug API/worker latency khi chưa rõ CPU-bound, I/O-bound hay lock-bound.
+- Debug race condition, deadlock, OOM hoặc high peak working set.
+- Thiết kế bounded concurrency và worker pools cho AI systems.
 
 ## Common Mistakes
-
-- **Dùng một concurrency model cho mọi workload:** CPU-bound và I/O-bound cần strategy khác nhau.
-- **Thấy race là thêm lock ngay:** cần tìm shared invariant và synchronization boundary trước.
-- **Thấy OOM là kết luận leak:** peak concurrency cũng có thể vượt memory limit.
-- **Thấy CPU thấp là kết luận khỏe:** system có thể đang chờ lock/I/O/downstream.
-- **Đánh đồng checkpoint với broad-topic completion:** phần IPC và synchronization primitives chuyên sâu chưa được capture trong learning path này.
+- **Một concurrency model cho mọi workload:** CPU-bound và I/O-bound cần strategy khác nhau.
+- **Race → thêm lock ngay:** phải tìm shared invariant và synchronization boundary trước.
+- **OOM = leak:** peak concurrency cũng có thể vượt memory limit.
+- **CPU thấp = khỏe:** system có thể đang chờ lock/I/O/downstream.
 
 ## Related Knowledge
-
 - [Database Design Foundations](./database-design-foundations.mdx) — persistent shared state, transaction và isolation.
-- [System Design Fundamentals](./system-design-fundamentals.mdx) — queues, workers, distributed state và capacity boundaries ở system level.
+- [System Design Fundamentals](./system-design-fundamentals.mdx) — queues, workers và capacity boundaries.
 - [API Communication Fundamentals](./api-communication-fundamentals.mdx) — network calls là nguồn I/O-bound waiting phổ biến.
 
 ## Self-test
-
-1. Shared state, waiting, memory và CPU saturation lần lượt dẫn tới những câu hỏi debugging nào?
+1. Shared state, waiting, memory và CPU saturation dẫn tới những câu hỏi debugging nào?
 2. Vì sao concurrency không đồng nghĩa parallelism?
-3. Khi CPU thấp nhưng latency cao, bạn sẽ điều tra gì trước khi scale CPU?
-4. Vì sao broad topic này chưa nên coi là hoàn thành hoàn toàn?
+3. CPU thấp nhưng latency cao thì điều tra gì trước khi scale CPU?
 
-<details>
-<summary>Answers</summary>
-
-1. Shared state → correctness/atomicity; waiting → I/O/locks/downstream; memory → working set/leak/OOM; CPU → runnable work/scheduling/compute capacity.
-2. Scheduler có thể interleave nhiều tasks trên ít cores; parallelism yêu cầu simultaneous compute.
+<details><summary>Answers</summary>
+1. Atomicity; I/O/locks/downstream; working set/leak/OOM; runnable work/scheduling.
+2. Scheduler có thể interleave nhiều tasks trên ít cores; parallelism cần simultaneous compute.
 3. I/O wait, lock contention, blocked workers và downstream latency.
-4. Vì IPC và các synchronization primitives ngoài mutex/lock fundamentals chưa được học/capture.
-
 </details>

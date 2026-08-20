@@ -4,185 +4,107 @@ description: Stack, heap, virtual memory, memory leak, OOM và peak memory press
 tags: [operating-systems, memory, stack, heap, virtual-memory, oom]
 ---
 
-import {Comparison, ConceptCard, ConceptGrid, Principle, TLDR} from '@site/src/components/Learning';
+import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
+import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 
 # Memory Management
 
 ## TL;DR
+<TLDR>Thread execution thường có **stack** riêng cho call state; process data/objects thường nằm trong **heap** và có thể được nhiều threads truy cập. **Memory leak** là retained memory không còn hữu ích nhưng vẫn reachable; **OOM** là failure khi không cấp được memory cần thiết và không đồng nghĩa leak.</TLDR>
 
-<TLDR>
-
-Thread execution thường có **stack** riêng cho call state, còn process data/objects thường được quản lý trong **heap** và có thể được nhiều threads cùng truy cập. **Memory leak** là retained memory không còn hữu ích nhưng vẫn reachable; **OOM** là failure khi process/runtime không cấp được memory cần thiết và có thể xảy ra cả khi không có leak. **Virtual memory** tạo address-space abstraction và process isolation trên physical memory.
-
-</TLDR>
-
-<Principle label="Mental rule">
-Memory tăng không tự chứng minh leak. Luôn phân biệt retained baseline growth, stack exhaustion và peak working-set pressure.
-</Principle>
+<Principle label="Mental rule">Memory tăng không tự chứng minh leak. Phân biệt stack exhaustion, retained baseline growth và peak working-set pressure.</Principle>
 
 ## Mental Model
 
-```text
-Process virtual address space
-│
-├── Thread A stack
-├── Thread B stack
-├── Heap / shared objects
-├── Code / mappings
-└── OS-managed virtual pages
-          ↓
-       page tables
-          ↓
-      physical RAM
-```
+<ReactFlowDiagram
+  ariaLabel="Virtual memory maps process address space to physical memory"
+  direction="TB"
+  interactive={false}
+  kind="relationship"
+  nodes={[
+    {id:'process', label:'Process virtual address space', role:'group', emphasis:true},
+    {id:'stack-a', label:'Thread A stack', detail:'call frames', role:'state'},
+    {id:'stack-b', label:'Thread B stack', detail:'call frames', role:'state'},
+    {id:'heap', label:'Heap', detail:'shared process objects', role:'storage'},
+    {id:'pages', label:'Virtual pages', detail:'OS/MMU mapping', role:'process'},
+    {id:'ram', label:'Physical RAM', role:'storage'},
+  ]}
+  edges={[
+    {source:'process', target:'stack-a'}, {source:'process', target:'stack-b'}, {source:'process', target:'heap'},
+    {source:'process', target:'pages'}, {source:'pages', target:'ram', label:'page tables'},
+  ]}
+  caption="Process nhìn thấy virtual address space; OS/MMU quyết định virtual pages map tới physical memory nào."
+/>
 
 <Comparison items={[
-  {title: 'Stack', description: 'Execution-local call frames; thường gắn với từng thread và có size limit.'},
-  {title: 'Heap', description: 'Dynamically managed process data/objects; thường là shared memory domain giữa threads.'},
-  {title: 'Virtual memory', description: 'Address-space abstraction mà OS/MMU map tới physical memory.'},
+  {title:'Stack', description:'Execution-local call frames; thường gắn với từng thread và có size limit.'},
+  {title:'Heap', description:'Dynamically managed process data/objects; thường là shared memory domain giữa threads.'},
+  {title:'Virtual memory', description:'Address-space abstraction được map tới physical memory.'},
 ]}/>
 
 ## Core Concepts
 
 ### Stack và call frames
-
-Mỗi function call cần execution context như local state và return information. Conceptually các calls tạo stack frames theo LIFO:
-
-```text
-main()
-  └─ processOrder()
-       └─ calculatePrice()
-```
-
-Khi function return, frame tương ứng được pop. Stack có giới hạn riêng; recursion không dừng có thể làm stack vượt limit và gây **stack overflow** dù machine vẫn còn nhiều free RAM.
+Function calls tạo frames theo LIFO. Recursion không dừng có thể vượt per-thread stack limit và gây **stack overflow** dù machine còn RAM.
 
 ### Heap và shared process data
-
-Heap dùng cho dynamically managed data/objects có lifetime linh hoạt hơn call stack. Threads trong cùng process thường có thể truy cập cùng heap, nên heap vừa là memory topic vừa là concurrency topic.
-
-```text
-Thread A ──┐
-           ├── shared object on heap
-Thread B ──┘
-```
-
-Nếu object mutable và nhiều executions cùng write, synchronization/correctness concerns quay trở lại.
+Heap chứa data có lifetime linh hoạt hơn call stack. Threads trong cùng process thường có thể truy cập cùng heap; mutable shared objects vì vậy cũng là concurrency concern.
 
 ### Garbage collection không loại bỏ mọi leak
 
-Trong GC runtimes, object được reclaim khi runtime xác định nó không còn reachable theo rules của collector. Một object có thể **không còn hữu ích về business** nhưng vẫn reachable vì global map/cache/list giữ reference.
+<ReactFlowDiagram
+  ariaLabel="Retained reference memory leak"
+  direction="LR"
+  interactive={false}
+  kind="data-flow"
+  primaryPath={['unused','cache','reachable','growth']}
+  nodes={[
+    {id:'unused', label:'Objects no longer useful', role:'state'},
+    {id:'cache', label:'Global cache / Map', detail:'still holds references', role:'storage'},
+    {id:'reachable', label:'Still reachable', detail:'GC cannot reclaim', role:'constraint'},
+    {id:'growth', label:'Heap baseline grows', role:'output', emphasis:true},
+  ]}
+  edges={[
+    {source:'unused', target:'cache'}, {source:'cache', target:'reachable'}, {source:'reachable', target:'growth'},
+  ]}
+  caption="GC có thể hoạt động đúng nhưng vẫn không reclaim data mà application còn giữ reference."
+/>
 
-Ví dụ:
+### OOM và peak memory pressure
+OOM là failure state, không phải diagnosis. Leak, unbounded cache, large object, traffic spike, excessive concurrency, too many threads hoặc container limit thấp đều có thể dẫn tới OOM. Ví dụ `10 MB/request × 500 concurrent requests ≈ 5 GB` working set có thể vượt container 2 GB dù memory cuối cùng được release.
 
-```text
-globalCache
-  ├─ result 1
-  ├─ result 2
-  ├─ result 3
-  └─ ... never evicted
-```
-
-GC vẫn hoạt động đúng nhưng không thể reclaim data application vẫn giữ reference. Đây là một dạng memory leak thực dụng trong managed runtimes.
-
-### OOM là failure state
-
-**Out Of Memory** xảy ra khi process/runtime không thể cấp memory cần thiết trong constraints hiện tại. Nguyên nhân có thể gồm leak, unbounded cache, large object, traffic spike, excessive concurrency, too many threads hoặc container memory limit quá thấp.
-
-Vì vậy:
-
-```text
-memory leak → có thể dẫn tới OOM
-OOM        → không đồng nghĩa memory leak
-```
-
-### Peak memory pressure
-
-Per-request working memory nhân với concurrency có thể tạo peak memory rất lớn dù mọi object cuối cùng đều được release.
-
-Ví dụ RAG service:
-
-```text
-10 MB working memory/request
-× 500 concurrent requests
-≈ 5 GB peak working set
-```
-
-Container limit 2 GB có thể bị OOM trước khi traffic giảm. Root cause ở đây là capacity/concurrency, không phải retained-reference leak.
-
-### Virtual memory
-
-Process nhìn thấy một **virtual address space** riêng thay vì làm việc trực tiếp với physical RAM addresses. OS + MMU dùng page tables để map virtual pages tới physical frames.
-
-Hai processes có thể dùng cùng numeric virtual address nhưng map tới physical memory khác nhau. Đây là một nền tảng của process isolation và giúp OS quản lý memory linh hoạt.
-
-### Paging và swap
-
-Virtual memory được chia theo pages. Physical frames không cần nằm liên tục. Tùy OS/configuration, cold pages có thể được move giữa RAM và backing storage/swap.
-
-Disk/storage chậm hơn RAM rất nhiều; nếu system liên tục page-in/page-out dưới memory pressure, performance có thể collapse vì **thrashing**. Mental model cần giữ là virtual memory tạo abstraction; nó không biến disk thành RAM có cùng performance.
+### Virtual memory, paging và swap
+OS + MMU map virtual pages tới physical frames. Hai processes có thể dùng cùng numeric virtual address nhưng map tới memory khác nhau. Swap/backing storage có thể hỗ trợ memory management, nhưng storage chậm hơn RAM; heavy page-in/page-out có thể gây thrashing.
 
 ## Example
-
-Một Java service có container limit `2 GB`:
-
-```text
-startup        300 MB
-after 1 hour   600 MB
-after 4 hours  1.2 GB
-after 8 hours  1.8 GB
-```
-
-Traffic ổn định, GC chạy thường xuyên nhưng baseline sau GC vẫn tăng. Heap dump cho thấy global `Map` giữ hàng triệu request-result objects và không eviction.
-
-Đây là strong signal của retained-reference leak:
-
-```text
-objects no longer useful
-        ↓
-still reachable from global Map
-        ↓
-GC cannot reclaim
-        ↓
-baseline grows over time
-```
-
-Ngược lại, nếu memory chỉ spike khi traffic tăng từ 100 lên 5,000 concurrent requests rồi process bị killed, cần điều tra per-request working set và concurrency trước khi kết luận leak.
+Một Java service có baseline sau GC tăng đều từ 300 MB lên 1.8 GB trong khi traffic ổn định; heap dump cho thấy global `Map` giữ hàng triệu obsolete objects. Đây là strong signal của retained-reference leak. Ngược lại, memory chỉ spike cùng traffic/concurrency cần được điều tra như capacity problem trước.
 
 ## When to Use
-
-- Khi process bị OOM hoặc container bị memory kill.
-- Khi heap baseline sau GC tăng dần theo thời gian.
-- Khi recursion hoặc deep call chain gây stack overflow.
-- Khi sizing concurrency dựa trên per-request memory.
-- Khi cần hiểu process isolation và vì sao virtual addresses không phải physical RAM addresses.
+- Process/container bị OOM.
+- Heap baseline sau GC tăng dần.
+- Recursion/deep call chain gây stack overflow.
+- Sizing concurrency theo per-request memory.
 
 ## Common Mistakes
-
-- **`GC language không leak`:** retained references vẫn có thể giữ memory vô hạn.
-- **`OOM = leak`:** peak workload cũng có thể vượt memory capacity.
-- **`Stack overflow = hết machine RAM`:** stack có limit riêng.
-- **`Object luôn heap, primitive luôn stack`:** allocation details phụ thuộc runtime; mental model quan trọng hơn là call state vs dynamically managed data.
-- **`Virtual memory = RAM + disk đơn giản`:** cốt lõi là address-space abstraction/mapping; swap chỉ là một mechanism có thể tồn tại.
+- **GC language không leak:** retained references vẫn giữ memory.
+- **OOM = leak:** peak workload cũng có thể vượt capacity.
+- **Stack overflow = hết machine RAM:** stack có limit riêng.
+- **Virtual memory = RAM + disk:** cốt lõi là address-space abstraction/mapping.
 
 ## Related Knowledge
-
-- [Process, Thread & Concurrency](./process-thread-and-concurrency.mdx) — process isolation và shared heap nối memory model với concurrency.
-- [Async I/O & Event Loop](./async-io-and-event-loop.mdx) — concurrency cao có thể tăng peak working set và cần bounded concurrency.
-- [CPU Scheduling & Context Switching](./cpu-scheduling-and-context-switching.mdx) — too many threads vừa tốn scheduling overhead vừa tiêu thụ memory cho per-thread state/stack.
+- [Process, Thread & Concurrency](./process-thread-and-concurrency.mdx) — process isolation và shared heap.
+- [Async I/O & Event Loop](./async-io-and-event-loop.mdx) — high concurrency tăng peak working set.
+- [CPU Scheduling & Context Switching](./cpu-scheduling-and-context-switching.mdx) — excessive threads có cả scheduling và memory cost.
 
 ## Self-test
+1. Stack overflow khác OOM thế nào?
+2. Vì sao GC không reclaim object trong unbounded global cache?
+3. OOM do traffic spike có đủ chứng minh leak không?
+4. Virtual memory giúp process isolation thế nào?
 
-1. Stack overflow khác OOM như thế nào?
-2. Vì sao GC vẫn không reclaim object trong unbounded global cache?
-3. OOM do traffic spike có đủ chứng minh memory leak không?
-4. Virtual memory giúp process isolation như thế nào?
-
-<details>
-<summary>Answers</summary>
-
-1. Stack overflow là một stack vượt limit; OOM là runtime/process không cấp được memory cần thiết trong available limits.
-2. Vì global cache vẫn giữ references nên objects còn reachable.
-3. Không. Peak concurrency × working set có thể vượt memory limit dù memory sau request có thể được release.
-4. Mỗi process có virtual address space riêng và OS/MMU map addresses đó tới physical memory theo mappings riêng.
-
+<details><summary>Answers</summary>
+1. Stack overflow là một stack vượt limit; OOM là không cấp được memory cần thiết.
+2. Cache vẫn giữ references nên objects còn reachable.
+3. Không; peak concurrency × working set có thể vượt limit.
+4. Mỗi process có virtual address space và mappings riêng.
 </details>

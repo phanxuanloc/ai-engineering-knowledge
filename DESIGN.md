@@ -8,13 +8,20 @@ Use `.mdx` for every knowledge article and start from `docs/_templates/learning-
 
 ## Visual decisions
 
-Start with `.agents/skills/docs-diagram/SKILL.md` and classify the teaching job before choosing technology:
+Start with `.agents/skills/docs-visual-density/SKILL.md` to audit the page block-by-block, then use `.agents/skills/docs-diagram/SKILL.md` to classify each required visual before choosing technology:
 
 - **Mental model / conceptual sketch** → Excalidraw.
 - **Static flow / system topology** → React Flow.
 - **Runtime behavior over time** → Visual Explainer / Flow Explainer.
 - **Quantitative change** → chart visualization.
+- **Genuine comparison** → Comparison or semantic table.
 - **Two to four short lines already explain it** → ordinary MDX.
+
+### Visual-first authoring rule
+
+When a prose block, bullet cluster, or fenced `text` block mainly describes **flow, lifecycle, topology, hierarchy, state transition, causality, comparison, or quantitative change**, and an existing renderer can represent it truthfully, converting it to a visual is **mandatory**, not optional polish. Fenced ASCII/pseudo-diagrams are not acceptable substitutes for React Flow, FlowExplainer, Excalidraw, Comparison, or charts unless the literal terminal/text output itself is the subject.
+
+Do not allow long pages to become walls of prose. After roughly two substantial conceptual blocks without a visual anchor, re-run the visual-density audit. The anchor must teach something; decorative cards do not count.
 
 The key distinction is **structure vs behavior**. React Flow answers “what connects to what?”. Flow Explainer answers “what happens next?”. Do not animate every React Flow edge merely to make a page feel alive. When request/response, streaming, retries, events, messages, tokens, chunks, tool calls, selection, filtering, or state transitions are part of the lesson, prefer a finite step-driven explainer with visible current state.
 
@@ -28,11 +35,11 @@ Do not turn the site into a cyberpunk dashboard. Avoid rainbow neon, heavy glass
 
 ### Runtime explainer controls
 
-Finite runtime stories should normally expose `Play`, `Pause`, `Step`, and `Replay`, show the current step, and provide a one-sentence explanation of the current state. Scenario tabs are preferred for related variants such as REST / gRPC Unary / gRPC Streaming / GraphQL. Respect `prefers-reduced-motion`; motion may disappear but semantic emphasis must remain.
+Finite runtime stories should normally expose `Play`, `Pause`, `Step`, and `Replay`, show the current step, and provide a one-sentence explanation of the current state. Scenario tabs are preferred for related variants. Respect `prefers-reduced-motion`; motion may disappear but semantic emphasis must remain.
 
 ## Learning state
 
-`learning-progress.yaml` is the internal source of truth for the author's learning workflow. Never infer a learned state from a file, a planned syllabus, or visual completeness. Public website data in `src/data/knowledge.ts` describes published content and reader navigation only; it must not expose personal progress.
+`learning-progress.yaml` is the internal source of truth for the author's learning workflow. Never infer a learned state from a file, a planned syllabus, or visual completeness. Public website data describes published content and reader navigation only; it must not expose personal progress.
 
 ## Visual hierarchy
 
