@@ -1,11 +1,167 @@
 ---
-title: "Operating Systems & Concurrency"
-description: "Structural landing page cho Operating Systems & Concurrency."
+title: Operating Systems & Concurrency
+description: Mental model thực dụng về process, thread, concurrency, synchronization, async I/O, memory và CPU scheduling cho production systems.
 slug: /software-engineering/operating-systems-and-concurrency
 ---
 
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
+import {Comparison, ConceptCard, ConceptGrid, Principle, TLDR} from '@site/src/components/Learning';
+
 # Operating Systems & Concurrency
 
-Topic này bao phủ operating system và concurrency foundations.
+## TL;DR
 
-Learning notes sẽ được bổ sung sau khi learner thực sự học và checkpoint topic này.
+<TLDR>
+
+**Process** là resource/isolation boundary; **thread** là execution path bên trong process. Concurrency cho nhiều task cùng progress, còn parallelism là nhiều task thực sự chạy đồng thời. Khi nhiều execution cùng sửa shared mutable state, correctness phụ thuộc vào atomicity và synchronization đúng boundary; với performance, cần phân biệt CPU-bound với I/O-bound thay vì mặc định tăng thread.
+
+</TLDR>
+
+<Principle label="Mental rule">
+Concurrency control phải bảo vệ shared state ở đúng boundary. I/O-bound tối ưu thời gian chờ; CPU-bound tối ưu compute capacity.
+</Principle>
+
+## Mental Model
+
+<FlowExplainer
+  title="Race condition → protected critical section"
+  description="Theo hai execution cùng sửa một shared counter để thấy vì sao read-modify-write cần một atomicity boundary."
+  stepDurationMs={2400}
+  scenarios={[
+    {
+      id: 'shared-counter', label: 'Shared counter', layout: 'compact',
+      nodes: [
+        {id: 'a', label: 'Execution A', detail: 'read → modify → write', role: 'client'},
+        {id: 'b', label: 'Execution B', detail: 'read → modify → write', role: 'client'},
+        {id: 'state', label: 'Shared state', detail: 'counter = 0', role: 'state'},
+        {id: 'lock', label: 'Critical section', detail: 'mutual exclusion', role: 'service'},
+        {id: 'safe-state', label: 'Consistent state', detail: 'counter = 2', role: 'state'},
+      ],
+      edges: [
+        {id: 'a-state', source: 'a', target: 'state'}, {id: 'b-state', source: 'b', target: 'state'},
+        {id: 'a-lock', source: 'a', target: 'lock'}, {id: 'b-lock', source: 'b', target: 'lock'},
+        {id: 'lock-safe', source: 'lock', target: 'safe-state'},
+      ],
+      steps: [
+        {title: '1 · Hai execution cùng đọc', description: 'A và B đều có thể quan sát counter = 0 trước khi bên còn lại ghi kết quả.', active: ['a', 'b', 'state'], message: 'read 0'},
+        {title: '2 · Read-modify-write bị interleave', description: 'Nếu cả hai cùng tính 0 + 1 rồi cùng ghi 1, một update bị mất. Đây là race condition.', active: ['state'], persistent: ['a', 'b'], message: 'lost update'},
+        {title: '3 · Bảo vệ đúng critical section', description: 'Mutual exclusion serialize phần thao tác shared invariant; execution còn lại phải chờ thay vì interleave.', from: 'a', to: 'lock', active: ['lock'], message: 'acquire'},
+        {title: '4 · State tiến triển nhất quán', description: 'A cập nhật 0 → 1, sau đó B quan sát state mới và cập nhật 1 → 2.', from: 'lock', to: 'safe-state', persistent: ['lock'], message: '0 → 1 → 2'},
+      ],
+    },
+  ]}
+/>
+
+Một process có virtual address space và resources riêng; bên trong process có thể có nhiều threads. Threads có execution state/stack riêng nhưng chia sẻ nhiều process resources, đặc biệt heap. Vì vậy thread là execution mechanism thuận tiện nhưng shared mutable state cần concurrency control.
+
+<Comparison items={[
+  {title: 'Concurrency', description: 'Nhiều task cùng có progress trong một khoảng thời gian; không yêu cầu chạy cùng một instant.'},
+  {title: 'Parallelism', description: 'Nhiều task thực sự execute đồng thời trên compute resources khác nhau.'},
+]}/>
+
+## Core Concepts
+
+### Process và thread
+
+- **Process:** resource và isolation boundary do OS quản lý, có virtual address space, open files/sockets và một hoặc nhiều threads.
+- **Thread:** execution path bên trong process. Mỗi thread thường có stack riêng nhưng có thể cùng truy cập heap và resources của process.
+- **Concurrency không đồng nghĩa parallelism:** scheduler có thể interleave nhiều runnable threads trên ít CPU cores; parallelism thực sự bị giới hạn bởi hardware/runtime.
+
+### Race condition, critical section và mutex
+
+Một operation nhìn như `counter++` có thể conceptually là `read → add → write`. Nếu hai executions interleave trên cùng shared state, kết quả có thể phụ thuộc timing — đó là **race condition**.
+
+**Critical section** là đoạn thao tác shared invariant cần được bảo vệ. **Mutex/lock** cung cấp mutual exclusion, nhưng synchronization phải đặt đúng nơi state được chia sẻ. Một mutex nằm trong một API process không thể bảo vệ database state trước một process khác; distributed/shared state cần atomicity ở boundary phù hợp, chẳng hạn atomic database update hoặc transaction semantics.
+
+### Contention và deadlock
+
+<ConceptGrid>
+  <ConceptCard title="Race condition">Executions vẫn chạy nhưng interleaving có thể làm state sai.</ConceptCard>
+  <ConceptCard title="Lock contention">Executions tranh cùng lock/resource; correctness có thể đúng nhưng latency tăng và throughput giảm.</ConceptCard>
+  <ConceptCard title="Deadlock">Executions giữ resource rồi chờ lẫn nhau theo vòng tròn nên không còn progress.</ConceptCard>
+</ConceptGrid>
+
+Critical section nên chỉ bao phủ invariant thực sự cần protection. Giữ lock trong một external network call dài thường tạo contention không cần thiết. Khi nhiều locks cần phối hợp, consistent lock ordering là một cách quan trọng để phá circular wait và giảm nguy cơ deadlock.
+
+### Async I/O, event loop và thread pool
+
+Với **I/O-bound** workload, phần lớn thời gian task đang chờ network, database, disk hoặc external API. Proper async I/O cho phép task `await` và yield control để event loop tiếp tục chạy task khác; nó không biến một CPU core thành nhiều cores.
+
+Với blocking operations, một **thread pool** cung cấp bounded reusable workers thay vì tạo thread không giới hạn. Heavy CPU work chạy trực tiếp trên event-loop thread có thể block toàn bộ loop, vì `async` không tự biến CPU computation thành parallel computation.
+
+### Stack, heap và virtual memory
+
+- **Stack:** gắn với execution/call frames của từng thread. Recursion không dừng có thể làm stack vượt giới hạn và gây stack overflow dù machine còn RAM.
+- **Heap:** chứa dynamically managed process data/objects và thường là nơi nhiều threads có thể chia sẻ mutable state.
+- **Memory leak:** data không còn hữu ích nhưng vẫn retained/reachable, ví dụ global cache không eviction; GC không thể reclaim object vẫn còn reference.
+- **OOM:** failure khi runtime/process không cấp được memory cần thiết. Leak chỉ là một nguyên nhân; peak concurrency × per-request memory cũng có thể gây OOM.
+- **Virtual memory:** mỗi process nhìn thấy virtual address space riêng; OS/MMU map virtual pages tới physical memory, tạo abstraction và isolation.
+
+### Scheduling và context switching
+
+OS scheduler chọn runnable thread nào được chạy trên CPU cores. Khi CPU chuyển execution từ thread này sang thread khác, **context switch** cần save/restore execution state và có thể làm giảm cache locality.
+
+Với CPU-bound workload, tăng workers vượt xa available cores có thể làm run queue và context switches tăng trong khi throughput gần như không tăng. CPU thấp cũng không tự chứng minh hệ thống khỏe: executions có thể đang chờ I/O, lock hoặc downstream service.
+
+## Example
+
+Một AI Agent service có hai loại work:
+
+```text
+CPU-heavy preprocessing
+  → bounded parallel workers gần compute capacity
+
+GitHub / Vector DB / LLM calls
+  → async I/O
+  → independent calls có thể overlap
+  → bounded concurrency để bảo vệ rate limits, connection pools và memory
+```
+
+Nếu ba independent calls mất lần lượt 1s, 0.5s và 4s, chạy sequential tốn khoảng 5.5s; chạy concurrent có thể tiến gần 4s cộng overhead. Lợi ích đến từ việc overlap thời gian chờ, không phải làm external service chạy nhanh hơn.
+
+Với shared database counter, nhiều service instances không nên dựa vào process-local mutex. Atomic increment tại database boundary bảo vệ state mà mọi instance thực sự cùng chia sẻ.
+
+## When to Use
+
+- Debug lost updates/check-then-act bugs: tìm shared mutable state và atomicity boundary trước.
+- Requests vẫn hoàn thành nhưng nhiều threads chờ cùng mutex: điều tra lock contention và critical-section duration.
+- Threads giữ locks và chờ lẫn nhau: điều tra deadlock và lock ordering.
+- Workload chủ yếu chờ network/database/LLM: cân nhắc async I/O và bounded concurrency.
+- Workload CPU-heavy: giới hạn parallel workers theo compute capacity thay vì tăng threads vô hạn.
+- Memory tăng: phân biệt retained-reference leak, stack overflow và peak-memory OOM trước khi kết luận nguyên nhân.
+
+## Common Mistakes
+
+- **`multi-threading = parallelism`:** threads tạo nhiều execution paths; parallelism còn phụ thuộc cores, scheduler và runtime.
+- **`async = parallel`:** async chủ yếu giúp concurrency cho waiting work; CPU-heavy code vẫn có thể block event loop.
+- **`concurrency bug → thêm lock`:** lock sai boundary không bảo vệ shared state, còn lock quá rộng tạo contention.
+- **`mutex trong một instance bảo vệ distributed state`:** process-local lock không synchronize process khác.
+- **`OOM = memory leak`:** traffic spike hoặc large per-request working set cũng có thể vượt memory limit.
+- **`nhiều worker hơn luôn nhanh hơn`:** CPU-bound workers quá nhiều tạo scheduling/context-switch overhead.
+
+## Related Knowledge
+
+- [Database Design Foundations](./database-design-foundations.mdx) — transaction, database concurrency và isolation là nơi các OS/concurrency mental models gặp shared persistent state.
+- [System Design Fundamentals](./system-design-fundamentals.mdx) — bounded workers, queues và distributed state mở rộng concurrency decisions lên system boundary.
+- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — network calls là ví dụ điển hình của I/O-bound work và async concurrency.
+
+## Self-test
+
+1. Vì sao `counter++` có thể race dù nhìn như một dòng code?
+2. Race condition, lock contention và deadlock khác nhau ở failure mode nào?
+3. Tại sao process-local mutex không đủ để bảo vệ database state trước nhiều service instances?
+4. 10,000 network waits và video encoding CPU-heavy nên dùng concurrency strategy khác nhau thế nào?
+5. Memory tăng tới OOM có đủ để kết luận memory leak không?
+6. Vì sao 128 CPU-bound workers trên 8 cores có thể chậm hơn một worker pool nhỏ hơn?
+
+<details>
+<summary>Answers</summary>
+
+1. Vì read-modify-write có thể gồm nhiều operations và bị interleave với execution khác.
+2. Race có thể làm state sai; contention làm executions chờ và hệ thống chậm; deadlock làm executions chờ vòng tròn và không progress.
+3. Mỗi process có lock riêng, trong khi shared state nằm ở database boundary; cần concurrency control tại boundary chung.
+4. Network waits phù hợp async I/O + bounded concurrency; CPU-heavy encoding phù hợp bounded parallel workers/multiple processes.
+5. Không. OOM là failure state; leak, peak concurrency, large working sets và memory limits đều có thể là nguyên nhân.
+6. Runnable workers vượt xa cores làm scheduler churn, context switches và cache disruption tăng mà không tạo thêm compute capacity.
+
+</details>
