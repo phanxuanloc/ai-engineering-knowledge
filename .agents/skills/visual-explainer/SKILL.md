@@ -109,16 +109,28 @@ Compact flow is a teaching composition, not a generic editor canvas.
 - On mobile, a truly linear trace may become one vertical spine.
 - Progressive scenes should frame only revealed nodes so normal reading-size text can be preserved.
 
+### Readability floor and fitView
+
+`fitView` is a framing tool, not permission to shrink the teaching surface until text becomes tiny.
+
+- Preserve a **minimum readable zoom** for ordinary runtime traces. For simple 2–3 node desktop flows, target roughly `0.85–0.9` or higher; a value around `0.88` is a reasonable shared default.
+- More complex topologies may use a lower floor when necessary, but complexity should explicitly justify it. A fan-out graph can tolerate more zoom-out than a three-node request/response trace.
+- Mobile should also retain a readability floor; do not solve a tall trace by shrinking the entire canvas indefinitely.
+- If connector clearance increases graph width enough that `fitView` would cross the readability floor, **recompose or modestly reduce spacing before shrinking the graph further**.
+- Prefer this order: **semantic recompose/progressive reveal → balanced spacing → bounded graph label → readability-preserving fitView**.
+- Never increase global spacing in isolation without checking resulting viewport scale. Connector clarity and node readability are one layout problem, not separate CSS problems.
+- Inspect the rendered node text size after any rank/column spacing change. CSS font-size being unchanged does not prove readability if the React Flow viewport is scaled down.
+
 ### Horizontal connector clearance
 
 A horizontal connector with a message pill must reserve a real lane between adjacent nodes. Do not size desktop columns from node count or visual compactness alone.
 
 - Compute horizontal spacing as **node width + connector clearance**. Connector clearance must include the message pill, visible line before the label, visible line after the label, arrowhead, and packet travel.
 - The pill must not visually consume the full connector. A reader should still see an unmistakable line segment entering the label and another line segment continuing toward the destination.
-- For normal short/medium labels, target roughly **200px or more of connector lane after subtracting node width** before relying on truncation.
-- Increase column/rank spacing before shrinking text, reducing pill padding, moving labels off the connector, or hiding labels.
+- Prefer a balanced connector lane over an oversized global gap. Roughly `190–220px` of lane after subtracting node width is usually enough for common short/medium runtime labels when the label itself is bounded.
+- Increase spacing before shrinking text, but stop increasing spacing when it would force `fitView` below the readability floor.
 - Keep the label near the connector midpoint. Do not push it against a node just to make the overall diagram narrower.
-- For long messages, use this fallback order: **increase spacing → bound/truncate graph label → preserve full message in narrative/accessibility text**.
+- For long messages, use this fallback order: **balanced spacing → bound/truncate graph label → preserve full message in narrative/accessibility text**.
 - Evaluate actual representative messages, not only empty edges. Regression labels include `GetPaymentRequest`, `protobuf request`, `conversation message`, `persisted message`, and `requested JSON shape` when applicable.
 
 ### Mobile connector clearance
@@ -151,7 +163,7 @@ FlowExplainer nodes use bounded geometry so motion/routing stays stable.
 - Use normal readable text; detail may wrap to a small bounded number of lines.
 - Never let DOM content silently grow beyond routing geometry.
 - Keep edge message centered on its connector and mask the line behind the label.
-- Increase spacing before shrinking text or detaching labels from edges.
+- Increase spacing before shrinking text or detaching labels from edges, but respect the viewport readability floor.
 - Long graph messages may truncate because full meaning must remain in the event narrative and accessible title.
 - No message may cover a node, arrowhead, another connector, or another label.
 - Connector-label clearance is part of layout geometry on both desktop and mobile, not a CSS afterthought.
@@ -193,16 +205,18 @@ Before accepting a change, verify:
 7. Fan-out/fan-in remains semantically correct on desktop and mobile.
 8. Labels stay attached to their connector and do not collide.
 9. Horizontal labeled connectors retain visible line before and after the pill; message text must not consume the whole lane.
-10. Normal article width keeps node text comfortably readable without aggressive shrinking.
-11. Mobile recomposes before shrinking and has no page-level overflow.
-12. On a mobile vertical trace, each labeled connector still exposes visible line before and after the pill; the label must not consume the whole lane.
-13. Test representative horizontal messages such as `GetPaymentRequest`, `conversation message`, and `persisted message` when applicable.
-14. Test representative mobile messages including `DNS query`, `203.0.113.20`, `TCP :443`, `GET /users`, and `200 OK` when applicable.
-15. Light/dark themes retain contrast.
-16. Reduced-motion mode retains all semantic states.
-17. No decorative grid/scanline/glow obscures information hierarchy.
-18. Run `npm run typecheck`, `npm run build`, and `git diff --check` when execution access exists.
-19. Never claim rendered visual QA passed unless the actual rendered page was inspected.
+10. Simple desktop flows do not fall below the readability floor merely because spacing increased.
+11. Normal article width keeps node text comfortably readable without aggressive shrinking.
+12. Mobile recomposes before shrinking and has no page-level overflow.
+13. On a mobile vertical trace, each labeled connector still exposes visible line before and after the pill; the label must not consume the whole lane.
+14. Test representative horizontal messages such as `GetPaymentRequest`, `conversation message`, and `persisted message` when applicable.
+15. Test representative mobile messages including `DNS query`, `203.0.113.20`, `TCP :443`, `GET /users`, and `200 OK` when applicable.
+16. After any spacing change, inspect effective viewport scale as well as CSS font size.
+17. Light/dark themes retain contrast.
+18. Reduced-motion mode retains all semantic states.
+19. No decorative grid/scanline/glow obscures information hierarchy.
+20. Run `npm run typecheck`, `npm run build`, and `git diff --check` when execution access exists.
+21. Never claim rendered visual QA passed unless the actual rendered page was inspected.
 
 ## Regression cases
 
@@ -210,10 +224,10 @@ Review shared FlowExplainer changes against at least:
 
 - Networking web request journey — progressive request lifecycle and mobile connector-label clearance;
 - Chat System Design — compact horizontal trace with `conversation message` / `persisted message` labels;
-- REST request/response;
+- REST request/response — simple three-node readability floor;
 - gRPC unary remote boundary with `GetPaymentRequest` / `GetPaymentResponse` labels;
 - gRPC streaming finite repeated messages + persistent stream;
-- GraphQL fan-out/fan-in preserving sibling topology.
+- GraphQL fan-out/fan-in preserving sibling topology without forcing the same zoom floor as a simple trace.
 
 A shared improvement must not make one runtime story prettier by making another semantically wrong.
 
