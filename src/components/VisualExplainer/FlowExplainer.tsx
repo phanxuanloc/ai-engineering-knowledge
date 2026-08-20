@@ -24,7 +24,13 @@ export type FlowExplainerNode = {
   label: string;
   detail?: string;
   role?:
-    "client" | "service" | "database" | "network" | "model" | "tool" | "data";
+    | "client"
+    | "service"
+    | "database"
+    | "network"
+    | "model"
+    | "tool"
+    | "data";
   column?: number;
   row?: number;
 };
@@ -65,6 +71,7 @@ export type FlowExplainerStep = {
   message?: string;
   active?: string[];
   persistent?: string[];
+  visible?: string[];
   repeat?: boolean;
   transitions?: FlowExplainerTransition[];
   durationMs?: number;
@@ -75,7 +82,8 @@ export type FlowExplainerScenario = {
   label: string;
   nodes: FlowExplainerNode[];
   edges?: FlowExplainerEdge[];
-  layout?: "auto" | "compact";
+  layout?: "auto" | "compact" | "trace";
+  presentation?: "overview" | "progressive" | "focused";
   steps: FlowExplainerStep[];
 };
 export type FlowExplainerProps = {
@@ -84,10 +92,18 @@ export type FlowExplainerProps = {
   scenarios: FlowExplainerScenario[];
   stepDurationMs?: number;
 };
-type NodePhase = "idle" | "active" | "persistent";
-type ExplainerNodeData = FlowExplainerNode & { phase: NodePhase };
+
+type NodePhase = "idle" | "active" | "persistent" | "complete";
+type ExplainerNodeData = FlowExplainerNode & {
+  phase: NodePhase;
+  arrival: boolean;
+};
 type ExplainerNode = Node<ExplainerNodeData, "explainer">;
-type PacketEdgeData = { message?: string; repeat?: boolean; motionKey: string };
+type PacketEdgeData = {
+  message?: string;
+  repeat?: boolean;
+  motionKey: string;
+};
 type DirectedSegment = {
   id: string;
   source: string;
@@ -96,15 +112,16 @@ type DirectedSegment = {
   repeat?: boolean;
 };
 
-const NODE_WIDTH = 176,
-  NODE_HEIGHT = 104,
-  COLUMN_GAP = 320,
-  WIDE_COLUMN_GAP = 400,
-  ROW_GAP = 154,
-  MOBILE_ROW_GAP = 190;
-const COMPACT_COLUMN_GAP = 340,
-  COMPACT_ROW_GAP = 190;
+const NODE_WIDTH = 204,
+  NODE_HEIGHT = 116,
+  COLUMN_GAP = 324,
+  WIDE_COLUMN_GAP = 344,
+  ROW_GAP = 184,
+  MOBILE_ROW_GAP = 164;
+const COMPACT_COLUMN_GAP = 360,
+  COMPACT_ROW_GAP = 204;
 const MOBILE_QUERY = "(max-width: 700px)";
+
 function useMobileLayout() {
   const [mobile, setMobile] = useState(false);
   useEffect(() => {
@@ -125,34 +142,32 @@ function ExplainerNodeView({ data }: NodeProps<ExplainerNode>) {
         styles[`node_${data.role ?? "service"}`],
         data.phase === "active" && styles.nodeActive,
         data.phase === "persistent" && styles.nodePersistent,
+        data.phase === "complete" && styles.nodeComplete,
+        data.arrival && styles.nodeArrival,
       )}
     >
-      {[Position.Top, Position.Right, Position.Bottom, Position.Left].map(
-        (p) => (
-          <Handle
-            className={styles.handle}
-            id={`target-${p}`}
-            key={`target-${p}`}
-            position={p}
-            type="target"
-          />
-        ),
-      )}
+      {[Position.Top, Position.Right, Position.Bottom, Position.Left].map((p) => (
+        <Handle
+          className={styles.handle}
+          id={`target-${p}`}
+          key={`target-${p}`}
+          position={p}
+          type="target"
+        />
+      ))}
       <span>{data.role ?? "service"}</span>
       <strong title={data.label}>{data.label}</strong>
       {data.detail && <small title={data.detail}>{data.detail}</small>}
       <i aria-hidden="true" className={styles.nodeSignal} />
-      {[Position.Top, Position.Right, Position.Bottom, Position.Left].map(
-        (p) => (
-          <Handle
-            className={styles.handle}
-            id={`source-${p}`}
-            key={`source-${p}`}
-            position={p}
-            type="source"
-          />
-        ),
-      )}
+      {[Position.Top, Position.Right, Position.Bottom, Position.Left].map((p) => (
+        <Handle
+          className={styles.handle}
+          id={`source-${p}`}
+          key={`source-${p}`}
+          position={p}
+          type="source"
+        />
+      ))}
     </div>
   );
 }
@@ -178,7 +193,7 @@ function PacketEdge({
         targetY,
         sourcePosition,
         targetPosition,
-        curvature: 0.24,
+        curvature: 0.2,
       })
     : getSmoothStepPath({
         sourceX,
@@ -187,7 +202,7 @@ function PacketEdge({
         targetY,
         sourcePosition,
         targetPosition,
-        borderRadius: 16,
+        borderRadius: 18,
       });
   const packetCount = data?.repeat ? 3 : 1;
   return (
@@ -202,18 +217,18 @@ function PacketEdge({
         <circle
           className={styles.packetDot}
           key={`${data?.motionKey}-${i}`}
-          r="5"
+          r="4.5"
         >
           <animate
             attributeName="opacity"
-            begin={`${i * 0.23}s`}
-            dur={data?.repeat ? "1.15s" : ".9s"}
+            begin={`${i * 0.22}s`}
+            dur={data?.repeat ? "1.15s" : ".95s"}
             values="0;1;1;0"
             fill="freeze"
           />
           <animateMotion
-            begin={`${i * 0.23}s`}
-            dur={data?.repeat ? "1.15s" : ".9s"}
+            begin={`${i * 0.22}s`}
+            dur={data?.repeat ? "1.15s" : ".95s"}
             path={path}
             repeatCount="1"
             fill="freeze"
@@ -236,8 +251,10 @@ function PacketEdge({
     </>
   );
 }
+
 const nodeTypes = { explainer: ExplainerNodeView };
 const edgeTypes = { packet: PacketEdge };
+
 function inferEdges(nodes: FlowExplainerNode[]): FlowExplainerEdge[] {
   return nodes.slice(1).map((n, i) => ({
     id: `${nodes[i].id}-${n.id}`,
@@ -246,49 +263,61 @@ function inferEdges(nodes: FlowExplainerNode[]): FlowExplainerEdge[] {
   }));
 }
 
-// Mobile must preserve authored topology semantics. Explicit column/row metadata means the
-// author is describing spatial structure (for example a fan-out), not a sequential pipeline.
 function resolvePosition(
   node: FlowExplainerNode,
   index: number,
   mobile: boolean,
 ): XYPosition {
-  if (!mobile)
+  if (!mobile) {
     return {
       x: (node.column ?? index) * COLUMN_GAP,
       y: (node.row ?? 0) * ROW_GAP,
     };
+  }
   if (node.column === undefined) return { x: 0, y: index * MOBILE_ROW_GAP };
   if (node.column <= 1) return { x: 0, y: node.column * MOBILE_ROW_GAP };
   const branchRow = node.row ?? 0;
   return {
-    x: branchRow % 2 === 0 ? -96 : 96,
+    x: branchRow % 2 === 0 ? -106 : 106,
     y: (branchRow + 2) * MOBILE_ROW_GAP,
   };
 }
+
 function resolveScenarioPosition(
   node: FlowExplainerNode,
   index: number,
   mobile: boolean,
   compactSequence: boolean,
+  traceSequence: boolean,
   wideStage: boolean,
 ): XYPosition {
+  if (mobile && traceSequence) return { x: 0, y: index * MOBILE_ROW_GAP };
   if (mobile) return resolvePosition(node, index, true);
-  if (!compactSequence)
+  if (traceSequence && node.column !== undefined) {
+    return {
+      x: node.column * WIDE_COLUMN_GAP,
+      y: (node.row ?? 0) * ROW_GAP,
+    };
+  }
+  if (!compactSequence) {
     return wideStage
       ? {
           x: (node.column ?? index) * WIDE_COLUMN_GAP,
           y: (node.row ?? 0) * ROW_GAP,
         }
       : resolvePosition(node, index, false);
-  const row = Math.floor(index / 2);
-  const column = row % 2 === 0 ? index % 2 : 1 - (index % 2);
+  }
+  const compactColumns = 3;
+  const row = Math.floor(index / compactColumns);
+  const offset = index % compactColumns;
+  const column = row % 2 === 0 ? offset : compactColumns - 1 - offset;
   return { x: column * COMPACT_COLUMN_GAP, y: row * COMPACT_ROW_GAP };
 }
+
 function closestHandle(source: XYPosition, target: XYPosition) {
   const dx = target.x - source.x,
     dy = target.y - source.y;
-  if (Math.abs(dx) >= Math.abs(dy))
+  if (Math.abs(dx) >= Math.abs(dy)) {
     return dx >= 0
       ? {
           sourceHandle: `source-${Position.Right}`,
@@ -298,6 +327,7 @@ function closestHandle(source: XYPosition, target: XYPosition) {
           sourceHandle: `source-${Position.Left}`,
           targetHandle: `target-${Position.Right}`,
         };
+  }
   return dy >= 0
     ? {
         sourceHandle: `source-${Position.Bottom}`,
@@ -308,6 +338,7 @@ function closestHandle(source: XYPosition, target: XYPosition) {
         targetHandle: `target-${Position.Bottom}`,
       };
 }
+
 function directSegment(
   t: FlowExplainerTransition,
   edges: FlowExplainerEdge[],
@@ -327,7 +358,7 @@ function directSegment(
     ];
   }
   const f = edges.find((e) => e.source === t.from && e.target === t.to);
-  if (f)
+  if (f) {
     return [
       {
         id: f.id,
@@ -337,8 +368,9 @@ function directSegment(
         repeat: t.repeat,
       },
     ];
+  }
   const r = edges.find((e) => e.source === t.to && e.target === t.from);
-  if (r)
+  if (r) {
     return [
       {
         id: r.id,
@@ -348,7 +380,9 @@ function directSegment(
         repeat: t.repeat,
       },
     ];
+  }
 }
+
 function shortestPath(
   t: FlowExplainerTransition,
   edges: FlowExplainerEdge[],
@@ -382,7 +416,7 @@ function shortestPath(
       q.push(c.next);
     }
   }
-  if (!visited.has(t.to))
+  if (!visited.has(t.to)) {
     return [
       {
         id: `${t.from}-${t.to}`,
@@ -392,6 +426,7 @@ function shortestPath(
         repeat: t.repeat,
       },
     ];
+  }
   const rev: DirectedSegment[] = [];
   let cursor = t.to;
   while (cursor !== t.from) {
@@ -408,6 +443,7 @@ function shortestPath(
     repeat: t.repeat,
   }));
 }
+
 function stepTransitions(s: FlowExplainerStep): FlowExplainerTransition[] {
   if (s.transitions?.length) return s.transitions;
   if (!s.from || !s.to) return [];
@@ -422,6 +458,15 @@ function stepTransitions(s: FlowExplainerStep): FlowExplainerTransition[] {
   ];
 }
 
+function idsTouchedByStep(step: FlowExplainerStep) {
+  return new Set([
+    ...(step.active ?? []),
+    ...(step.persistent ?? []),
+    ...(step.visible ?? []),
+    ...stepTransitions(step).flatMap((transition) => [transition.from, transition.to]),
+  ]);
+}
+
 export function FlowExplainer({
   title,
   description,
@@ -434,37 +479,40 @@ export function FlowExplainer({
   const flowRef = useRef<ReactFlowInstance<ExplainerNode, Edge>>(null);
   const mobile = useMobileLayout();
   const scenario = useMemo(
-    () => scenarios.find((i) => i.id === scenarioId) ?? scenarios[0],
+    () => scenarios.find((item) => item.id === scenarioId) ?? scenarios[0],
     [scenarioId, scenarios],
   );
   const step = scenario?.steps[stepIndex];
+
   useEffect(() => {
     setStepIndex(0);
     setPlaying(false);
   }, [scenarioId]);
+
   useEffect(() => {
     if (!playing || !scenario?.steps.length || !step) return;
     const timer = window.setTimeout(
       () =>
-        setStepIndex((cur) => {
-          if (cur >= scenario.steps.length - 1) {
+        setStepIndex((current) => {
+          if (current >= scenario.steps.length - 1) {
             setPlaying(false);
-            return cur;
+            return current;
           }
-          return cur + 1;
+          return current + 1;
         }),
       step.durationMs ?? stepDurationMs,
     );
     return () => window.clearTimeout(timer);
   }, [playing, scenario, step, stepDurationMs]);
+
   useEffect(() => {
     let second = 0;
     const first = requestAnimationFrame(() => {
       second = requestAnimationFrame(() =>
         flowRef.current?.fitView({
-          padding: mobile ? 0.14 : 0.22,
-          maxZoom: 1.04,
-          duration: 0,
+          padding: mobile ? 0.12 : 0.18,
+          maxZoom: mobile ? 1 : 1.06,
+          duration: 220,
         }),
       );
     });
@@ -472,108 +520,174 @@ export function FlowExplainer({
       cancelAnimationFrame(first);
       if (second) cancelAnimationFrame(second);
     };
-  }, [mobile, scenarioId]);
+  }, [mobile, scenarioId, stepIndex]);
+
   if (!scenario || !step) return null;
+
   const scenarioEdges = scenario.edges ?? inferEdges(scenario.nodes);
   const compactSequence =
     scenario.layout === "compact" ||
-    (!scenario.edges && scenario.nodes.length >= 4);
+    (!scenario.edges && scenario.nodes.length >= 4 && scenario.layout !== "trace");
+  const traceSequence = scenario.layout === "trace";
   const wideStage = scenario.nodes.length >= 4;
+  const presentation =
+    scenario.presentation ?? (scenario.layout === "compact" ? "progressive" : "overview");
+
   const positionById = new Map(
-    scenario.nodes.map((n, i) => [
-      n.id,
-      resolveScenarioPosition(n, i, mobile, compactSequence, wideStage),
+    scenario.nodes.map((node, index) => [
+      node.id,
+      resolveScenarioPosition(
+        node,
+        index,
+        mobile,
+        compactSequence,
+        traceSequence,
+        wideStage,
+      ),
     ]),
   );
+
   const transitions = stepTransitions(step);
-  const transitionNodeIds = transitions.flatMap((i) => [i.from, i.to]);
+  const transitionNodeIds = transitions.flatMap((transition) => [
+    transition.from,
+    transition.to,
+  ]);
+  const arrivalNodeIds = new Set(transitions.map((transition) => transition.to));
   const activeNodeIds = new Set([...(step.active ?? []), ...transitionNodeIds]);
   const persistentNodeIds = new Set(step.persistent ?? []);
-  const graphNodes: ExplainerNode[] = scenario.nodes.map((n, i) => ({
-    id: n.id,
-    type: "explainer",
-    data: {
-      ...n,
-      phase: activeNodeIds.has(n.id)
+
+  const previousSteps = scenario.steps.slice(0, stepIndex);
+  const completedNodeIds = new Set<string>();
+  const completedEdgeIds = new Set<string>();
+  for (const previousStep of previousSteps) {
+    idsTouchedByStep(previousStep).forEach((id) => completedNodeIds.add(id));
+    stepTransitions(previousStep).forEach((transition) => {
+      shortestPath(transition, scenarioEdges).forEach((segment) =>
+        completedEdgeIds.add(segment.id),
+      );
+    });
+  }
+
+  const visibleNodeIds = new Set<string>();
+  if (presentation === "progressive") {
+    scenario.steps.slice(0, stepIndex + 1).forEach((sceneStep) => {
+      idsTouchedByStep(sceneStep).forEach((id) => visibleNodeIds.add(id));
+    });
+  } else {
+    scenario.nodes.forEach((node) => visibleNodeIds.add(node.id));
+  }
+
+  const graphNodes: ExplainerNode[] = scenario.nodes
+    .filter((node) => visibleNodeIds.has(node.id))
+    .map((node) => {
+      const index = scenario.nodes.findIndex((candidate) => candidate.id === node.id);
+      const phase: NodePhase = activeNodeIds.has(node.id)
         ? "active"
-        : persistentNodeIds.has(n.id)
+        : persistentNodeIds.has(node.id)
           ? "persistent"
-          : "idle",
-    },
-    position: resolveScenarioPosition(n, i, mobile, compactSequence, wideStage),
-    width: NODE_WIDTH,
-    height: NODE_HEIGHT,
-    draggable: false,
-    selectable: false,
-  }));
-  const baseEdges: Edge[] = scenarioEdges.map((e) => ({
-    id: `base-${e.id}`,
-    source: e.source,
-    target: e.target,
-    ...closestHandle(positionById.get(e.source)!, positionById.get(e.target)!),
-    markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
-    className: styles.baseEdge,
-    type: "smoothstep",
-    label: e.label,
-  }));
-  const segments = transitions.flatMap((t, ti) =>
-    shortestPath(t, scenarioEdges).map((s, si) => ({
-      ...s,
-      transitionIndex: ti,
-      segmentIndex: si,
+          : completedNodeIds.has(node.id)
+            ? "complete"
+            : "idle";
+      return {
+        id: node.id,
+        type: "explainer",
+        data: {
+          ...node,
+          phase,
+          arrival: arrivalNodeIds.has(node.id),
+        },
+        position: resolveScenarioPosition(
+          node,
+          index,
+          mobile,
+          compactSequence,
+          traceSequence,
+          wideStage,
+        ),
+        width: NODE_WIDTH,
+        height: NODE_HEIGHT,
+        draggable: false,
+        selectable: false,
+      };
+    });
+
+  const baseEdges: Edge[] = scenarioEdges
+    .filter(
+      (edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target),
+    )
+    .map((edge) => ({
+      id: `base-${edge.id}`,
+      source: edge.source,
+      target: edge.target,
+      ...closestHandle(positionById.get(edge.source)!, positionById.get(edge.target)!),
+      markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
+      className: clsx(
+        styles.baseEdge,
+        completedEdgeIds.has(edge.id) && styles.baseEdgeComplete,
+      ),
+      type: "smoothstep",
+      label: edge.label,
+    }));
+
+  const segments = transitions.flatMap((transition, transitionIndex) =>
+    shortestPath(transition, scenarioEdges).map((segment, segmentIndex) => ({
+      ...segment,
+      transitionIndex,
+      segmentIndex,
     })),
   );
   const activeEdges: Edge[] = segments
-    .filter((s) => positionById.has(s.source) && positionById.has(s.target))
-    .map((s) => ({
-      id: `active-${s.id}-${stepIndex}-${s.transitionIndex}-${s.segmentIndex}`,
-      source: s.source,
-      target: s.target,
+    .filter(
+      (segment) =>
+        positionById.has(segment.source) && positionById.has(segment.target),
+    )
+    .map((segment) => ({
+      id: `active-${segment.id}-${stepIndex}-${segment.transitionIndex}-${segment.segmentIndex}`,
+      source: segment.source,
+      target: segment.target,
       ...closestHandle(
-        positionById.get(s.source)!,
-        positionById.get(s.target)!,
+        positionById.get(segment.source)!,
+        positionById.get(segment.target)!,
       ),
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
       type: "packet",
       data: {
-        message: s.message,
-        repeat: s.repeat,
-        motionKey: `${scenario.id}-${stepIndex}-${s.transitionIndex}-${s.segmentIndex}`,
+        message: segment.message,
+        repeat: segment.repeat,
+        motionKey: `${scenario.id}-${stepIndex}-${segment.transitionIndex}-${segment.segmentIndex}`,
       },
     }));
-  const maxRow = Math.max(0, ...scenario.nodes.map((n) => n.row ?? 0));
-  const compactRows = Math.ceil(scenario.nodes.length / 2);
-  const mobileMaxY = Math.max(
-    0,
-    ...scenario.nodes.map((n, i) => resolvePosition(n, i, true).y),
-  );
-  const mobileContentHeight = mobileMaxY + NODE_HEIGHT;
+
+  const visiblePositions = graphNodes.map((node) => node.position);
+  const minY = Math.min(0, ...visiblePositions.map((position) => position.y));
+  const maxY = Math.max(0, ...visiblePositions.map((position) => position.y));
+  const contentHeight = maxY - minY + NODE_HEIGHT;
   const graphHeight = mobile
-    ? Math.min(1240, Math.max(420, mobileContentHeight + 120))
-    : compactSequence
-      ? Math.min(720, Math.max(360, compactRows * COMPACT_ROW_GAP + 76))
-      : Math.max(290, Math.min(540, 290 + maxRow * 98));
+    ? Math.min(980, Math.max(330, contentHeight + 92))
+    : Math.min(650, Math.max(320, contentHeight + 96));
   const progress =
     scenario.steps.length <= 1
       ? 100
       : (stepIndex / (scenario.steps.length - 1)) * 100;
+
   const next = () => {
     setPlaying(false);
-    setStepIndex((c) => Math.min(c + 1, scenario.steps.length - 1));
+    setStepIndex((current) => Math.min(current + 1, scenario.steps.length - 1));
   };
   const previous = () => {
     setPlaying(false);
-    setStepIndex((c) => Math.max(c - 1, 0));
+    setStepIndex((current) => Math.max(current - 1, 0));
   };
   const replay = () => {
     setStepIndex(0);
     setPlaying(true);
   };
+
   return (
     <figure className={styles.figure}>
       <div className={styles.header}>
         <div className={styles.heading}>
-          <span className={styles.eyebrow}>Live system trace</span>
+          <span className={styles.eyebrow}>System trace</span>
           <h3>{title}</h3>
           {description && <p>{description}</p>}
         </div>
@@ -601,7 +715,6 @@ export function FlowExplainer({
       </div>
       <div className={clsx(styles.stage, wideStage && styles.stageCompact)}>
         <div className={styles.graphCanvas} style={{ height: graphHeight }}>
-          <div className={styles.scanline} aria-hidden="true" />
           <ReactFlow
             key={`${scenario.id}-${mobile ? "mobile" : "desktop"}`}
             aria-label={`${title}: ${scenario.label}`}
@@ -610,9 +723,12 @@ export function FlowExplainer({
             edges={[...baseEdges, ...activeEdges]}
             elementsSelectable={false}
             fitView
-            fitViewOptions={{ padding: mobile ? 0.14 : 0.22, maxZoom: 1.04 }}
+            fitViewOptions={{
+              padding: mobile ? 0.12 : 0.18,
+              maxZoom: mobile ? 1 : 1.06,
+            }}
             maxZoom={1.25}
-            minZoom={mobile ? 0.55 : 0.5}
+            minZoom={mobile ? 0.62 : 0.55}
             nodes={graphNodes}
             nodesConnectable={false}
             nodesDraggable={false}
@@ -621,8 +737,8 @@ export function FlowExplainer({
               flowRef.current = instance;
               requestAnimationFrame(() =>
                 instance.fitView({
-                  padding: mobile ? 0.14 : 0.22,
-                  maxZoom: 1.04,
+                  padding: mobile ? 0.12 : 0.18,
+                  maxZoom: mobile ? 1 : 1.06,
                   duration: 0,
                 }),
               );
@@ -740,7 +856,7 @@ export function FlowExplainer({
           </button>
           <button
             className={styles.playButton}
-            onClick={() => setPlaying((v) => !v)}
+            onClick={() => setPlaying((value) => !value)}
             type="button"
           >
             {playing ? "Pause" : "Play trace"}
