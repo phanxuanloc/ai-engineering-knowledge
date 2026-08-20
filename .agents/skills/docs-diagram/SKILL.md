@@ -1,242 +1,212 @@
 ---
 name: docs-diagram
-description: Orchestrate educational visuals before renderer-specific work. Start from learner question and semantic truth, design the visual story, then choose Excalidraw, React Flow, FlowExplainer, charting, or no diagram.
+description: Orchestrate educational visuals before renderer-specific work. Start from learner question and semantic truth, design a progressive visual story, then choose Excalidraw, React Flow, FlowExplainer, charting, or no diagram.
 ---
 
 # Documentation Visual Orchestration
 
 Treat every visual as a teaching artifact, not decoration and not a renderer demo. The visual pipeline is:
 
-**Learner Question → Semantic Truth → Visual Story → Visual Grammar → Renderer → Validation**
+**Learner Question → Semantic Truth → Visual Story → Presentation Mode → Visual Grammar → Renderer → Validation**
 
 Never start by asking “which diagram/library should I use?”. Start by asking **what misconception or question must become obvious within 3–5 seconds?**
 
-## 1. Story-first gate
+## 1. Public-doc boundary
 
-Before creating any visual, write a compact internal spec with these fields:
+Public `/docs` must contain the finished knowledge, not the discussion that produced it.
 
-- **Learner question:** the exact question the visual answers.
-- **Five-second takeaway:** what should be obvious before every label is read.
-- **Entities:** real concepts/components/states that are allowed to appear.
-- **Relationships:** only relationships supported by the note/source.
-- **Ordering:** which events are strictly ordered, partially ordered, concurrent, or unordered.
-- **State changes:** what actually changes over time, if anything.
-- **Invariants:** facts the visual must preserve at every breakpoint.
-- **Forbidden implications:** relationships/order/topology the layout must never suggest.
+Never publish authoring or review rationale such as:
 
-If these cannot be stated confidently, do not draw yet. Repair the semantic model first.
+- “why this diagram is better than the old one”;
+- “why the previous flow was wrong”;
+- “why the agent chose React Flow / FlowExplainer”;
+- instructions to future agents or reviewers;
+- implementation notes, renderer limitations, migration commentary, or design-process discussion.
 
-### Semantic implication gate
+Those belong in skills, agent instructions, review notes, issues, PR/commit context, or other non-public repository files.
 
-A visual is wrong when its geometry implies something the semantic spec does not.
+A public note may explain a **domain truth** that also motivated the visual—for example, “routing, firewall, and NAT are responsibilities and do not necessarily correspond to three separate physical hops”—but it must be written as durable subject-matter knowledge, never as commentary about how the page was edited.
 
-Examples:
+Before publishing, run a **shareability pass**: if a sentence only makes sense to someone who watched the authoring conversation, remove or rewrite it.
 
-- sibling branches stacked vertically must not read as `A → B → C`;
-- routing, firewall, and NAT responsibilities must not automatically become three physical hops;
-- independent GraphQL resolver calls must not become a forced sequence;
-- a conceptual progression must not be presented as a packet path unless real transport is the lesson.
+## 2. Story-first semantic gate
 
-Validation must check **rendered implication**, not only whether the authored edge list is technically correct.
+Before creating any visual, write a compact internal spec:
 
-### Phase-flow rule for layered mental models
+- **Learner question** — exact question the visual answers.
+- **Five-second takeaway** — what should be obvious before every label is read.
+- **Entities** — real concepts/components/states allowed to appear.
+- **Relationships** — only relationships supported by the note/source.
+- **Ordering** — strictly ordered, partially ordered, concurrent, or unordered.
+- **State changes** — what actually changes over time.
+- **Invariants** — facts the visual must preserve at every breakpoint.
+- **Forbidden implications** — relationships/order/topology the layout must never suggest.
+
+If these cannot be stated confidently, repair the semantic model before drawing.
+
+A visual is wrong when its geometry implies something the semantic spec does not. Sibling branches must not become a chain. Routing/firewall/NAT must not automatically become three physical hops. Independent resolver calls must not become a forced sequence. A conceptual progression must not masquerade as packet transport.
+
+Validation checks **rendered implication**, not only the authored edge list.
+
+## 3. Preserve real flow without inventing topology
 
 Do not confuse **“some internals are unordered/optional”** with **“the whole concept has no flow.”**
 
-When the learner needs to understand a real logical progression across responsibility or failure boundaries, prefer a **phase flow**:
+When a real logical progression exists across responsibility, state, lifecycle, or failure boundaries, preserve it. Connect only transitions whose progression is semantically true. Optional, deployment-specific, concurrent, or unordered internals may be grouped, annotated, expanded only when active, or shown as branches instead of being forced into the primary path.
 
-- one node per meaningful phase/boundary;
-- connect only phases whose progression is semantically true;
-- keep optional, deployment-specific, concurrent, or unordered internals inside the phase as short detail/annotation;
-- never explode those internals into a fake primary path merely to show more concepts.
+Use abstraction to remove false edges, not to remove useful flow.
 
-Example for networking/web fundamentals:
+## 4. Choose presentation mode before renderer
 
-`Client → Resolve Destination → Reach Destination → Establish Communication → Process Request → Result`
+Every visual must deliberately choose one of these presentation modes:
 
-Inside `Reach Destination`, routing/firewall/NAT may be listed as responsibilities, but must not automatically become `Routing → Firewall → NAT` edges. Inside `Process Request`, proxy/LB/application/data may be shown as examples without claiming every deployment has that exact topology.
+### Overview
 
-Use this rule when a mental model has **true progression at one abstraction level** but **non-sequential detail inside each stage**.
+Show the complete structure when the learning question is **“what exists and how is it connected?”** Full topology is appropriate only when seeing the whole graph at once materially helps comprehension.
 
-## 2. No-diagram is a valid outcome
+### Progressive
 
-A visual must expose something that prose, a short list, or normal learning cards cannot expose as clearly.
+Build the model over finite scenes when the learning question is **“how does this unfold?”** A scene may reveal only the entities needed for the current inference. Nodes and edges may appear, expand, collapse, fade, or become persistent as the story advances.
 
-Use **no diagram** when:
+Default to progressive presentation when showing the complete graph would force aggressive `fitView`, shrink text/nodes, hide the primary path, or make the learner search for where to look next.
 
-- the idea is already clear in 2–4 short lines;
-- spatial layout adds no information;
-- drawing would invent topology/order;
-- concepts are genuinely unordered and connecting them would imply a false progression.
+### Focused runtime
 
-Do **not** choose no-diagram merely because lower-level responsibilities are not strictly sequential. If a higher-level logical progression is real, use the phase-flow rule above.
+Keep useful context visible but visually subordinate inactive regions while the current message, state, branch, or transformation is emphasized. Use this when learners benefit from orientation to the larger system but should follow one active event at a time.
 
-Do not add a diagram merely because the page should look “AI-native” or because a renderer is available.
+**Do not default to show-everything-first.** The first frame should contain the minimum structure required to understand the first inference, unless overview itself is the lesson.
 
-## 3. Choose visual grammar before renderer
+## 5. Progressive-scene contract
 
-Classify the teaching job using the smallest grammar that preserves truth:
-
-1. **Concept / Boundary / Mental Model** — analogy, responsibilities, buckets, filters, layers, constraints, comparisons.
-2. **Phase Flow** — real progression across high-level responsibility/failure boundaries while lower-level details remain optional or unordered.
-3. **Topology** — what connects to what.
-4. **Sequence / Timeline** — what happens before/after and where time/order matters.
-5. **State Transition** — one entity changing state.
-6. **Transformation** — input becomes another representation, e.g. documents → chunks → embeddings.
-7. **Transport** — packet/message/token physically or logically moves between endpoints.
-8. **Quantitative Change / Simulation** — values, metrics, distributions, trade-offs, or causal input/output changes.
-
-Do not collapse all runtime behavior into “a flow with moving dots”. Transport, state transition, transformation, sequence, phase flow, and simulation are different teaching grammars.
-
-## 4. Renderer routing
-
-Choose a renderer only after the grammar is clear:
-
-- **Excalidraw** → analogy-first mental models, conceptual boundaries, comparisons, filters, whiteboard explanations.
-- **React Flow** → phase flows, topology, dependency, architecture, structured graph relationships where explicit connections/progression teach the lesson.
-- **FlowExplainer** → inspectable runtime stories with finite events, meaningful state changes, request/response, fan-out/fan-in, retries, streaming, agent/tool loops.
-- **Chart / interactive component** → quantitative change, simulation, distributions, latency/cost/quality trade-offs.
-- **Normal MDX / Concept cards** → truly unordered responsibilities/questions where connecting them would create false meaning.
-
-Renderer choice is a consequence of the semantic story, never the starting point.
-
-For a **phase flow**, React Flow is appropriate even when the phase internals are not a topology. The authored edges represent only the high-level progression; internals stay as node detail or surrounding explanation.
-
-## 5. Progressive story instead of show-everything-first
-
-When the learner benefits from building the model incrementally, define **scenes**. A scene may show only the subset needed for the current inference.
-
-Each scene can specify:
+When using progressive or focused runtime presentation, define scenes/events explicitly. Each may specify:
 
 - visible entities;
+- newly revealed entities;
 - active/highlighted entities;
-- transitions;
+- persistent context;
+- visible edges;
+- transitions/messages;
 - state changes;
+- expanded/collapsed detail;
 - annotations;
 - takeaway.
 
-Do not show the complete architecture in frame 1 by default. Reveal complexity only when the learner needs it.
+Later scenes may accumulate earlier context, replace it, or collapse it depending on the teaching story. Do not require every node to exist visually in every frame.
 
-A valid progressive explainer may look like:
+Progressive reveal is especially preferred when a complete diagram would be too small on desktop or mobile. **Fit-to-screen is not a reason to make the learning content tiny. Reduce simultaneous visual complexity first.**
 
-`Question → candidate set → scoring → selected subset → context window → answer`
+## 6. Choose visual grammar
 
-rather than presenting every source, ranker, store, model, and edge immediately.
+Use the smallest grammar that preserves truth:
 
-## 6. Mandatory runtime-explainer gate
+1. **Concept / Boundary / Mental Model** — analogy, responsibilities, buckets, filters, layers, constraints, comparisons.
+2. **Phase Flow** — real progression across high-level boundaries while lower-level details remain optional or unordered.
+3. **Topology** — what connects to what.
+4. **Sequence / Timeline** — what happens before/after.
+5. **State Transition** — one entity changing state.
+6. **Transformation** — input becomes another representation.
+7. **Transport** — packet/message/token moves between endpoints.
+8. **Quantitative Change / Simulation** — metrics, distributions, trade-offs, causal input/output changes.
 
-If the lesson depends on time/order/state and shared `FlowExplainer` can represent it truthfully, static-only treatment is a failure.
+Do not collapse all runtime behavior into “a flow with moving dots”. A single story may combine grammars when that is truthful—for example progressive reveal + transport + state change.
 
-Before accepting a workflow, lifecycle, request/response, streaming, retry, agent/tool, RAG, Context Engineering, queue/event, or state-transition visual, ask:
+## 7. Renderer routing
 
-> Can the important runtime behavior be taught truthfully with finite scenes/events and grounded transitions?
+Choose a renderer only after semantic story, presentation mode, and grammar are clear:
 
-- **Yes** → use FlowExplainer or another semantic runtime primitive.
-- **Topology also matters** → pair a focused static topology with the runtime story; do not overload one view.
-- **No** → document the concrete reason: motion adds no learning value, the runtime renderer would distort semantics, or accessibility/performance would materially worsen the lesson.
+- **Excalidraw** → analogy-first mental models, conceptual boundaries, comparisons, whiteboard explanations.
+- **React Flow** → overview topology or static phase flow where explicit structure/progression is the lesson.
+- **FlowExplainer** → progressive/focused runtime stories with finite events, reveal, request/response, fan-out/fan-in, retries, streaming, agent/tool loops, state changes, or transport.
+- **Chart / interactive component** → quantitative change, simulation, distributions, latency/cost/quality trade-offs.
+- **Normal MDX / Concept cards** → genuinely unordered ideas where spatial representation adds no learning value.
 
-A phase flow whose primary lesson is **debug responsibility/failure boundaries** may remain static when animation adds no extra causal information. Do not animate it merely to look alive.
+Do not use static React Flow merely because the final topology can be represented as nodes and edges. If the learner should follow a journey through that topology, prefer a progressive/focused explainer.
 
-Perpetual edge animation is not a substitute for event semantics.
+## 8. Runtime and animation gate
 
-## 7. Animation must encode meaning
+If the lesson depends on time, order, state, transport, reveal, or causal progression and the shared runtime primitives can represent it truthfully, static-only treatment is a failure.
 
-Animation is allowed only when motion teaches causality.
+Animation must encode meaning. Useful animation includes:
 
-Good animation can encode:
-
-- one-shot message transport;
-- state changes such as pending → running → success;
-- transformation such as documents → chunks;
-- progressive reveal/construction;
+- node/edge reveal when a concept becomes relevant;
+- one-shot packet/message/token transport;
+- pending → running → success/failure state change;
+- expand/collapse of the currently active boundary;
+- fade/de-emphasis of irrelevant context;
 - finite fan-out/fan-in;
-- persistent stream/waiting state;
+- transformation between representations;
+- response returning along a path;
+- persistent waiting/stream state;
 - numeric progression.
 
-Avoid ambient motion, infinite packets, pulsing every node, or effects that merely make the page look technical.
+Avoid ambient infinite packets, pulsing everything, or decorative motion.
 
-For inspectable runtime stories, prefer:
+Prefer finite named events, deterministic reset, previous/next/play/pause/replay, direct event selection when useful, a visible current-event narrative, and `prefers-reduced-motion` support.
 
-- finite named events;
-- deterministic reset;
-- previous/next/play/pause/replay;
-- direct event selection when useful;
-- visible current-event narrative;
-- `prefers-reduced-motion` support.
+## 9. Density and fitView gate
 
-## 8. Complexity bound
+Before showing the complete graph, ask:
 
-Use **one visual = one learning question**.
+> At normal article width, can the primary labels remain comfortably readable without zooming or shrinking the graph aggressively?
 
-Prefer roughly 4–10 primary entities in one topology view. Split overloaded stories. If several technologies/scenarios share the same teaching question, use tabs/scenarios rather than overlaying every path.
+If no, do not solve it first with smaller nodes, smaller fonts, or a more aggressive `fitView`. Choose one or more of:
 
-Do not create long snake diagrams simply to fit many concepts. A 10-node primary path is a warning sign: verify that those nodes are truly sequential events rather than independent responsibilities, optional infrastructure, branches, or conceptual layers.
+- progressive reveal;
+- focused runtime presentation;
+- semantic grouping/boundaries;
+- multiple focused scenes;
+- tabs/scenarios for alternatives;
+- a separate overview paired with a runtime story.
 
-For layered concepts, **compress to phase nodes before deleting the visual**. A six-node phase flow can be more truthful than either an eleven-node snake or a prose-only replacement.
+A graph being technically able to fit inside the canvas is not acceptance. The learner must be able to follow it at normal reading size.
 
-## 9. Mobile semantic contract
+Long snake diagrams are a warning sign. Verify that nodes are truly sequential. If they are, progressive presentation may still be better than showing the whole chain at once.
+
+## 10. Mobile semantic contract
 
 Responsive layout may change geometry but never meaning.
 
 - Recompose before shrinking.
-- Linear and phase flows may become vertical.
-- Sibling branches remain siblings.
-- Fan-out/fan-in must not become false chains.
-- Preserve authored relationships across breakpoints; node array order is not topology.
-- Branch labels remain owned by their branch.
-- Do not silently clip nodes, labels, arrows, controls, or active packets.
-- Horizontal scroll/pan is a fallback only when reflow would distort the topology.
-- Compute bounds from final responsive geometry; `fitView` frames valid geometry, it does not repair invalid layout.
-- Keep readable text and usable touch targets.
-
-## 10. React Flow acceptance
-
-Use React Flow when explicit relationships or high-level progression itself teaches the lesson.
-
-Before accepting:
-
-- primary path/branch/phase structure is obvious within seconds;
-- no invented sequential relationship;
-- phase nodes do not leak unordered internals into fake edges;
-- no node/edge/label overlap;
-- labels visibly belong to their connectors;
-- feedback loops stay outside the main corridor;
-- arrow direction is clear;
-- mobile preserves topology/phase semantics;
-- interaction matches the teaching job;
-- a simpler mental-model or MDX representation would not be clearer.
-
-Static React Flow can answer **what connects to what** or **what high-level phase comes next**. It does not automatically explain runtime timing or packet transport.
+- Progressive scenes should keep only the necessary active context on narrow screens.
+- Linear/phase flows may become vertical.
+- Sibling branches remain siblings; fan-out/fan-in must not become false chains.
+- Preserve authored relationships across breakpoints.
+- Never silently clip nodes, labels, arrows, controls, or active packets.
+- Horizontal scroll/pan is a fallback only when reflow would distort topology.
+- Compute bounds from the current scene, not blindly from the maximum possible graph.
+- `fitView` frames valid geometry; it must not repair excessive simultaneous complexity.
+- Keep normal reading-size text and usable touch targets.
 
 ## 11. Mental-model acceptance
 
-For a Mental Model section, do not assume either “graph required” or “graph forbidden.”
+For a Mental Model section, choose the experience that teaches fastest:
 
-Prefer one of these outcomes:
+- conceptual Excalidraw for analogy/spatial metaphor;
+- static phase flow when seeing all phases at once is the lesson and remains readable;
+- **progressive FlowExplainer when the learner should experience the journey step by step**;
+- focused runtime when the whole system provides orientation but only one event should dominate;
+- tiny topology when real relationships are the lesson;
+- cards/prose only when a visual genuinely adds no value.
 
-- conceptual Excalidraw when spatial metaphor helps;
-- **phase flow when responsibilities form a real logical progression but internals are optional/unordered**;
-- progressive explainer when understanding requires observing change;
-- responsibility/question cards when concepts are genuinely unordered boundaries;
-- a tiny topology only when real relationships are the lesson;
-- plain prose when that is clearest.
-
-A mental model fails when the visual contradicts the prose. If prose says “routing/firewall/NAT are responsibilities, not sequential physical hops”, the visual may still show a higher-level `Reach Destination` phase, but must not present those internals as one long connected primary path.
+Accuracy does not mean “make everything abstract”. Keep useful detail, but reveal it at the moment it becomes relevant and connect only relationships that are true.
 
 ## 12. Validation
 
 Before finishing visual work:
 
-1. Re-read the learner question.
-2. Verify every entity, relationship, order, and state change against source truth.
-3. Check forbidden implications against the actual rendered composition.
-4. Verify abstraction level consistency: phase edges connect phases; optional internals do not silently become topology.
-5. Verify the first frame teaches without interaction.
-6. Verify mobile preserves semantics.
-7. Verify animation encodes causality rather than decoration.
-8. Verify light/dark and reduced-motion behavior where applicable.
-9. Verify no clipping, overflow, unreadable labels, or controls covering learning content.
-10. Run `npm run typecheck`, `npm run build`, and `git diff --check` when execution access exists.
-11. Never claim visual review passed unless the rendered output was actually inspected.
+1. Re-read the learner question and five-second takeaway.
+2. Verify every entity, relationship, order, branch, and state change against source truth.
+3. Check forbidden implications against the rendered composition.
+4. Verify the chosen presentation mode is intentional: overview, progressive, or focused runtime.
+5. For progressive visuals, verify each scene teaches one inference and does not reveal unnecessary future complexity.
+6. Verify labels remain readable at normal article width without relying on aggressive fit-to-screen.
+7. Verify mobile preserves semantics and reading size.
+8. Verify animation encodes causality/reveal/state rather than decoration.
+9. Verify first frame is useful before interaction and controls do not cover content.
+10. Verify light/dark and reduced-motion behavior where applicable.
+11. Verify no clipping, overflow, unreadable labels, or misleading inactive edges.
+12. Run `npm run typecheck`, `npm run build`, and `git diff --check` when execution access exists.
+13. Never claim rendered visual review passed unless the rendered output was actually inspected.
+14. Run a public-doc shareability pass: remove authoring discussion, old-vs-new commentary, agent instructions, and renderer rationale from `/docs`.
 
-When a gate fails, repair the semantic model/story first. Only then repair renderer/layout details. Do not accumulate coordinate hacks around a wrong teaching abstraction.
+When a gate fails, repair the semantic story/presentation first. Do not accumulate coordinate hacks around a wrong teaching abstraction.
