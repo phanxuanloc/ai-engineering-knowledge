@@ -165,31 +165,13 @@ Workflow định nghĩa **đường đi và quality gates**, còn merge strategy
 
 ### Git Flow lifecycle
 
-```text
-feature/* : develop -> develop
-release/* : develop -> main + develop
-hotfix/*  : main    -> main + develop
-```
+Trong Git Flow, `feature/*` đi từ `develop` về `develop`; `release/*` đi từ `develop` về cả `main` và `develop`; `hotfix/*` đi từ `main` về cả `main` và `develop`.
 
 `release/*` dùng để freeze feature và stabilize một release trong khi `develop` tiếp tục cho release sau. `hotfix/*` phải xuất phát từ production state trên `main`, không từ `develop`.
 
 #### Vì sao `release/*` phải quay lại `develop`?
 
-Giả sử lúc cắt release, cả hai branch cùng chứa commit `A`:
-
-```text
-release/2.1.0: A -- X       X = fix do QA phát hiện
-develop:       A -- B       B = code cho version 2.2
-```
-
-Merge `release/2.1.0` vào `main` chỉ đưa `A + X` tới production. Nó không tự làm commit `X` xuất hiện trong `develop`, vì `develop` đã đi tiếp theo nhánh `A + B`. Do đó cần merge `release/2.1.0` vào `develop`; kết quả là dòng phát triển kế tiếp chứa cả `B` và `X`.
-
-```text
-main:          A -- X             deploy v2.1.0
-develop:       A -- B -- M        M kết hợp B + X
-                         /
-                        B   X
-```
+Giả sử lúc cắt release, cả hai branch cùng chứa commit `A`. Sau đó `release/2.1.0` nhận fix `X` do QA phát hiện, còn `develop` nhận commit `B` cho version 2.2. Merge release vào `main` chỉ đưa `A + X` tới production; nó không tự làm `X` xuất hiện trong `develop`. Merge-back tạo trạng thái phát triển kế tiếp chứa cả `B` và `X`.
 
 :::info[Điểm cần nhớ]
 Merge-back bảo toàn **release fixes**, không phải deploy ngược từ production. Nếu release branch không có commit mới sau khi tách, merge-back gần như không mang thêm thay đổi. Nếu team không muốn merge cả branch, có thể cherry-pick từng fix, nhưng phải theo dõi để không bỏ sót.
@@ -226,205 +208,14 @@ Merge-back bảo toàn **release fixes**, không phải deploy ngược từ pro
   ]}
 />
 
-### Merge strategy and history shape
+### Deep dives
 
-- **Squash merge:** nhiều commit tạm của một PR trở thành một commit logic sạch.
-- **Rebase + merge:** giữ các commit có ý nghĩa nhưng làm history tuyến tính.
-- **Merge commit:** giữ topology của branch và merge event.
-- **Fast-forward:** chỉ di chuyển pointer khi history chưa phân nhánh.
-- **Cherry-pick:** lấy một commit cụ thể sang branch khác; hữu ích cho backport fix.
-
-<ReactFlowDiagram
-  ariaLabel="Merge, squash, rebase and cherry-pick change Git history in different ways"
-  caption="Chọn strategy theo giá trị cần giữ: topology branch, commit granularity, linear history hay một fix cụ thể."
-  controls={false}
-  direction="TB"
-  fullscreen
-  height={520}
-  interactive={false}
-  kind="branch"
-  primaryPath={['feature', 'decision', 'squash', 'main']}
-  nodes={[
-    {id: 'feature', eyebrow: 'SOURCE', label: 'Feature commits', detail: 'A · B · C', role: 'source', size: 'compact'},
-    {id: 'decision', eyebrow: 'INTEGRATION', label: 'Choose history strategy', detail: 'What should main remember?', role: 'decision', emphasis: true, size: 'standard'},
-    {id: 'squash', eyebrow: 'OPTION', label: 'Squash', detail: 'A+B+C -> S', role: 'process', size: 'compact'},
-    {id: 'rebase', eyebrow: 'OPTION', label: 'Rebase + merge', detail: "A' · B' · C'", role: 'process', size: 'compact'},
-    {id: 'merge', eyebrow: 'OPTION', label: 'Merge commit', detail: 'Branch topology', role: 'process', size: 'compact'},
-    {id: 'cherry', eyebrow: 'OPTION', label: 'Cherry-pick', detail: 'One selected commit', role: 'process', size: 'compact'},
-    {id: 'main', eyebrow: 'RESULT', label: 'main history', detail: 'Intentional, reviewable history', role: 'output', size: 'standard'},
-  ]}
-  edges={[
-    {source: 'feature', target: 'decision', route: 'primary'},
-    {source: 'decision', target: 'squash', route: 'secondary'},
-    {source: 'decision', target: 'rebase', route: 'secondary'},
-    {source: 'decision', target: 'merge', route: 'secondary'},
-    {source: 'decision', target: 'cherry', route: 'secondary'},
-    {source: 'squash', target: 'main', route: 'secondary'},
-    {source: 'rebase', target: 'main', route: 'secondary'},
-    {source: 'merge', target: 'main', route: 'secondary'},
-    {source: 'cherry', target: 'main', route: 'secondary'},
-  ]}
-/>
-
-### Rewrite vs preserve history
-
-Local/private history chưa public có thể dùng `rebase`, `amend`, `reset` hoặc interactive rebase. Shared history đã public nên ưu tiên `revert`. Sau rebase trên branch cá nhân đã push, ưu tiên `git push --force-with-lease` thay vì `--force`.
-
-Các command đã học theo mental model:
-
-- `git restore` xử lý file/working tree; `git restore --staged` bỏ file khỏi staging nhưng giữ code.
-- `git reset --soft` bỏ commit nhưng giữ code staged; `--mixed` giữ code unstaged; `--hard` bỏ cả code.
-- `git commit --amend` viết lại commit cuối.
-- interactive rebase dùng `pick`, `reword`, `squash`, `fixup`, `drop`; `--autosquash` kết hợp với `fixup!` để dọn branch.
-- `git stash` cất tạm working changes; `apply` giữ stash, `pop` lấy ra và bỏ stash khi thành công.
-- `git reflog` là safety net local khi reset/rebase/amend nhầm.
-- `git fetch` cập nhật remote-tracking refs mà không tự tích hợp; `git pull` fetch rồi merge/rebase theo config.
-- `origin/main` là remote-tracking branch local, không phải branch trực tiếp “nằm trên GitHub”.
-
-### CI, protected main and merge queue
-
-<FlowExplainer
-  title="PR CI vs merge queue vs main CI"
-  description="Một PR pass riêng lẻ chưa chứng minh trạng thái cuối cùng của main vẫn pass khi nhiều PR cùng được merge."
-  scenarios={[
-    {
-      id: 'ci-queue',
-      label: 'Safe integration path',
-      nodes: [
-        {id: 'pr', label: 'Pull Request', detail: 'Change under review', role: 'client'},
-        {id: 'pr-ci', label: 'PR CI', detail: 'build · test · lint', role: 'network'},
-        {id: 'queue', label: 'Merge Queue', detail: 'Latest main + PR', role: 'service'},
-        {id: 'main', label: 'Protected main', detail: 'Integrated state', role: 'service'},
-        {id: 'main-ci', label: 'Main CI', detail: 'Final combination', role: 'network'},
-        {id: 'prod', label: 'Production', detail: 'Deploy', role: 'database'},
-      ],
-      steps: [
-        {title: '1 · Validate the PR', from: 'pr', to: 'pr-ci', message: 'build + tests', description: 'PR CI kiểm tra thay đổi riêng lẻ trước khi merge.'},
-        {title: '2 · Validate against latest main', from: 'pr-ci', to: 'queue', message: 'queue candidate', description: 'Merge queue thử PR trên trạng thái main mới nhất để tránh race giữa nhiều PR.'},
-        {title: '3 · Integrate safely', from: 'queue', to: 'main', message: 'merge', description: 'Protected main chỉ nhận thay đổi khi required checks đã đạt.'},
-        {title: '4 · Re-test integrated state', from: 'main', to: 'main-ci', message: 'final CI', description: 'Main CI kiểm tra tổ hợp cuối cùng, không chỉ từng PR độc lập.'},
-        {title: '5 · Deploy', from: 'main-ci', to: 'prod', message: 'CD', description: 'CD chỉ chạy sau khi integrated state pass.'},
-      ],
-    },
-  ]}
-/>
-
-Feature lớn không nhất thiết cần branch lớn. Có thể chia thành nhiều atomic change và dùng feature flag hoặc backward-compatible change để merge sớm. Với schema/API migration, pattern đã học là **expand -> migrate -> contract**: thêm shape mới tương thích trước, migrate consumer/data, cuối cùng mới xóa shape cũ.
-
-### Rollback, revert and roll forward
-
-`git revert` sửa source history bằng một commit đảo thay đổi. **Deployment rollback** đưa production về artifact/version trước. Chúng là hai việc khác nhau.
-
-<FlowExplainer
-  title="Production incident — rollback or roll forward?"
-  description="Mục tiêu là restore service an toàn và nhanh nhất, không phải luôn rollback bằng Git."
-  scenarios={[
-    {
-      id: 'rollback',
-      label: 'Rollback is fast',
-      nodes: [
-        {id: 'd', label: 'Release D', detail: 'Production broken', role: 'client'},
-        {id: 'c', label: 'Release C', detail: 'Known good artifact', role: 'service'},
-        {id: 'source', label: 'Source fix', detail: 'revert or new fix', role: 'network'},
-        {id: 'prod', label: 'Production', detail: 'Stable again', role: 'database'},
-      ],
-      steps: [
-        {title: '1 · Restore service', from: 'd', to: 'c', message: 'rollback artifact', description: 'Nếu rollback artifact nhanh và an toàn, đưa production về known-good version trước.'},
-        {title: '2 · Repair source history', from: 'c', to: 'source', message: 'revert / fix', description: 'Sau khi service ổn định, xử lý commit gây lỗi trong source.'},
-        {title: '3 · Deploy corrected build', from: 'source', to: 'prod', message: 'redeploy', description: 'CI pass rồi deploy lại phiên bản đã sửa.'},
-      ],
-    },
-    {
-      id: 'roll-forward',
-      label: 'Rollback is risky',
-      nodes: [
-        {id: 'd', label: 'Release D', detail: 'Bug + hard DB rollback', role: 'client'},
-        {id: 'e', label: 'Release E', detail: 'Small known fix', role: 'service'},
-        {id: 'prod', label: 'Production', detail: 'Recovered', role: 'database'},
-      ],
-      steps: [
-        {title: '1 · Avoid unsafe rollback', from: 'd', to: 'e', message: 'small fix', description: 'Nếu rollback DB khó nhưng fix đã rõ và nhỏ, tạo phiên bản E thay vì ép quay về C.'},
-        {title: '2 · Roll forward', from: 'e', to: 'prod', message: 'deploy E', description: 'Deploy fix mới để phục hồi service.'},
-      ],
-    },
-  ]}
-/>
-
-### Tag, SemVer and release traceability
-
-Semantic Versioning:
-
-```text
-fix      -> PATCH
-feat     -> MINOR
-breaking -> MAJOR
-```
-
-Pre-release có thể dùng `alpha`, `beta`, `rc`, ví dụ `v5.0.0-rc.1 -> v5.0.0-rc.2 -> v5.0.0`. Git tag là mốc cố định vào một commit; release chính thức thường phù hợp với annotated tag.
-
-<ReactFlowDiagram
-  ariaLabel="Production release traceability from version to Git tag, commit and immutable artifact"
-  caption="Version giúp con người nhận diện release; commit SHA xác định source; image digest xác định artifact thực sự đang chạy."
-  controls={false}
-  direction="LR"
-  fullscreen
-  height={360}
-  interactive={false}
-  kind="pipeline"
-  primaryPath={['version', 'tag', 'commit', 'image', 'prod']}
-  nodes={[
-    {id: 'version', eyebrow: 'RELEASE', label: 'v5.2.1', detail: 'Semantic version', role: 'source', size: 'compact'},
-    {id: 'tag', eyebrow: 'GIT', label: 'Git tag v5.2.1', detail: 'Fixed release marker', role: 'state', size: 'compact'},
-    {id: 'commit', eyebrow: 'SOURCE', label: 'Commit a84f921', detail: 'Exact source state', role: 'process', size: 'compact'},
-    {id: 'image', eyebrow: 'ARTIFACT', label: 'Image digest', detail: 'Immutable build', role: 'storage', size: 'compact'},
-    {id: 'prod', eyebrow: 'RUNTIME', label: 'Production', detail: 'What is actually running', role: 'output', size: 'standard'},
-  ]}
-  edges={[
-    {source: 'version', target: 'tag', route: 'primary'},
-    {source: 'tag', target: 'commit', route: 'primary'},
-    {source: 'commit', target: 'image', route: 'primary'},
-    {source: 'image', target: 'prod', route: 'primary'},
-  ]}
-/>
-
-Conventional Commits như `fix:`, `feat:` và `BREAKING CHANGE` có thể cung cấp metadata để automation tính version/changelog. Branch naming như `feat/*`, `fix/*`, `docs/*`, `chore/*` là team convention; tên branch không tự quyết định workflow.
+- [Git History & Change Integration](./git-history-and-change-integration.mdx) — chọn squash, rebase, merge commit, cherry-pick và phân biệt rewrite local history với sửa shared history.
+- [Release Safety & Traceability](./release-safety-and-traceability.mdx) — CI/merge queue, rollback hoặc roll forward, SemVer/tag/artifact và final release validation.
 
 ## Example
 
-Một team có `main` và shared `testing` branch. Nhiều feature 1, 2, 3 được merge vào `testing` để QA, nhưng sau đó chỉ feature 1 và 3 được merge riêng vào `main`.
-
-### Why the shared testing branch can lie
-
-<ReactFlowDiagram
-  ariaLabel="Shared testing branch chứa feature 1, 2, 3 nhưng production chỉ release feature 1 và 3"
-  caption="QA pass trên testing không đảm bảo production pass nếu tổ hợp code release khác tổ hợp code đã test. Final release candidate nên phản ánh đúng tập feature sẽ lên production."
-  controls={false}
-  direction="LR"
-  fullscreen
-  height={420}
-  interactive={false}
-  kind="branch"
-  nodes={[
-    {id: 'main', eyebrow: 'BASE', label: 'main', detail: 'Production baseline', role: 'source', size: 'compact'},
-    {id: 'f1', eyebrow: 'FEATURE', label: 'Feature 1', detail: 'Will release', role: 'process', size: 'compact'},
-    {id: 'f2', eyebrow: 'FEATURE', label: 'Feature 2', detail: 'Will NOT release', role: 'constraint', size: 'compact'},
-    {id: 'f3', eyebrow: 'FEATURE', label: 'Feature 3', detail: 'Will release', role: 'process', size: 'compact'},
-    {id: 'testing', eyebrow: 'QA STATE', label: 'testing', detail: 'main + 1 + 2 + 3', role: 'state', emphasis: true, size: 'standard'},
-    {id: 'release', eyebrow: 'PROD STATE', label: 'Production candidate', detail: 'main + 1 + 3', role: 'output', size: 'standard'},
-  ]}
-  edges={[
-    {source: 'main', target: 'f1', route: 'secondary'},
-    {source: 'main', target: 'f2', route: 'secondary'},
-    {source: 'main', target: 'f3', route: 'secondary'},
-    {source: 'f1', target: 'testing', route: 'secondary'},
-    {source: 'f2', target: 'testing', route: 'secondary'},
-    {source: 'f3', target: 'testing', route: 'secondary'},
-    {source: 'f1', target: 'release', route: 'primary'},
-    {source: 'f3', target: 'release', route: 'primary'},
-  ]}
-/>
-
-Rủi ro là trạng thái đã test là `main + 1 + 2 + 3`, còn trạng thái release là `main + 1 + 3`. Nếu feature 1 hoặc 3 vô tình phụ thuộc vào feature 2, production có thể lỗi dù QA đã pass. Nguyên tắc an toàn hơn là final release candidate phải được test đúng với tổ hợp code sẽ release.
+Một team muốn chọn workflow cho mobile app có release train và backend deploy liên tục. Mobile phù hợp với Git Flow vì cần freeze/stabilize release; backend phù hợp với GitHub Flow hoặc Trunk-Based vì có thể integrate và deploy từ `main` thường xuyên. Cùng một tổ chức không cần ép mọi repository vào một branch model.
 
 ## When to Use
 
@@ -441,38 +232,28 @@ Nếu câu trả lời thay đổi theo repository, workflow cũng có thể kh�
 
 - Nghĩ branch name quyết định workflow; thực tế integration point và branch lifetime quan trọng hơn.
 - Giữ feature branch nhiều tuần trong một team muốn Trunk-Based Development.
-- Rebase hoặc force-push shared `main` thay vì dùng `revert`.
-- Dùng `git reset --hard` như undo mặc định khi chỉ cần `restore` hoặc `reset --mixed/soft`.
-- Test một tổ hợp trên shared testing branch nhưng release một tổ hợp khác mà không có final validation.
 - Merge hotfix của Git Flow chỉ vào `main` mà quên đưa fix trở lại `develop`.
 - Dùng `release/*` cho mọi deploy dù sản phẩm deploy liên tục và không maintain release line riêng.
-- Chỉ dùng mutable Docker tag như `latest` mà không trace được release -> tag -> commit -> immutable artifact.
 
 ## Related Knowledge
 
 - [API Communication Fundamentals](./api-communication-fundamentals.mdx) — API compatibility và backward-compatible evolution giúp các thay đổi nhỏ có thể được merge/deploy an toàn hơn.
+- [Git History & Change Integration](./git-history-and-change-integration.mdx) — merge strategy, rewrite và recovery commands.
+- [Release Safety & Traceability](./release-safety-and-traceability.mdx) — integrated validation, production recovery và artifact traceability.
 
 ## Self-test
 
 1. `feature/*`, `release/*`, `hotfix/*` trong Git Flow được tạo từ đâu và merge về đâu?
 2. GitHub Flow khác Trunk-Based Development ở điểm bản chất nào?
-3. Khi nào nên chọn squash, rebase + merge, merge commit hoặc cherry-pick?
-4. Vì sao PR CI pass chưa chắc đủ khi nhiều PR merge gần nhau?
-5. `git restore`, `reset`, `revert` khác nhau theo mental model nào?
-6. Khi production lỗi, rollback deployment và Git revert khác nhau thế nào? Khi nào roll forward hợp lý hơn?
-7. Vì sao `testing = main + feature1 + feature2 + feature3` nhưng production chỉ release `feature1 + feature3` có thể nguy hiểm?
-8. Release traceability tốt cần nối được những mốc nào?
+3. Khi nào GitLab Flow phù hợp hơn GitHub Flow?
+4. Vì sao `release/*` và `hotfix/*` phải merge-back vào `develop`?
 
 <details>
 <summary>Answers</summary>
 
 1. Feature: `develop -> develop`; release: `develop -> main + develop`; hotfix: `main -> main + develop`.
 2. GitHub Flow chủ yếu mô tả branch/PR workflow; Trunk-Based nhấn mạnh integration rất thường xuyên, branch cực ngắn và thay đổi nhỏ, thường kết hợp feature flags.
-3. Squash khi PR là một logical change; rebase + merge khi muốn giữ các commit tốt và history linear; merge commit khi topology branch có giá trị; cherry-pick khi chỉ cần mang một commit cụ thể sang branch khác.
-4. Vì các PR có thể pass riêng nhưng tổ hợp cuối trên main lại xung đột logic; merge queue/main CI kiểm tra trạng thái tích hợp mới nhất.
-5. `restore` chủ yếu xử lý file/working tree; `reset` di chuyển HEAD/index và phù hợp local unpublished history; `revert` tạo commit mới đảo commit cũ, phù hợp shared history.
-6. Deployment rollback đổi artifact đang chạy; Git revert sửa source history. Roll forward hợp lý khi rollback rủi ro hoặc chậm nhưng fix mới nhỏ, rõ và nhanh hơn.
-7. Vì trạng thái được QA test khác trạng thái thực sự release; dependency hoặc interaction với feature 2 có thể làm production khác kết quả QA.
-8. Ít nhất cần trace được release version -> Git tag -> commit SHA -> immutable artifact/image digest -> production runtime.
+3. Khi cần downstream environment branches hoặc nhiều stable release lines trong khi vẫn giữ `main` làm upstream.
+4. Để release fixes và production hotfixes không biến mất khỏi dòng phát triển của release kế tiếp.
 
 </details>

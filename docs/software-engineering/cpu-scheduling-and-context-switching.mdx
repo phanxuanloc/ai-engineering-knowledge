@@ -103,8 +103,11 @@ Document parsing service trên 8 cores có 128 workers, CPU 98%, run queue/conte
 2. Vì sao 128 CPU-heavy workers trên 8 cores có thể chậm hơn 16 workers?
 3. CPU thấp nhưng latency cao gợi ý loại waiting nào?
 
-<details><summary>Answers</summary>
+<details>
+<summary>Answers</summary>
+
 1. Runnable là sẵn sàng; running là đang execute trên CPU.
 2. Run queue, context switching và cache disruption tăng mà compute capacity không tăng.
 3. I/O wait, lock contention, downstream latency hoặc blocked workers.
+
 </details>

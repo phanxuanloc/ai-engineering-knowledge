@@ -6,6 +6,7 @@ sidebar_position: 5
 ---
 
 import {ImportantDistinction, KeyInsight, Remember, TLDR} from '@site/src/components/Learning';
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 # Context Operations
 
@@ -23,11 +24,81 @@ Một Context Manager chỉ đáng tin khi ta thấy được **nó đã retriev
 
 ## Mental Model
 
-Hãy coi mỗi model invocation như một request có trace:
+Hãy theo dõi mỗi model invocation như một trace xuyên suốt context lifecycle. Mỗi transition cần đủ signal để xác định context đã được tạo, sử dụng và thay đổi ở đâu.
 
-**Input state → retrieval → selection → assembled context → model action → tool/result → next state**.
-
-Nếu chỉ log prompt cuối và final answer, ta mất phần lớn causal chain. Operations cần đủ signal để trả lời: **model đã nhận gì, vì sao nhận nó, cái gì bị bỏ, và state nào đã thay đổi sau invocation?**
+<FlowExplainer
+  title="Trace một context lifecycle"
+  description="Đi từng transition để thấy Context Operations giữ lại provenance, selection decision, freshness và state change — thay vì chỉ quan sát prompt cuối cùng."
+  scenarios={[
+    {
+      id: 'context-lifecycle-trace',
+      label: 'Một model invocation',
+      layout: 'compact',
+      presentation: 'progressive',
+      nodes: [
+        {id: 'input', label: 'Input State', detail: 'Task + current state', role: 'client'},
+        {id: 'retrieve', label: 'Retrieval', detail: 'Candidates + provenance', role: 'tool'},
+        {id: 'select', label: 'Selection', detail: 'Selected / rejected', role: 'service'},
+        {id: 'context', label: 'Assembled Context', detail: 'Authority + freshness', role: 'network'},
+        {id: 'model', label: 'Model Action', detail: 'Decision from context', role: 'model'},
+        {id: 'result', label: 'Tool / Result', detail: 'Fresh runtime evidence', role: 'tool'},
+        {id: 'state', label: 'Next State', detail: 'Versioned state change', role: 'data'},
+      ],
+      edges: [
+        {id: 'input-retrieve', source: 'input', target: 'retrieve'},
+        {id: 'retrieve-select', source: 'retrieve', target: 'select'},
+        {id: 'select-context', source: 'select', target: 'context'},
+        {id: 'context-model', source: 'context', target: 'model'},
+        {id: 'model-result', source: 'model', target: 'result'},
+        {id: 'result-state', source: 'result', target: 'state'},
+      ],
+      steps: [
+        {
+          title: '1 · Reconstruct the starting point',
+          from: 'input',
+          to: 'retrieve',
+          message: 'task + state version',
+          description: 'Trace gắn invocation với task, current decision và phiên bản state ban đầu để các evidence sau có mốc đối chiếu.',
+        },
+        {
+          title: '2 · Record the candidate pool',
+          from: 'retrieve',
+          to: 'select',
+          message: 'candidates + provenance',
+          description: 'Retrieval ghi nhận candidate nào xuất hiện và đến từ đâu; nhờ vậy có thể phân biệt retrieval miss với selection miss.',
+        },
+        {
+          title: '3 · Explain the selection decision',
+          from: 'select',
+          to: 'context',
+          message: 'selected / rejected',
+          description: 'Selection giữ decision metadata: item nào được chọn, item nào bị bỏ, token cost và freshness signal liên quan.',
+        },
+        {
+          title: '4 · Preserve the authority boundary',
+          from: 'context',
+          to: 'model',
+          message: 'bounded context',
+          description: 'Assembled context chuyển instructions và evidence vào model nhưng vẫn giữ role, provenance và trust boundary rõ ràng.',
+        },
+        {
+          title: '5 · Observe the action and fresh result',
+          from: 'model',
+          to: 'result',
+          message: 'tool call / outcome',
+          description: 'Model action và tool result được nối với đúng input context, giúp kiểm tra failure nằm ở context hay ở reasoning/action.',
+        },
+        {
+          title: '6 · Version the next state',
+          from: 'result',
+          to: 'state',
+          message: 'state transition',
+          description: 'Fresh result cập nhật next state có version; evidence thuộc state cũ có thể được nhận diện và invalidated ở invocation kế tiếp.',
+        },
+      ],
+    },
+  ]}
+/>
 
 ## Core Concepts
 

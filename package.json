@@ -3,8 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "docs:check": "node scripts/check-docs-consistency.mjs",
     "diagrams:build": "node scripts/build-excalidraw-diagrams.mjs",
-    "prebuild": "npm run diagrams:build",
+    "prebuild": "npm run docs:check && npm run diagrams:build",
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
     "build": "docusaurus build",

@@ -50,6 +50,9 @@ export function ImportantDistinction(props: Omit<CalloutProps, 'tone'>) {
 }
 
 export function Principle({children, className, label = 'Principle'}: CalloutProps) {
-  return <LearningCallout className={className} label={label} title={String(children)} tone="remember"><span /></LearningCallout>;
+  return (
+    <LearningCallout className={className} label={label} tone="remember">
+      {children}
+    </LearningCallout>
+  );
 }
-

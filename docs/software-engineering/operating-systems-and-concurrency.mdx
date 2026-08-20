@@ -19,27 +19,31 @@ Operating Systems & Concurrency giải thích **execution chạy ở đâu, chia
 
 ## Mental Model
 
+Hãy bắt đầu từ **work đang execute trong boundary nào**, rồi tách vấn đề thành bốn lens độc lập. Bốn lens này có thể xuất hiện cùng lúc; chúng là các hướng chẩn đoán, không phải các bước chạy nối tiếp.
+
 <ReactFlowDiagram
   ariaLabel="Operating Systems and Concurrency learning map"
   direction="TB"
   interactive={false}
   kind="relationship"
+  rankSpacing={48}
   nodes={[
-    {id: 'os', label: 'OS & Concurrency', detail: 'execution + resources', role: 'group', emphasis: true},
-    {id: 'execution', label: 'Execution', detail: 'process · thread · concurrency', role: 'process'},
-    {id: 'correctness', label: 'Correctness', detail: 'race · critical section · deadlock', role: 'constraint'},
-    {id: 'waiting', label: 'Waiting', detail: 'async I/O · event loop · thread pool', role: 'state'},
-    {id: 'memory', label: 'Memory', detail: 'stack · heap · virtual memory · OOM', role: 'storage'},
-    {id: 'compute', label: 'Compute', detail: 'scheduler · context switch · workers', role: 'process'},
+    {id: 'os', label: 'OS & Concurrency', detail: 'execution + finite resources', role: 'group', emphasis: true},
+    {id: 'execution', label: 'Execution boundary', detail: 'process · thread · concurrent work', role: 'process'},
+    {
+      id: 'lenses',
+      label: '4 diagnostic lenses',
+      detail: 'independent, có thể cùng xuất hiện',
+      items: ['Shared state', 'Waiting', 'Memory', 'CPU'],
+      role: 'group',
+      size: 'wide',
+    },
   ]}
   edges={[
-    {source: 'os', target: 'execution'},
-    {source: 'os', target: 'correctness'},
-    {source: 'os', target: 'waiting'},
-    {source: 'os', target: 'memory'},
-    {source: 'os', target: 'compute'},
+    {source: 'os', target: 'execution', type: 'straight'},
+    {source: 'execution', target: 'lenses', type: 'straight'},
   ]}
-  caption="Một production problem thường rơi vào một trong bốn câu hỏi: state có an toàn không, work đang chờ gì, memory có đủ không, và CPU đang được chia thế nào."
+  caption="Sau khi xác định execution boundary, hỏi lần lượt: shared state có an toàn không, work đang chờ gì, memory có đủ không, và CPU time đang được chia thế nào."
 />
 
 <ConceptGrid>
@@ -110,8 +114,11 @@ Operating Systems & Concurrency giải thích **execution chạy ở đâu, chia
 2. Vì sao concurrency không đồng nghĩa parallelism?
 3. CPU thấp nhưng latency cao thì điều tra gì trước khi scale CPU?
 
-<details><summary>Answers</summary>
+<details>
+<summary>Answers</summary>
+
 1. Atomicity; I/O/locks/downstream; working set/leak/OOM; runnable work/scheduling.
 2. Scheduler có thể interleave nhiều tasks trên ít cores; parallelism cần simultaneous compute.
 3. I/O wait, lock contention, blocked workers và downstream latency.
+
 </details>

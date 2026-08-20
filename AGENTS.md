@@ -59,6 +59,19 @@ The default journey for a broad topic is: Broad Topic → Learning Map → Small
 - Keep arrays empty when there is no actual relationship or experiment to record. Do not pre-populate a curriculum.
 - A structural category `index.mdx` and `docs/_templates/learning-note.mdx` must never receive topic entries.
 
+### Checkpoint evidence extensions
+
+The base topic shape may be extended with the following evidence fields when a broad topic is learned across multiple sessions. These fields are part of the canonical progress schema and must be preserved when updating an entry:
+
+- `checkpoints`: ordered checkpoint IDs that have real learning evidence.
+- `checkpoint_progress`: mapping from checkpoint ID to its evidence record. Each record may contain `status`, `note`, `learned_at`, `evidence`, `implemented`, and `remaining` when those facts actually exist.
+- `next_checkpoint`: the next small subtopic supported by the current learning journey, or `null` when no next checkpoint has been chosen.
+- `evidence`: stable evidence IDs describing demonstrated reasoning or self-test results; never generate these from article content alone.
+- `implemented`: stable IDs for artifacts the learner actually built.
+- `remaining`: explicit gaps observed during the learning session; an empty array means no recorded gap for that checkpoint, not automatic mastery.
+
+Run `npm run docs:check` after progress or documentation changes. It validates topic-note references, checkpoint-note structure, internal `.mdx` links, the README topic count, and MDX-sensitive `<details>` formatting before the slower production build.
+
 ## Before editing knowledge
 
 1. Read `README.md`, this file, and `docs/_templates/learning-note.mdx`.

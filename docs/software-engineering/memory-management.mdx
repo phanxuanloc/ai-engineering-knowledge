@@ -102,9 +102,12 @@ Một Java service có baseline sau GC tăng đều từ 300 MB lên 1.8 GB tron
 3. OOM do traffic spike có đủ chứng minh leak không?
 4. Virtual memory giúp process isolation thế nào?
 
-<details><summary>Answers</summary>
+<details>
+<summary>Answers</summary>
+
 1. Stack overflow là một stack vượt limit; OOM là không cấp được memory cần thiết.
 2. Cache vẫn giữ references nên objects còn reachable.
 3. Không; peak concurrency × working set có thể vượt limit.
 4. Mỗi process có virtual address space và mappings riêng.
+
 </details>

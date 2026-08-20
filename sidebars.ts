@@ -143,7 +143,11 @@ const sidebars: SidebarsConfig = {
               'Các workflow giúp team tích hợp, kiểm thử và release software an toàn.',
             slug: '/software-engineering/development-workflows',
           },
-          items: ['software-engineering/git-workflows'],
+          items: [
+            'software-engineering/git-workflows',
+            'software-engineering/git-history-and-change-integration',
+            'software-engineering/release-safety-and-traceability',
+          ],
         },
         {
           type: 'category',

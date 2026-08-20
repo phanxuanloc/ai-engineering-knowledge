@@ -5,6 +5,7 @@ tags: [networking, tcp, udp, tls, https, http]
 ---
 
 import {Comparison, TLDR} from '@site/src/components/Learning';
+import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 
 # Transport, TLS & HTTP
 
@@ -89,17 +90,27 @@ Nếu `IP:443` timeout thì HTTP endpoint, JSON body và business logic có th�
 
 Payment API dùng HTTPS:
 
-```text
-Client
-  ↓
-TCP connection
-  ↓
-TLS handshake
-  ↓
-POST /payments
-  ↓
-HTTP response
-```
+<ReactFlowDiagram
+  ariaLabel="HTTPS payment request phase flow"
+  direction="TB"
+  interactive={false}
+  kind="lifecycle"
+  primaryPath={['client', 'tcp', 'tls', 'request', 'response']}
+  nodes={[
+    {id: 'client', label: 'Client', detail: 'knows destination IP:port', role: 'source'},
+    {id: 'tcp', label: 'TCP Connection', detail: 'reliable byte stream', role: 'process'},
+    {id: 'tls', label: 'TLS Handshake', detail: 'secure authenticated channel', role: 'constraint'},
+    {id: 'request', label: 'POST /payments', detail: 'HTTP request semantics', role: 'process', emphasis: true},
+    {id: 'response', label: 'HTTP Response', detail: 'status · headers · body', role: 'output'},
+  ]}
+  edges={[
+    {source: 'client', target: 'tcp'},
+    {source: 'tcp', target: 'tls'},
+    {source: 'tls', target: 'request'},
+    {source: 'request', target: 'response'},
+  ]}
+  caption="HTTP request chỉ được trao đổi sau khi transport và secure channel cần thiết đã được thiết lập; mỗi phase có failure boundary riêng."
+/>
 
 Nếu server charge thành công nhưng response bị mất, retry có thể duplicate payment dù TCP là reliable transport. Cần application-level idempotency.
 

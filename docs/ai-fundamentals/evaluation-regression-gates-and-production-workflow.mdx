@@ -5,7 +5,7 @@ tags: [evaluation, regression, production, coding-agent]
 ---
 
 import {Principle, TLDR} from '@site/src/components/Learning';
-import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 # Evaluation Regression Gates & Production Workflow
 
@@ -21,35 +21,86 @@ Evaluation đo chất lượng. Regression Gate biến evidence thành release d
 
 ## Mental Model
 
-<ReactFlowDiagram
-  ariaLabel="Production evaluation feedback loop"
-  caption="Release decision là một vòng lặp: evaluate change, áp policy gate, deploy khi pass và đưa failure thực tế quay lại Eval Suite."
-  controls={false}
-  direction="TB"
-  fullscreen
-  height={620}
-  interactive={false}
-  kind="workflow"
-  primaryPath={['change', 'eval', 'evidence', 'gate', 'deploy', 'production', 'regression']}
-  nodes={[
-    {id: 'change', eyebrow: 'CHANGE', label: 'Candidate', detail: 'Model, prompt, agent hoặc code change', role: 'source'},
-    {id: 'eval', eyebrow: 'EVALUATE', label: 'Eval Suite', detail: 'Representative cases + regression cases', role: 'process'},
-    {id: 'evidence', eyebrow: 'READ', label: 'Metrics + Slices', detail: 'Overall, critical slices, cost, latency', role: 'state'},
-    {id: 'gate', eyebrow: 'DECIDE', label: 'Regression Gates', detail: 'Policy quyết định PASS / FAIL', role: 'constraint', emphasis: true},
-    {id: 'deploy', eyebrow: 'PASS', label: 'Deploy', detail: 'Ship candidate khi mọi required gate pass', role: 'output'},
-    {id: 'production', eyebrow: 'OBSERVE', label: 'Production', detail: 'Theo dõi failure thực tế', role: 'state'},
-    {id: 'regression', eyebrow: 'LEARN', label: 'Regression Case', detail: 'Reproduce failure và thêm vào Eval Suite', role: 'data'},
-    {id: 'block', eyebrow: 'FAIL', label: 'Block', detail: 'Không release candidate', role: 'output'},
-  ]}
-  edges={[
-    {source: 'change', target: 'eval', route: 'primary'},
-    {source: 'eval', target: 'evidence', route: 'primary'},
-    {source: 'evidence', target: 'gate', route: 'primary'},
-    {source: 'gate', target: 'deploy', label: 'PASS', route: 'primary'},
-    {source: 'gate', target: 'block', label: 'FAIL'},
-    {source: 'deploy', target: 'production', route: 'primary'},
-    {source: 'production', target: 'regression', label: 'failure found', route: 'primary'},
-    {source: 'regression', target: 'eval', label: 'add to suite'},
+<FlowExplainer
+  title="Regression Gate quyết định release và học từ production"
+  description="Chọn outcome để theo dõi một candidate qua evaluation evidence, policy gate và feedback từ production."
+  stepDurationMs={2600}
+  scenarios={[
+    {
+      id: 'gate-fail',
+      label: 'Gate FAIL',
+      layout: 'compact',
+      presentation: 'progressive',
+      nodes: [
+        {id: 'candidate', label: 'Candidate', detail: 'Model · prompt · agent · code', role: 'client'},
+        {id: 'eval', label: 'Eval Suite', detail: 'Representative + regression cases', role: 'service'},
+        {id: 'evidence', label: 'Metrics + Slices', detail: 'Quality · safety · cost · latency', role: 'database'},
+        {id: 'gate', label: 'Regression Gate', detail: 'Release policy', role: 'network'},
+        {id: 'block', label: 'Block', detail: 'Candidate không được release', role: 'service'},
+      ],
+      edges: [
+        {id: 'fail-candidate-eval', source: 'candidate', target: 'eval'},
+        {id: 'fail-eval-evidence', source: 'eval', target: 'evidence'},
+        {id: 'fail-evidence-gate', source: 'evidence', target: 'gate'},
+        {id: 'fail-gate-block', source: 'gate', target: 'block'},
+      ],
+      steps: [
+        {title: '1 · Evaluate candidate', edgeId: 'fail-candidate-eval', from: 'candidate', to: 'eval', message: 'run evals', description: 'Candidate chạy trên representative cases và những regression cases đã biết.'},
+        {title: '2 · Produce decision evidence', edgeId: 'fail-eval-evidence', from: 'eval', to: 'evidence', message: 'results', description: 'Đọc overall metrics cùng critical slices, safety, cost và latency thay vì chỉ một aggregate score.'},
+        {title: '3 · Apply release policy', edgeId: 'fail-evidence-gate', from: 'evidence', to: 'gate', message: 'check gates', description: 'Regression Gate áp các threshold và hard constraints lên evaluation evidence.'},
+        {title: '4 · Block on required failure', edgeId: 'fail-gate-block', from: 'gate', to: 'block', message: 'FAIL', description: 'Chỉ một required hard gate fail cũng đủ block candidate; metric tốt khác không được bù.'},
+      ],
+    },
+    {
+      id: 'gate-pass',
+      label: 'Gate PASS',
+      layout: 'compact',
+      presentation: 'progressive',
+      nodes: [
+        {id: 'candidate', label: 'Candidate', detail: 'Model · prompt · agent · code', role: 'client'},
+        {id: 'eval', label: 'Eval Suite', detail: 'Representative + regression cases', role: 'service'},
+        {id: 'evidence', label: 'Metrics + Slices', detail: 'Quality · safety · cost · latency', role: 'database'},
+        {id: 'gate', label: 'Regression Gate', detail: 'Release policy', role: 'network'},
+        {id: 'deploy', label: 'Deploy', detail: 'Required gates passed', role: 'service'},
+        {id: 'production', label: 'Production', detail: 'Observe real outcomes', role: 'database'},
+      ],
+      edges: [
+        {id: 'pass-candidate-eval', source: 'candidate', target: 'eval'},
+        {id: 'pass-eval-evidence', source: 'eval', target: 'evidence'},
+        {id: 'pass-evidence-gate', source: 'evidence', target: 'gate'},
+        {id: 'pass-gate-deploy', source: 'gate', target: 'deploy'},
+        {id: 'pass-deploy-production', source: 'deploy', target: 'production'},
+      ],
+      steps: [
+        {title: '1 · Evaluate candidate', edgeId: 'pass-candidate-eval', from: 'candidate', to: 'eval', message: 'run evals', description: 'Candidate chạy trên suite hiện tại để tạo comparable evidence.'},
+        {title: '2 · Read evidence by dimension', edgeId: 'pass-eval-evidence', from: 'eval', to: 'evidence', message: 'results', description: 'Overall score không thay thế critical-slice, safety, cost và latency evidence.'},
+        {title: '3 · Apply release policy', edgeId: 'pass-evidence-gate', from: 'evidence', to: 'gate', message: 'check gates', description: 'Gate chuyển measurements thành một release decision có policy rõ ràng.'},
+        {title: '4 · Deploy only after PASS', edgeId: 'pass-gate-deploy', from: 'gate', to: 'deploy', message: 'PASS', description: 'Candidate chỉ được ship khi mọi required gate đều pass.'},
+        {title: '5 · Observe production', edgeId: 'pass-deploy-production', from: 'deploy', to: 'production', message: 'release', description: 'Production cung cấp evidence ngoài coverage của offline Eval Suite.'},
+      ],
+    },
+    {
+      id: 'production-feedback',
+      label: 'Production feedback',
+      layout: 'compact',
+      presentation: 'progressive',
+      nodes: [
+        {id: 'production', label: 'Production Failure', detail: 'Blind spot ngoài current coverage', role: 'database'},
+        {id: 'regression', label: 'Regression Case', detail: 'Reproduce failure deterministically', role: 'service'},
+        {id: 'eval', label: 'Eval Suite', detail: 'Coverage được mở rộng', role: 'service'},
+        {id: 'future', label: 'Future Candidate', detail: 'Phải pass known regression', role: 'client'},
+      ],
+      edges: [
+        {id: 'feedback-production-regression', source: 'production', target: 'regression'},
+        {id: 'feedback-regression-eval', source: 'regression', target: 'eval'},
+        {id: 'feedback-eval-future', source: 'eval', target: 'future'},
+      ],
+      steps: [
+        {title: '1 · Detect a blind spot', edgeId: 'feedback-production-regression', from: 'production', to: 'regression', message: 'failure found', description: 'Production cho thấy một failure mode mà offline Eval Suite hiện tại chưa bắt được.'},
+        {title: '2 · Strengthen the suite', edgeId: 'feedback-regression-eval', from: 'regression', to: 'eval', message: 'add to suite', description: 'Failure được reproduce thành regression case hoặc một representative slice rồi thêm vào Eval Suite.'},
+        {title: '3 · Protect future releases', edgeId: 'feedback-eval-future', from: 'eval', to: 'future', message: 'known regression', description: 'Future candidates phải chứng minh failure đã biết không tái diễn trước khi được release.'},
+      ],
+    },
   ]}
 />
 

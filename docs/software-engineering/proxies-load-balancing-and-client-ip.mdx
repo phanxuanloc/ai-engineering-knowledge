@@ -5,6 +5,7 @@ tags: [proxy, reverse-proxy, load-balancing, client-ip]
 ---
 
 import {Comparison, TLDR} from '@site/src/components/Learning';
+import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 
 # Proxies, Load Balancing & Client IP
 
@@ -39,14 +40,26 @@ Một component có thể làm nhiều responsibility cùng lúc; đừng học 
 
 Load balancer phân phối request tới nhiều backend instances để scale và tăng availability.
 
-```text
-Client
-  ↓
-Load Balancer
-  ├─ API #1
-  ├─ API #2
-  └─ API #3
-```
+<ReactFlowDiagram
+  ariaLabel="Load balancer fans traffic out to backend instances"
+  direction="TB"
+  interactive={false}
+  kind="relationship"
+  nodes={[
+    {id: 'client', label: 'Client', role: 'source'},
+    {id: 'lb', label: 'Load Balancer', detail: 'one public entry point', role: 'process', emphasis: true},
+    {id: 'api-1', label: 'API #1', role: 'output'},
+    {id: 'api-2', label: 'API #2', role: 'output'},
+    {id: 'api-3', label: 'API #3', role: 'output'},
+  ]}
+  edges={[
+    {source: 'client', target: 'lb'},
+    {source: 'lb', target: 'api-1'},
+    {source: 'lb', target: 'api-2'},
+    {source: 'lb', target: 'api-3'},
+  ]}
+  caption="Client dùng một entry point; load balancer giữ backend topology ở phía sau và chọn instance xử lý request."
+/>
 
 ### Health checks
 
@@ -56,13 +69,7 @@ Nếu `API #2` crash và health check fail, behavior hợp lý là ngừng route
 
 Nếu flow là:
 
-```text
-Client 14.1.2.9
-  ↓
-Load Balancer 10.0.1.5
-  ↓
-Backend 10.0.2.10
-```
+`Client 14.1.2.9 → Load Balancer 10.0.1.5 → Backend 10.0.2.10`
 
 Backend có thể thấy direct network peer là load balancer, không phải original client. Proxy thường truyền original-client information qua header như `X-Forwarded-For`.
 
@@ -74,12 +81,23 @@ Không nên mù quáng tin `X-Forwarded-For` từ Internet. Header này chỉ đ
 
 Một public API dùng load balancer trước ba instances. `API #2` unhealthy:
 
-```text
-LB
-├─ API #1 ✓
-├─ API #2 ✗
-└─ API #3 ✓
-```
+<ReactFlowDiagram
+  ariaLabel="Load balancer excludes an unhealthy backend from routing"
+  direction="TB"
+  interactive={false}
+  kind="workflow"
+  nodes={[
+    {id: 'lb', label: 'Load Balancer', detail: 'health-aware routing', role: 'process', emphasis: true},
+    {id: 'api-1', label: 'API #1', detail: 'healthy · receives traffic', role: 'output'},
+    {id: 'api-2', label: 'API #2', detail: 'unhealthy · excluded', role: 'constraint'},
+    {id: 'api-3', label: 'API #3', detail: 'healthy · receives traffic', role: 'output'},
+  ]}
+  edges={[
+    {source: 'lb', target: 'api-1', label: 'route'},
+    {source: 'lb', target: 'api-3', label: 'route'},
+  ]}
+  caption="Health check failure loại API #2 khỏi active routing pool; các healthy instances tiếp tục nhận traffic."
+/>
 
 Load balancer nên tạm loại `API #2` khỏi routing pool. Client không cần biết instance cụ thể nào đang xử lý request.
 

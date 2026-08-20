@@ -6,6 +6,7 @@ tags: [operating-systems, concurrency, synchronization, mutex, deadlock]
 
 import {ConceptCard, ConceptGrid, Principle, TLDR} from '@site/src/components/Learning';
 import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 # Synchronization & Deadlocks
 
@@ -17,25 +18,24 @@ import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 ## Mental Model
 
 <ReactFlowDiagram
-  ariaLabel="Synchronization trade-off from shared state to correctness and failure modes"
+  ariaLabel="Synchronization flow from shared invariant to correct state"
   direction="TB"
   interactive={false}
   kind="workflow"
-  primaryPath={['state','critical','mutex','correct']}
+  primaryPath={['state', 'critical', 'mutex', 'correct']}
+  rankSpacing={44}
   nodes={[
-    {id:'state', label:'Shared mutable state', role:'storage'},
-    {id:'critical', label:'Critical section', detail:'protect the invariant', role:'constraint'},
-    {id:'mutex', label:'Mutual exclusion', detail:'one holder at a time', role:'process'},
-    {id:'correct', label:'Correct state', role:'output', emphasis:true},
-    {id:'contention', label:'Lock contention', detail:'critical section too broad/slow', role:'state'},
-    {id:'deadlock', label:'Deadlock', detail:'circular lock waiting', role:'state'},
+    {id: 'state', label: 'Shared invariant', detail: 'state must remain valid', role: 'storage'},
+    {id: 'critical', label: 'Critical section', detail: 'smallest operation protecting it', role: 'constraint'},
+    {id: 'mutex', label: 'Mutual exclusion', detail: 'one holder at a time', role: 'process'},
+    {id: 'correct', label: 'Correct state', detail: 'competing work cannot interleave here', role: 'output', emphasis: true},
   ]}
   edges={[
-    {source:'state', target:'critical'}, {source:'critical', target:'mutex'}, {source:'mutex', target:'correct'},
-    {source:'mutex', target:'contention', label:'held too long', route:'secondary'},
-    {source:'mutex', target:'deadlock', label:'multiple locks', route:'secondary'},
+    {source: 'state', target: 'critical', type: 'straight'},
+    {source: 'critical', target: 'mutex', type: 'straight'},
+    {source: 'mutex', target: 'correct', type: 'straight'},
   ]}
-  caption="Synchronization buys correctness by restricting concurrency; bad boundaries create waiting or circular waiting."
+  caption="Synchronization bảo vệ invariant bằng cách chỉ cho một execution đi qua critical section tại một thời điểm."
 />
 
 <ConceptGrid>
@@ -57,24 +57,64 @@ Contention xuất hiện khi nhiều executions cạnh tranh cùng lock. Signal 
 
 ### Deadlock
 
-<ReactFlowDiagram
-  ariaLabel="Circular wait deadlock"
-  direction="LR"
-  interactive={false}
-  kind="relationship"
-  nodes={[
-    {id:'a', label:'Thread A', detail:'holds Lock A', role:'process'},
-    {id:'lock-b', label:'Lock B', detail:'held by Thread B', role:'constraint'},
-    {id:'b', label:'Thread B', detail:'holds Lock B', role:'process'},
-    {id:'lock-a', label:'Lock A', detail:'held by Thread A', role:'constraint'},
+<FlowExplainer
+  title="Circular wait hình thành như thế nào"
+  description="Theo từng lần acquire và wait để thấy hai threads giữ lock cũ trong khi chờ lock của nhau."
+  stepDurationMs={2400}
+  scenarios={[
+    {
+      id: 'circular-wait',
+      label: 'Deadlock',
+      layout: 'compact',
+      presentation: 'progressive',
+      nodes: [
+        {id: 'a', label: 'Thread A', detail: 'execution A', role: 'client'},
+        {id: 'lock-a', label: 'Lock A', detail: 'resource A', role: 'state'},
+        {id: 'b', label: 'Thread B', detail: 'execution B', role: 'client'},
+        {id: 'lock-b', label: 'Lock B', detail: 'resource B', role: 'state'},
+      ],
+      edges: [
+        {id: 'a-lock-a', source: 'a', target: 'lock-a'},
+        {id: 'b-lock-b', source: 'b', target: 'lock-b'},
+        {id: 'a-lock-b', source: 'a', target: 'lock-b'},
+        {id: 'b-lock-a', source: 'b', target: 'lock-a'},
+      ],
+      steps: [
+        {
+          title: '1 · A acquire Lock A',
+          description: 'Thread A acquire Lock A và tiếp tục giữ resource này.',
+          from: 'a',
+          to: 'lock-a',
+          message: 'acquire',
+          persistent: ['a', 'lock-a'],
+        },
+        {
+          title: '2 · B acquire Lock B',
+          description: 'Thread B acquire Lock B; lúc này mỗi thread đang giữ một lock khác nhau.',
+          from: 'b',
+          to: 'lock-b',
+          message: 'acquire',
+          persistent: ['a', 'lock-a', 'b', 'lock-b'],
+        },
+        {
+          title: '3 · A chờ Lock B',
+          description: 'A cần Lock B nhưng B đang giữ nó. A phải chờ và vẫn chưa release Lock A.',
+          from: 'a',
+          to: 'lock-b',
+          message: 'wait',
+          persistent: ['a', 'lock-a', 'b', 'lock-b'],
+        },
+        {
+          title: '4 · B chờ Lock A',
+          description: 'B cũng cần Lock A đang do A giữ. Circular wait khép kín nên cả hai không còn progress.',
+          from: 'b',
+          to: 'lock-a',
+          message: 'wait',
+          persistent: ['a', 'lock-a', 'b', 'lock-b'],
+        },
+      ],
+    },
   ]}
-  edges={[
-    {source:'a', target:'lock-b', label:'waits'},
-    {source:'b', target:'lock-a', label:'waits'},
-    {source:'lock-b', target:'b', label:'owned by'},
-    {source:'lock-a', target:'a', label:'owned by'},
-  ]}
-  caption="A chờ resource của B trong khi B chờ resource của A: không bên nào có thể tiến để release lock đang giữ."
 />
 
 ### Consistent lock ordering
@@ -104,8 +144,11 @@ Một payment endpoint giữ mutex trong external payment call ~2s sẽ biến n
 2. Vì sao mutex tăng correctness nhưng có thể giảm throughput?
 3. Consistent lock ordering giảm deadlock risk bằng cách nào?
 
-<details><summary>Answers</summary>
+<details>
+<summary>Answers</summary>
+
 1. Race: state có thể sai; contention: chậm nhưng progress; deadlock: không progress.
 2. Protected work bị serialize nên contenders phải chờ.
 3. Mọi execution acquire cùng thứ tự nên khó hình thành circular wait.
+
 </details>
