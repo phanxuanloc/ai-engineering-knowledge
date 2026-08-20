@@ -1,0 +1,141 @@
+---
+title: Process, Thread & Concurrency
+description: Process, thread, concurrency, parallelism, shared state và race condition trong production systems.
+tags: [operating-systems, concurrency, process, thread, race-condition]
+---
+
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
+import {Comparison, ConceptCard, ConceptGrid, Principle, TLDR} from '@site/src/components/Learning';
+
+# Process, Thread & Concurrency
+
+## TL;DR
+
+<TLDR>
+
+**Process** là resource/isolation boundary; **thread** là execution path bên trong process. **Concurrency** cho nhiều task cùng progress trong một khoảng thời gian, còn **parallelism** là nhiều task thực sự execute cùng lúc. Khi nhiều execution cùng sửa shared mutable state, một logical operation có thể bị interleave và tạo **race condition**.
+
+</TLDR>
+
+<Principle label="Mental rule">
+Shared state quyết định nơi concurrency trở nên nguy hiểm; correctness phụ thuộc vào atomicity boundary chứ không phụ thuộc số dòng source code.
+</Principle>
+
+## Mental Model
+
+Một process có virtual address space và resources riêng. Bên trong process có thể có nhiều threads; mỗi thread có execution state/stack riêng nhưng cùng chia sẻ nhiều process resources như heap, files và sockets.
+
+<Comparison items={[
+  {title: 'Process', description: 'Resource và isolation boundary do OS quản lý.'},
+  {title: 'Thread', description: 'Execution path bên trong process; chia sẻ nhiều process resources.'},
+  {title: 'Concurrency', description: 'Nhiều task cùng có progress; scheduler có thể interleave chúng.'},
+  {title: 'Parallelism', description: 'Nhiều task thực sự chạy đồng thời trên nhiều compute resources.'},
+]}/>
+
+<FlowExplainer
+  title="Một lost update xảy ra như thế nào"
+  description="Theo hai execution cùng tăng một shared counter để thấy read-modify-write bị interleave."
+  stepDurationMs={2400}
+  scenarios={[
+    {
+      id: 'lost-update',
+      label: 'Lost update',
+      layout: 'compact',
+      nodes: [
+        {id: 'a', label: 'Execution A', detail: 'counter++', role: 'client'},
+        {id: 'b', label: 'Execution B', detail: 'counter++', role: 'client'},
+        {id: 'state', label: 'Shared state', detail: 'counter = 0', role: 'state'},
+        {id: 'result', label: 'Final state', detail: 'counter = 1', role: 'state'},
+      ],
+      edges: [
+        {id: 'a-state', source: 'a', target: 'state'},
+        {id: 'b-state', source: 'b', target: 'state'},
+        {id: 'state-result', source: 'state', target: 'result'},
+      ],
+      steps: [
+        {title: '1 · A đọc state', description: 'A đọc counter = 0 để chuẩn bị tính giá trị mới.', from: 'a', to: 'state', message: 'read 0'},
+        {title: '2 · B cũng đọc state cũ', description: 'Trước khi A ghi, B cũng đọc counter = 0.', from: 'b', to: 'state', persistent: ['a'], message: 'read 0'},
+        {title: '3 · Cả hai cùng tính 1', description: 'Hai execution đều tính 0 + 1 vì cùng dựa trên snapshot cũ.', active: ['a', 'b'], persistent: ['state'], message: '0 + 1'},
+        {title: '4 · Một update bị mất', description: 'A ghi 1 rồi B cũng ghi 1. Expected 2 nhưng final state chỉ còn 1.', from: 'state', to: 'result', message: 'write 1'},
+      ],
+    },
+  ]}
+/>
+
+## Core Concepts
+
+### Process là isolation boundary
+
+Một process là một chương trình đang chạy cùng execution environment của nó: virtual address space, heap, open files/sockets và một hoặc nhiều threads. Hai process thường không đọc/ghi trực tiếp memory của nhau; muốn trao đổi phải qua một communication mechanism phù hợp.
+
+Isolation này quan trọng trong production: crash hoặc memory corruption trong một process không mặc định cho phép nó sửa arbitrary memory của process khác. Tuy nhiên process isolation không có nghĩa mỗi process sở hữu một vùng physical RAM hoàn toàn tách biệt; OS dùng virtual memory để cung cấp address-space abstraction.
+
+### Thread là execution path
+
+Thread đại diện cho một dòng execution bên trong process. Threads thường có stack/register state riêng nhưng có thể truy cập cùng heap và process resources. Shared access giúp communication rẻ hơn process-to-process communication, nhưng làm shared mutable state trở thành nguồn concurrency bug.
+
+### Concurrency khác parallelism
+
+Một core vẫn có thể tạo concurrency bằng cách scheduler chuyển qua lại giữa nhiều runnable tasks. Parallelism yêu cầu nhiều work thực sự execute đồng thời, thường nhờ nhiều cores hoặc compute units.
+
+Vì vậy `100 threads` không có nghĩa `100 tasks chạy parallel`. Trên machine 8 cores, phần CPU-heavy thực sự vẫn bị compute capacity giới hạn.
+
+### Race condition và interleaving
+
+Race condition xảy ra khi kết quả phụ thuộc vào timing/interleaving giữa các concurrent executions. Một biểu thức như `counter++` nhìn như một source-level operation nhưng conceptually có thể gồm `read → modify → write`.
+
+Điều cần bảo vệ thường là **business invariant**, không phải một dòng code. Ví dụ `check balance → decide → update balance` là một logical unit; nếu hai requests cùng đi qua unit này trên shared state, correctness có thể bị phá dù từng request riêng lẻ đều có logic đúng.
+
+### Shared state boundary
+
+Concurrency control phải nằm ở nơi mọi competing execution cùng nhìn thấy. Nếu hai service instances cùng sửa một database row, mutex local trong instance A không khóa instance B. Với shared database state, atomic update/transaction hoặc một coordination boundary chung mới thực sự bảo vệ invariant.
+
+## Example
+
+Một payment service có `balance = 100`. Hai requests cùng withdraw `80`:
+
+```text
+A: read 100            B: read 100
+A: 100 >= 80           B: 100 >= 80
+A: write 20            B: write 20
+```
+
+Cả hai đều dựa trên cùng state cũ. Vấn đề không phải HTTP ordering hay số CPU cores; vấn đề là **check + update** bị interleave. Nếu state nằm trong PostgreSQL và có nhiều API instances, process-local lock không đủ — atomicity phải được đặt ở database/shared-state boundary.
+
+## When to Use
+
+- Khi debug lost update, duplicate claim, oversell inventory hoặc check-then-act bug.
+- Khi quyết định một piece of state có thể an toàn read/write từ nhiều threads hay processes không.
+- Khi cần phân biệt lợi ích của concurrency với parallel CPU execution.
+- Khi thiết kế worker/service có nhiều execution paths cùng truy cập shared mutable objects hoặc persistent state.
+
+## Common Mistakes
+
+- **`Thread = process nhẹ hơn` rồi bỏ qua shared state:** distinction quan trọng hơn là isolation boundary vs execution path.
+- **`Concurrency = parallelism`:** concurrent tasks có thể chỉ đang interleave trên ít cores.
+- **`Một dòng code = atomic`:** source syntax không nói operation có thể bị chia nhỏ hay interleave thế nào.
+- **`Thêm mutex local là đủ`:** lock chỉ bảo vệ executions cùng tham gia lock đó.
+- **`Hai requests concurrent là lỗi`:** concurrency tự nó không sai; shared mutable invariant không được bảo vệ mới là vấn đề.
+
+## Related Knowledge
+
+- [Synchronization & Deadlocks](./synchronization-and-deadlocks.mdx) — cách mutual exclusion bảo vệ critical section và các failure mode mới do locking tạo ra.
+- [Database Design Foundations](./database-design-foundations.mdx) — transaction, atomic update và isolation áp dụng cùng mental model lên persistent shared state.
+- [CPU Scheduling & Context Switching](./cpu-scheduling-and-context-switching.mdx) — OS quyết định các runnable threads thực sự nhận CPU như thế nào.
+
+## Self-test
+
+1. Process và thread khác nhau ở boundary nào?
+2. Vì sao concurrency không yêu cầu nhiều CPU cores?
+3. `counter++` có thể race theo sequence nào?
+4. Vì sao mutex trong một service instance không bảo vệ database row trước instance khác?
+
+<details>
+<summary>Answers</summary>
+
+1. Process là resource/isolation boundary; thread là execution path bên trong process.
+2. Scheduler có thể interleave nhiều tasks trên một core để chúng cùng progress.
+3. `read → modify → write` của hai executions có thể interleave và tạo lost update.
+4. Vì mỗi process có lock riêng; database row là shared state nằm ngoài process-local synchronization boundary.
+
+</details>

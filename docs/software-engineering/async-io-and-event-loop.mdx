@@ -1,0 +1,159 @@
+---
+title: Async I/O & Event Loop
+description: Blocking, async I/O, event loop, thread pool và cách chọn concurrency model cho I/O-bound workloads.
+tags: [operating-systems, concurrency, async, event-loop, thread-pool]
+---
+
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
+import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
+
+# Async I/O & Event Loop
+
+## TL;DR
+
+<TLDR>
+
+Async I/O hiệu quả khi application dành nhiều thời gian **chờ** network, database, disk hoặc external services. `await` cho task yield control để runtime chạy task khác; nó không tạo thêm CPU cores và không tự làm CPU-heavy computation chạy parallel.
+
+</TLDR>
+
+<Principle label="Mental rule">
+I/O-bound tối ưu thời gian chờ; CPU-bound tối ưu compute. Async phù hợp khi bottleneck nằm ở waiting, không phải vì từ khóa `async` tự làm code nhanh hơn.
+</Principle>
+
+## Mental Model
+
+<FlowExplainer
+  title="Event loop tận dụng thời gian chờ I/O"
+  description="Một task yield khi chờ LLM; event loop dùng khoảng chờ đó để tiến các task khác rồi resume khi result ready."
+  stepDurationMs={2400}
+  scenarios={[
+    {
+      id: 'async-wait',
+      label: 'Async I/O',
+      layout: 'compact',
+      nodes: [
+        {id: 'task-a', label: 'Task A', detail: 'call LLM', role: 'client'},
+        {id: 'loop', label: 'Event loop', detail: 'schedule ready tasks', role: 'service'},
+        {id: 'llm', label: 'External LLM', detail: 'network wait ~4s', role: 'network'},
+        {id: 'task-b', label: 'Task B', detail: 'other ready work', role: 'client'},
+        {id: 'done', label: 'Task A resumes', detail: 'result ready', role: 'state'},
+      ],
+      edges: [
+        {id: 'a-loop', source: 'task-a', target: 'loop'},
+        {id: 'loop-llm', source: 'loop', target: 'llm'},
+        {id: 'loop-b', source: 'loop', target: 'task-b'},
+        {id: 'llm-done', source: 'llm', target: 'done'},
+      ],
+      steps: [
+        {title: '1 · Task A starts I/O', description: 'Task A gửi request tới LLM thay vì dùng CPU để tính suốt 4 giây.', from: 'task-a', to: 'loop', message: 'await call_llm()'},
+        {title: '2 · I/O is pending', description: 'External LLM xử lý; Task A chưa có result nên chưa cần tiếp tục execute.', from: 'loop', to: 'llm', message: 'request'},
+        {title: '3 · Event loop runs other work', description: 'Trong lúc A chờ, event loop có thể tiến Task B và các ready tasks khác.', from: 'loop', to: 'task-b', persistent: ['llm'], message: 'run ready task'},
+        {title: '4 · Result becomes ready', description: 'Khi LLM trả kết quả, Task A trở thành ready và được resume.', from: 'llm', to: 'done', message: 'response'},
+      ],
+    },
+  ]}
+/>
+
+<Comparison items={[
+  {title: 'Blocking', description: 'Execution resource có thể bị giữ trong khi operation chờ I/O.'},
+  {title: 'Async I/O', description: 'Task có thể yield khi chờ; runtime dùng execution resource cho ready work khác.'},
+  {title: 'Parallel CPU work', description: 'Nhiều computations thực sự chạy đồng thời trên nhiều compute resources.'},
+]}/>
+
+## Core Concepts
+
+### I/O-bound vs CPU-bound
+
+**I/O-bound** workload dành phần lớn wall-clock time để chờ resource bên ngoài: network, database, disk, LLM API, vector database. CPU thường chỉ làm một ít work trước và sau khoảng chờ.
+
+**CPU-bound** workload dành phần lớn thời gian thực sự tính toán: encode video, heavy parsing, compression, matrix operations, image transforms hoặc CPU-heavy preprocessing.
+
+Hai workload cần strategy khác nhau vì bottleneck khác nhau.
+
+### Blocking execution
+
+Trong blocking model, worker/thread có thể bị giữ cho tới khi operation hoàn thành. Mô hình này đơn giản và hoàn toàn hợp lệ, nhưng nếu có rất nhiều long-lived I/O waits thì tạo một thread cho mỗi request có thể tốn memory và scheduling overhead.
+
+### `await` và yielding
+
+Với proper async I/O, `await` nghĩa là task chưa thể tiếp tục cho tới khi result ready và có thể yield control. Runtime sau đó tiến các ready tasks khác thay vì để execution thread ngồi idle chỉ vì một network call.
+
+`await` không có nghĩa toàn bộ application dừng; cũng không có nghĩa operation đang chờ trở thành parallel CPU work.
+
+### Event loop
+
+Event loop điều phối ready tasks và I/O completion events. Một execution thread có thể coordinate rất nhiều I/O-bound tasks vì phần lớn tasks không cần CPU ở cùng một thời điểm.
+
+Nếu một task chạy heavy CPU computation trực tiếp trên event-loop thread mà không yield, event loop bị block và các tasks khác không progress dù chúng chỉ cần một ít CPU để xử lý I/O completion.
+
+### Thread pool
+
+Khi code phải gọi một blocking operation, runtime có thể offload nó vào một bounded thread pool. Pool tái sử dụng một số worker threads có giới hạn thay vì tạo thread vô hạn.
+
+Thread pool là bridge hữu ích giữa async orchestration và blocking APIs, nhưng pool vẫn có capacity. Nếu tất cả workers bị block, tasks mới vẫn phải queue/wait.
+
+### Independent operations và dependency graph
+
+Concurrency chỉ giúp overlap work có thể tiến độc lập. Nếu `fetchPermissions(user.id)` cần `user.id` từ `fetchUser()`, hai operations có dependency và không thể chạy cùng lúc một cách đúng đắn.
+
+Với AI Agent, nhiều tool calls chỉ nên fan-out concurrently khi dependency graph cho phép.
+
+### Bounded concurrency
+
+Async cho phép tạo rất nhiều pending tasks, nhưng downstream resources vẫn hữu hạn. `1000 agent tasks × 3 calls` có thể biến thành hàng nghìn simultaneous requests tới LLM, GitHub hoặc Vector DB.
+
+Vì vậy production async thường cần concurrency limits, connection-pool limits, timeout, rate limiting hoặc backpressure để bảo vệ cả downstream lẫn local memory.
+
+## Example
+
+Coding Agent cần ba independent I/O calls:
+
+```text
+GitHub API    ~1.0s
+Vector DB     ~0.5s
+LLM API       ~4.0s
+```
+
+Sequential execution mất khoảng `5.5s`. Nếu ba operations thực sự independent, concurrent async execution có thể tiến gần `4s + overhead` vì latency overlap. External LLM không hề chạy nhanh hơn; application chỉ ngừng chờ từng operation nối đuôi nhau.
+
+Nếu cùng service còn có CPU-heavy embedding preprocessing, phần đó không nên mặc định chạy trên event-loop thread. CPU work cần bounded parallel workers/processes phù hợp compute capacity.
+
+## When to Use
+
+- Nhiều concurrent HTTP/DB/LLM/vector-store calls và CPU utilization không phải bottleneck.
+- Agent fan-out nhiều independent tool/API requests.
+- Server cần giữ nhiều network connections mà không muốn một OS thread cho mỗi pending I/O operation.
+- Blocking library cần được offload vào bounded thread pool.
+- Cần kiểm soát concurrency để tránh rate-limit hoặc connection-pool exhaustion.
+
+## Common Mistakes
+
+- **`async = parallel`:** async orchestration không tự tạo multi-core parallelism.
+- **`async = luôn nhanh hơn`:** với CPU-bound work, async có thể không giúp và còn block event loop.
+- **Fan-out mọi step:** operations có dependency phải giữ đúng order.
+- **Unlimited async tasks:** downstream capacity, memory và connection pools vẫn hữu hạn.
+- **Đưa blocking call vào async function rồi nghĩ nó non-blocking:** blocking code vẫn block execution resource trừ khi runtime/library thật sự hỗ trợ non-blocking I/O hoặc được offload.
+
+## Related Knowledge
+
+- [CPU Scheduling & Context Switching](./cpu-scheduling-and-context-switching.mdx) — CPU-bound workers và scheduler overhead giải thích vì sao async I/O và CPU parallelism cần strategy khác nhau.
+- [Memory Management](./memory-management.mdx) — high concurrency có thể làm peak working set tăng dù không có leak.
+- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — network APIs là một nguồn I/O-bound latency phổ biến.
+
+## Self-test
+
+1. `await` giúp event loop tận dụng thời gian chờ như thế nào?
+2. Vì sao async không làm CPU-heavy calculation tự chạy parallel?
+3. Khi nào thread pool hữu ích trong async service?
+4. Vì sao production async thường vẫn cần bounded concurrency?
+
+<details>
+<summary>Answers</summary>
+
+1. Task yield khi result chưa ready để runtime chạy ready task khác và resume sau khi I/O hoàn thành.
+2. CPU computation vẫn cần compute resource; từ khóa `async` không tạo thêm cores.
+3. Khi cần chạy blocking operation mà không muốn block event-loop thread, bằng một số reusable workers có giới hạn.
+4. Vì downstream rate limits, connection pools, memory và service capacity đều hữu hạn.
+
+</details>

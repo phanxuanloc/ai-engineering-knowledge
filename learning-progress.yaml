@@ -430,3 +430,60 @@ topics:
     prerequisites: []
     related:
       - system-design
+  operating-systems-and-concurrency:
+    title: Operating Systems & Concurrency
+    category: Software Engineering
+    status: learning
+    note: docs/software-engineering/operating-systems-and-concurrency.mdx
+    learned_at: 2026-08-20
+    last_reviewed: null
+    confidence: 3
+    checkpoints:
+      - process-thread-and-concurrency
+      - synchronization-and-deadlocks
+      - async-io-and-event-loop
+      - memory-management
+      - cpu-scheduling-and-context-switching
+    checkpoint_progress:
+      process-thread-and-concurrency:
+        status: understood
+        note: docs/software-engineering/process-thread-and-concurrency.mdx
+        learned_at: 2026-08-20
+        evidence:
+          - identified-check-and-update-interleaving-as-the-root-cause-of-a-concurrent-withdraw-race
+          - selected-database-atomic-increment-over-process-local-mutex-for-shared-state-across-service-instances
+      synchronization-and-deadlocks:
+        status: understood
+        note: docs/software-engineering/synchronization-and-deadlocks.mdx
+        learned_at: 2026-08-20
+        evidence:
+          - diagnosed-many-threads-waiting-on-one-mutex-with-completing-requests-as-lock-contention
+          - correctly-distinguished-race-condition-lock-contention-and-deadlock-across-production-incidents
+      async-io-and-event-loop:
+        status: understood
+        note: docs/software-engineering/async-io-and-event-loop.mdx
+        learned_at: 2026-08-20
+        evidence:
+          - selected-async-io-with-bounded-concurrency-for-independent-github-vector-db-and-llm-calls
+          - distinguished-io-bound-network-concurrency-from-cpu-bound-video-encoding-and-selected-appropriate-execution-models
+      memory-management:
+        status: understood
+        note: docs/software-engineering/memory-management.mdx
+        learned_at: 2026-08-20
+        evidence:
+          - diagnosed-retained-global-map-references-as-a-memory-leak-despite-garbage-collection
+          - correctly-distinguished-stack-overflow-peak-memory-oom-and-memory-leak-across-three-incidents
+      cpu-scheduling-and-context-switching:
+        status: understood
+        note: docs/software-engineering/cpu-scheduling-and-context-switching.mdx
+        learned_at: 2026-08-20
+        evidence:
+          - diagnosed-excess-runnable-cpu-workers-and-context-switch-overhead-on-an-eight-core-service
+          - selected-bounded-cpu-parallel-workers-for-cpu-heavy-work-and-async-bounded-concurrency-for-llm-io
+    next_checkpoint: inter-process-communication-and-synchronization-primitives
+    experiments: []
+    prerequisites: []
+    related:
+      - database-design
+      - system-design
+      - api-communication
