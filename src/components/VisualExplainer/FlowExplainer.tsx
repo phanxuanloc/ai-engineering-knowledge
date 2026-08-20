@@ -114,11 +114,11 @@ type DirectedSegment = {
 
 const NODE_WIDTH = 204,
   NODE_HEIGHT = 116,
-  COLUMN_GAP = 324,
-  WIDE_COLUMN_GAP = 344,
+  COLUMN_GAP = 420,
+  WIDE_COLUMN_GAP = 432,
   ROW_GAP = 184,
   MOBILE_ROW_GAP = 224;
-const COMPACT_COLUMN_GAP = 360,
+const COMPACT_COLUMN_GAP = 440,
   COMPACT_ROW_GAP = 204;
 const MOBILE_QUERY = "(max-width: 700px)";
 
