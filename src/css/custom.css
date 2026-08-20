@@ -2,10 +2,12 @@
   --ifm-color-primary:#4654c7; --ifm-color-primary-dark:#3946b8; --ifm-color-primary-darker:#3541ae; --ifm-color-primary-darkest:#2c368f; --ifm-color-primary-light:#5966d0; --ifm-color-primary-lighter:#6470d4; --ifm-color-primary-lightest:#8790df;
   --ifm-font-family-base:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; --ifm-heading-font-family:var(--ifm-font-family-base); --ifm-heading-font-weight:690; --ifm-font-color-base:#252936; --ifm-font-color-secondary:#5b6170; --ifm-background-color:#fbfbfc; --ifm-navbar-background-color:rgba(251,251,252,.9); --ifm-toc-border-color:#e3e5ea; --ifm-global-radius:9px; --ifm-code-font-size:92%;
   --learning-active:#4654c7; --learning-active-soft:rgba(70,84,199,.07); --learning-active-border:rgba(70,84,199,.25); --learning-success:#277a55; --learning-experiment:#9a5d17; --learning-experiment-soft:rgba(154,93,23,.065); --learning-insight:#4654c7; --learning-border:#e1e3e8; --learning-surface:#fff; --learning-subtle-surface:#f7f7f9; --learning-hover:#f7f7fa; --learning-grid:rgba(35,40,60,.045); --learning-shadow:0 1px 2px rgba(20,24,40,.035),0 8px 24px rgba(20,24,40,.025); --learning-radius:12px; --learning-button:#3644b5; --learning-button-shadow:rgba(54,68,181,.2); --diagram-surface:#fcfcfe; --diagram-grid:rgba(70,84,199,.18); --docusaurus-highlighted-code-line-bg:rgba(70,84,199,.09);
+  --aa-search-input-height:38px; --aa-font-size:14px; --aa-primary-color-rgb:70,84,199; --aa-primary-color-alpha:.12; --aa-text-color-rgb:37,41,54; --aa-muted-color-rgb:91,97,112; --aa-muted-color-alpha:.82; --aa-icon-color-rgb:91,97,112; --aa-input-border-color-rgb:225,227,232; --aa-input-border-color-alpha:1; --aa-panel-border-color-rgb:225,227,232; --aa-panel-border-color-alpha:1; --aa-background-color-rgb:255,255,255; --aa-input-background-color-rgb:247,247,249; --aa-selected-color-rgb:70,84,199; --aa-selected-color-alpha:.075; --aa-description-highlight-background-color-rgb:70,84,199; --aa-description-highlight-background-color-alpha:.13; --aa-overlay-color-rgb:16,18,23; --aa-overlay-color-alpha:.32; --aa-panel-shadow:0 1px 2px rgba(20,24,40,.06),0 18px 50px rgba(20,24,40,.14); --aa-scrollbar-track-background-color-rgb:247,247,249; --aa-scrollbar-thumb-background-color-rgb:197,200,210;
 }
 [data-theme='dark'] {
   --ifm-color-primary:#adb5ff; --ifm-color-primary-dark:#919bff; --ifm-color-primary-darker:#838eff; --ifm-color-primary-darkest:#5967ff; --ifm-color-primary-light:#c9ceff; --ifm-color-primary-lighter:#d7dbff; --ifm-color-primary-lightest:#fff; --ifm-font-color-base:#dfe2ea; --ifm-font-color-secondary:#aeb4c1; --ifm-background-color:#101217; --ifm-navbar-background-color:rgba(16,18,23,.9); --ifm-toc-border-color:#2d3039;
   --learning-active:#adb5ff; --learning-active-soft:rgba(173,181,255,.085); --learning-active-border:rgba(173,181,255,.25); --learning-success:#73c99f; --learning-experiment:#e0a45c; --learning-experiment-soft:rgba(224,164,92,.07); --learning-insight:#adb5ff; --learning-border:#2d3039; --learning-surface:#181b22; --learning-subtle-surface:#14161c; --learning-hover:#1e2129; --learning-grid:rgba(220,225,255,.035); --learning-shadow:0 1px 2px rgba(0,0,0,.18); --learning-button:#6976df; --learning-button-shadow:rgba(105,118,223,.22); --diagram-surface:#14161c; --diagram-grid:rgba(173,181,255,.2); --docusaurus-highlighted-code-line-bg:rgba(173,181,255,.1);
+  --aa-primary-color-rgb:173,181,255; --aa-primary-color-alpha:.13; --aa-text-color-rgb:223,226,234; --aa-muted-color-rgb:174,180,193; --aa-muted-color-alpha:.82; --aa-icon-color-rgb:174,180,193; --aa-input-border-color-rgb:45,48,57; --aa-panel-border-color-rgb:45,48,57; --aa-background-color-rgb:24,27,34; --aa-input-background-color-rgb:20,22,28; --aa-selected-color-rgb:173,181,255; --aa-selected-color-alpha:.1; --aa-description-highlight-background-color-rgb:173,181,255; --aa-description-highlight-background-color-alpha:.16; --aa-overlay-color-rgb:0,0,0; --aa-overlay-color-alpha:.55; --aa-panel-shadow:0 1px 2px rgba(0,0,0,.28),0 20px 55px rgba(0,0,0,.38); --aa-scrollbar-track-background-color-rgb:20,22,28; --aa-scrollbar-thumb-background-color-rgb:65,69,82;
 }
 html { scroll-behavior:smooth; }
 body { letter-spacing:-.003em; }
@@ -13,6 +15,19 @@ body { letter-spacing:-.003em; }
 .navbar__title { font-weight:700; letter-spacing:-.02em; }
 .navbar__logo { height:1.75rem; }
 .navbar__link { font-size:.88rem; font-weight:620; }
+.navbar .aa-Autocomplete { width:min(19rem,25vw); }
+.navbar .aa-Form { border-radius:9px; transition:border-color .16s ease,background-color .16s ease,box-shadow .16s ease; }
+.navbar .aa-Form:hover { border-color:var(--learning-active-border); }
+.navbar .aa-Form:focus-within { border-color:var(--learning-active); box-shadow:0 0 0 3px var(--learning-active-soft); }
+.navbar .aa-Input { letter-spacing:-.003em; }
+.aa-Panel { margin-top:10px; border:1px solid var(--learning-border); border-radius:12px; }
+.aa-PanelLayout { padding:.4rem; }
+.aa-Item { min-height:48px; padding:.55rem .65rem; border-radius:8px; }
+.aa-ItemContentTitle { font-weight:650; letter-spacing:-.008em; }
+.aa-ItemContentDescription { margin-top:.12rem; color:var(--ifm-font-color-secondary); line-height:1.45; }
+.aa-ItemContentDescription mark { border-radius:3px; padding:0 .08rem; }
+.aa-ItemContentSubtitleCategory { font-size:.78rem; }
+.aa-SourceNoResults { color:var(--ifm-font-color-secondary); }
 .theme-doc-markdown { font-size:1rem; line-height:1.76; }
 .theme-doc-markdown > h1:first-child { max-width:18ch; margin-bottom:1.75rem; font-size:clamp(2rem,5vw,2.7rem); line-height:1.08; letter-spacing:-.045em; }
 .theme-doc-markdown h2 { margin-top:3.4rem; padding-bottom:.55rem; border-bottom:1px solid var(--learning-border); font-size:1.52rem; letter-spacing:-.026em; }
@@ -40,6 +55,7 @@ body { letter-spacing:-.003em; }
   .navbar__inner { flex-wrap:nowrap; min-width:0; }
   .navbar__inner > .navbar__items { min-width:0; }
   .navbar__inner > .navbar__items--right { flex:0 0 auto; margin-left:auto; }
+  .navbar .aa-Autocomplete { width:auto; }
   .navbar__brand { min-width:0; margin-right:.35rem; flex:1 1 auto; overflow:hidden; }
   .navbar__logo { flex:0 0 auto; }
   .navbar__title { overflow:hidden; max-width:min(58vw,19rem); text-overflow:ellipsis; white-space:nowrap; font-size:.9rem; }

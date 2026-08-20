@@ -55,6 +55,21 @@ const config: Config = {
     ],
   ],
 
+  plugins: [
+    [
+      '@cmfcmf/docusaurus-search-local',
+      {
+        indexDocs: true,
+        indexDocSidebarParentCategories: 2,
+        includeParentCategoriesInPageTitle: true,
+        indexBlog: true,
+        indexPages: false,
+        language: ['vi', 'en'],
+        maxSearchResults: 8,
+      },
+    ],
+  ],
+
   themeConfig: {
     // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
