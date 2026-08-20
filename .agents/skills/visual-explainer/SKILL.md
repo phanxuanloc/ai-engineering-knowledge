@@ -109,6 +109,18 @@ Compact flow is a teaching composition, not a generic editor canvas.
 - On mobile, a truly linear trace may become one vertical spine.
 - Progressive scenes should frame only revealed nodes so normal reading-size text can be preserved.
 
+### Horizontal connector clearance
+
+A horizontal connector with a message pill must reserve a real lane between adjacent nodes. Do not size desktop columns from node count or visual compactness alone.
+
+- Compute horizontal spacing as **node width + connector clearance**. Connector clearance must include the message pill, visible line before the label, visible line after the label, arrowhead, and packet travel.
+- The pill must not visually consume the full connector. A reader should still see an unmistakable line segment entering the label and another line segment continuing toward the destination.
+- For normal short/medium labels, target roughly **200px or more of connector lane after subtracting node width** before relying on truncation.
+- Increase column/rank spacing before shrinking text, reducing pill padding, moving labels off the connector, or hiding labels.
+- Keep the label near the connector midpoint. Do not push it against a node just to make the overall diagram narrower.
+- For long messages, use this fallback order: **increase spacing → bound/truncate graph label → preserve full message in narrative/accessibility text**.
+- Evaluate actual representative messages, not only empty edges. Regression labels include `GetPaymentRequest`, `protobuf request`, `conversation message`, `persisted message`, and `requested JSON shape` when applicable.
+
 ### Mobile connector clearance
 
 A vertical mobile trace must reserve a real connector lane between adjacent nodes. Do not size mobile rows from node count alone.
@@ -142,7 +154,7 @@ FlowExplainer nodes use bounded geometry so motion/routing stays stable.
 - Increase spacing before shrinking text or detaching labels from edges.
 - Long graph messages may truncate because full meaning must remain in the event narrative and accessible title.
 - No message may cover a node, arrowhead, another connector, or another label.
-- On mobile, label clearance is part of layout geometry, not a CSS afterthought.
+- Connector-label clearance is part of layout geometry on both desktop and mobile, not a CSS afterthought.
 
 ## Visual language
 
@@ -180,23 +192,26 @@ Before accepting a change, verify:
 6. Request/response direction is truthful; no false transport path is invented.
 7. Fan-out/fan-in remains semantically correct on desktop and mobile.
 8. Labels stay attached to their connector and do not collide.
-9. Normal article width keeps node text comfortably readable without aggressive shrinking.
-10. Mobile recomposes before shrinking and has no page-level overflow.
-11. On a mobile vertical trace, each labeled connector still exposes visible line before and after the pill; the label must not consume the whole lane.
-12. Test representative short and medium messages on mobile, including networking-style labels such as `DNS query`, `203.0.113.20`, `TCP :443`, `GET /users`, and `200 OK` when applicable.
-13. Light/dark themes retain contrast.
-14. Reduced-motion mode retains all semantic states.
-15. No decorative grid/scanline/glow obscures information hierarchy.
-16. Run `npm run typecheck`, `npm run build`, and `git diff --check` when execution access exists.
-17. Never claim rendered visual QA passed unless the actual rendered page was inspected.
+9. Horizontal labeled connectors retain visible line before and after the pill; message text must not consume the whole lane.
+10. Normal article width keeps node text comfortably readable without aggressive shrinking.
+11. Mobile recomposes before shrinking and has no page-level overflow.
+12. On a mobile vertical trace, each labeled connector still exposes visible line before and after the pill; the label must not consume the whole lane.
+13. Test representative horizontal messages such as `GetPaymentRequest`, `conversation message`, and `persisted message` when applicable.
+14. Test representative mobile messages including `DNS query`, `203.0.113.20`, `TCP :443`, `GET /users`, and `200 OK` when applicable.
+15. Light/dark themes retain contrast.
+16. Reduced-motion mode retains all semantic states.
+17. No decorative grid/scanline/glow obscures information hierarchy.
+18. Run `npm run typecheck`, `npm run build`, and `git diff --check` when execution access exists.
+19. Never claim rendered visual QA passed unless the actual rendered page was inspected.
 
 ## Regression cases
 
 Review shared FlowExplainer changes against at least:
 
 - Networking web request journey — progressive request lifecycle and mobile connector-label clearance;
+- Chat System Design — compact horizontal trace with `conversation message` / `persisted message` labels;
 - REST request/response;
-- gRPC unary remote boundary;
+- gRPC unary remote boundary with `GetPaymentRequest` / `GetPaymentResponse` labels;
 - gRPC streaming finite repeated messages + persistent stream;
 - GraphQL fan-out/fan-in preserving sibling topology.
 
