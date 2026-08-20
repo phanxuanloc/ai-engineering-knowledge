@@ -39,6 +39,25 @@ Examples:
 
 Validation must check **rendered implication**, not only whether the authored edge list is technically correct.
 
+### Phase-flow rule for layered mental models
+
+Do not confuse **“some internals are unordered/optional”** with **“the whole concept has no flow.”**
+
+When the learner needs to understand a real logical progression across responsibility or failure boundaries, prefer a **phase flow**:
+
+- one node per meaningful phase/boundary;
+- connect only phases whose progression is semantically true;
+- keep optional, deployment-specific, concurrent, or unordered internals inside the phase as short detail/annotation;
+- never explode those internals into a fake primary path merely to show more concepts.
+
+Example for networking/web fundamentals:
+
+`Client → Resolve Destination → Reach Destination → Establish Communication → Process Request → Result`
+
+Inside `Reach Destination`, routing/firewall/NAT may be listed as responsibilities, but must not automatically become `Routing → Firewall → NAT` edges. Inside `Process Request`, proxy/LB/application/data may be shown as examples without claiming every deployment has that exact topology.
+
+Use this rule when a mental model has **true progression at one abstraction level** but **non-sequential detail inside each stage**.
+
 ## 2. No-diagram is a valid outcome
 
 A visual must expose something that prose, a short list, or normal learning cards cannot expose as clearly.
@@ -48,7 +67,9 @@ Use **no diagram** when:
 - the idea is already clear in 2–4 short lines;
 - spatial layout adds no information;
 - drawing would invent topology/order;
-- the main lesson is a set of independent questions/responsibilities rather than a path.
+- concepts are genuinely unordered and connecting them would imply a false progression.
+
+Do **not** choose no-diagram merely because lower-level responsibilities are not strictly sequential. If a higher-level logical progression is real, use the phase-flow rule above.
 
 Do not add a diagram merely because the page should look “AI-native” or because a renderer is available.
 
@@ -57,26 +78,29 @@ Do not add a diagram merely because the page should look “AI-native” or beca
 Classify the teaching job using the smallest grammar that preserves truth:
 
 1. **Concept / Boundary / Mental Model** — analogy, responsibilities, buckets, filters, layers, constraints, comparisons.
-2. **Topology** — what connects to what.
-3. **Sequence / Timeline** — what happens before/after and where time/order matters.
-4. **State Transition** — one entity changing state.
-5. **Transformation** — input becomes another representation, e.g. documents → chunks → embeddings.
-6. **Transport** — packet/message/token physically or logically moves between endpoints.
-7. **Quantitative Change / Simulation** — values, metrics, distributions, trade-offs, or causal input/output changes.
+2. **Phase Flow** — real progression across high-level responsibility/failure boundaries while lower-level details remain optional or unordered.
+3. **Topology** — what connects to what.
+4. **Sequence / Timeline** — what happens before/after and where time/order matters.
+5. **State Transition** — one entity changing state.
+6. **Transformation** — input becomes another representation, e.g. documents → chunks → embeddings.
+7. **Transport** — packet/message/token physically or logically moves between endpoints.
+8. **Quantitative Change / Simulation** — values, metrics, distributions, trade-offs, or causal input/output changes.
 
-Do not collapse all runtime behavior into “a flow with moving dots”. Transport, state transition, transformation, sequence, and simulation are different teaching grammars.
+Do not collapse all runtime behavior into “a flow with moving dots”. Transport, state transition, transformation, sequence, phase flow, and simulation are different teaching grammars.
 
 ## 4. Renderer routing
 
 Choose a renderer only after the grammar is clear:
 
 - **Excalidraw** → analogy-first mental models, conceptual boundaries, comparisons, filters, whiteboard explanations.
-- **React Flow** → topology, dependency, architecture, structured graph relationships where `what connects to what` is the lesson.
+- **React Flow** → phase flows, topology, dependency, architecture, structured graph relationships where explicit connections/progression teach the lesson.
 - **FlowExplainer** → inspectable runtime stories with finite events, meaningful state changes, request/response, fan-out/fan-in, retries, streaming, agent/tool loops.
 - **Chart / interactive component** → quantitative change, simulation, distributions, latency/cost/quality trade-offs.
-- **Normal MDX / Concept cards** → independent responsibilities/questions where a graph would falsely imply topology or order.
+- **Normal MDX / Concept cards** → truly unordered responsibilities/questions where connecting them would create false meaning.
 
 Renderer choice is a consequence of the semantic story, never the starting point.
+
+For a **phase flow**, React Flow is appropriate even when the phase internals are not a topology. The authored edges represent only the high-level progression; internals stay as node detail or surrounding explanation.
 
 ## 5. Progressive story instead of show-everything-first
 
@@ -110,6 +134,8 @@ Before accepting a workflow, lifecycle, request/response, streaming, retry, agen
 - **Yes** → use FlowExplainer or another semantic runtime primitive.
 - **Topology also matters** → pair a focused static topology with the runtime story; do not overload one view.
 - **No** → document the concrete reason: motion adds no learning value, the runtime renderer would distort semantics, or accessibility/performance would materially worsen the lesson.
+
+A phase flow whose primary lesson is **debug responsibility/failure boundaries** may remain static when animation adds no extra causal information. Do not animate it merely to look alive.
 
 Perpetual edge animation is not a substitute for event semantics.
 
@@ -146,12 +172,14 @@ Prefer roughly 4–10 primary entities in one topology view. Split overloaded st
 
 Do not create long snake diagrams simply to fit many concepts. A 10-node primary path is a warning sign: verify that those nodes are truly sequential events rather than independent responsibilities, optional infrastructure, branches, or conceptual layers.
 
+For layered concepts, **compress to phase nodes before deleting the visual**. A six-node phase flow can be more truthful than either an eleven-node snake or a prose-only replacement.
+
 ## 9. Mobile semantic contract
 
 Responsive layout may change geometry but never meaning.
 
 - Recompose before shrinking.
-- Linear flows may become vertical.
+- Linear and phase flows may become vertical.
 - Sibling branches remain siblings.
 - Fan-out/fan-in must not become false chains.
 - Preserve authored relationships across breakpoints; node array order is not topology.
@@ -163,35 +191,37 @@ Responsive layout may change geometry but never meaning.
 
 ## 10. React Flow acceptance
 
-Use React Flow only when topology itself teaches the lesson.
+Use React Flow when explicit relationships or high-level progression itself teaches the lesson.
 
 Before accepting:
 
-- primary path/branch structure is obvious within seconds;
+- primary path/branch/phase structure is obvious within seconds;
 - no invented sequential relationship;
+- phase nodes do not leak unordered internals into fake edges;
 - no node/edge/label overlap;
 - labels visibly belong to their connectors;
 - feedback loops stay outside the main corridor;
 - arrow direction is clear;
-- mobile preserves topology semantics;
+- mobile preserves topology/phase semantics;
 - interaction matches the teaching job;
 - a simpler mental-model or MDX representation would not be clearer.
 
-Static React Flow answers **what connects to what**, not automatically **what happens over time**.
+Static React Flow can answer **what connects to what** or **what high-level phase comes next**. It does not automatically explain runtime timing or packet transport.
 
 ## 11. Mental-model acceptance
 
-For a Mental Model section, do not assume a graph is required.
+For a Mental Model section, do not assume either “graph required” or “graph forbidden.”
 
 Prefer one of these outcomes:
 
 - conceptual Excalidraw when spatial metaphor helps;
+- **phase flow when responsibilities form a real logical progression but internals are optional/unordered**;
 - progressive explainer when understanding requires observing change;
-- responsibility/question cards when concepts are independent boundaries;
+- responsibility/question cards when concepts are genuinely unordered boundaries;
 - a tiny topology only when real relationships are the lesson;
 - plain prose when that is clearest.
 
-A mental model fails when the visual contradicts the prose. If prose says “these are responsibilities, not sequential physical hops”, the visual must not present them as one long connected primary path.
+A mental model fails when the visual contradicts the prose. If prose says “routing/firewall/NAT are responsibilities, not sequential physical hops”, the visual may still show a higher-level `Reach Destination` phase, but must not present those internals as one long connected primary path.
 
 ## 12. Validation
 
@@ -200,12 +230,13 @@ Before finishing visual work:
 1. Re-read the learner question.
 2. Verify every entity, relationship, order, and state change against source truth.
 3. Check forbidden implications against the actual rendered composition.
-4. Verify the first frame teaches without interaction.
-5. Verify mobile preserves semantics.
-6. Verify animation encodes causality rather than decoration.
-7. Verify light/dark and reduced-motion behavior where applicable.
-8. Verify no clipping, overflow, unreadable labels, or controls covering learning content.
-9. Run `npm run typecheck`, `npm run build`, and `git diff --check` when execution access exists.
-10. Never claim visual review passed unless the rendered output was actually inspected.
+4. Verify abstraction level consistency: phase edges connect phases; optional internals do not silently become topology.
+5. Verify the first frame teaches without interaction.
+6. Verify mobile preserves semantics.
+7. Verify animation encodes causality rather than decoration.
+8. Verify light/dark and reduced-motion behavior where applicable.
+9. Verify no clipping, overflow, unreadable labels, or controls covering learning content.
+10. Run `npm run typecheck`, `npm run build`, and `git diff --check` when execution access exists.
+11. Never claim visual review passed unless the rendered output was actually inspected.
 
 When a gate fails, repair the semantic model/story first. Only then repair renderer/layout details. Do not accumulate coordinate hacks around a wrong teaching abstraction.

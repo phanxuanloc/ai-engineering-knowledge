@@ -4,6 +4,7 @@ description: Mental map end-to-end của một web request và learning path cho
 tags: [networking, web, http, tcp, dns]
 ---
 
+import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 import {ConceptCard, ConceptGrid, TLDR} from '@site/src/components/Learning';
 
 # Networking & Web Fundamentals
@@ -12,13 +13,85 @@ import {ConceptCard, ConceptGrid, TLDR} from '@site/src/components/Learning';
 
 <TLDR>
 
-Đừng hiểu networking như một packet phải lần lượt đi qua 11 box. Mental model hữu ích hơn là **một web request phải vượt qua 4 câu hỏi độc lập**: **đích là đâu? → có tới được đích không? → hai endpoint nói chuyện được chưa? → server xử lý request thế nào?**
+Một web request có thể được debug như **một logical flow qua 4 boundary**: **Resolve Destination → Reach Destination → Establish Communication → Process Request**. Đây là flow theo responsibility/failure boundary, không phải sơ đồ các physical device bắt buộc phải đứng nối tiếp nhau.
 
 </TLDR>
 
 ## Mental Model
 
-### Một web request = 4 câu hỏi debug
+### Một request đi qua 4 boundary
+
+<ReactFlowDiagram
+  ariaLabel="Logical flow of a web request through four responsibility boundaries"
+  caption="Đọc từ trái sang phải như logical request lifecycle: resolve đích → đưa traffic tới IP:port → thiết lập channel → xử lý HTTP/application. Chi tiết bên trong mỗi phase là responsibility, không phải chuỗi physical hop bắt buộc."
+  direction="LR"
+  fullscreen
+  interactive={false}
+  kind="workflow"
+  primaryPath={['client', 'resolve', 'reach', 'communicate', 'process', 'result']}
+  nodes={[
+    {
+      id: 'client',
+      label: 'Client',
+      detail: 'https://api.company.com/users',
+      role: 'source',
+      size: 'standard',
+    },
+    {
+      id: 'resolve',
+      eyebrow: '1 · RESOLVE',
+      label: 'Find destination',
+      detail: 'DNS: domain → destination IP',
+      role: 'process',
+      size: 'standard',
+    },
+    {
+      id: 'reach',
+      eyebrow: '2 · REACH',
+      label: 'Reach IP:port',
+      detail: 'Routing + network policy + NAT when applicable',
+      role: 'constraint',
+      size: 'wide',
+    },
+    {
+      id: 'communicate',
+      eyebrow: '3 · CONNECT',
+      label: 'Establish channel',
+      detail: 'TCP connection → TLS for HTTPS',
+      role: 'process',
+      emphasis: true,
+      size: 'standard',
+    },
+    {
+      id: 'process',
+      eyebrow: '4 · PROCESS',
+      label: 'Process web request',
+      detail: 'HTTP → proxy/LB → app → cache/data as needed',
+      role: 'process',
+      size: 'wide',
+    },
+    {
+      id: 'result',
+      label: 'HTTP result',
+      detail: 'Response or application-level failure',
+      role: 'output',
+      size: 'standard',
+    },
+  ]}
+  edges={[
+    {source: 'client', target: 'resolve', route: 'primary'},
+    {source: 'resolve', target: 'reach', route: 'primary'},
+    {source: 'reach', target: 'communicate', route: 'primary'},
+    {source: 'communicate', target: 'process', route: 'primary'},
+    {source: 'process', target: 'result', route: 'primary'},
+  ]}
+/>
+
+### Vì sao flow này không bị sai như bản cũ?
+
+Flow chỉ nối **các boundary có progression thật**. Nó không vẽ `Routing → Firewall → NAT` thành ba hop, vì ba responsibility đó có thể cùng nằm trên một gateway/firewall appliance hoặc có topology khác nhau tùy hệ thống. Tương tự, `Proxy/LB → Application → Cache/Data` được giữ như mô tả bên trong phase **Process Request**, không bị biến thành topology bắt buộc của mọi web request.
+
+Bốn phase trả lời bốn câu hỏi debug:
 
 <ConceptGrid>
   <ConceptCard title="1 · Resolve Destination">
@@ -26,80 +99,50 @@ import {ConceptCard, ConceptGrid, TLDR} from '@site/src/components/Learning';
 
     `api.company.com` → DNS → `203.0.113.20`
 
-    Output của phase này là **destination IP**. DNS không quyết định packet sẽ đi qua router nào và cũng chưa chứng minh server reachable.
+    Output là **destination IP**. DNS chưa chứng minh server reachable.
   </ConceptCard>
 
   <ConceptCard title="2 · Reach Destination">
-    **Traffic có tới được destination IP:port không?**
+    **Traffic có thể đi tới destination IP:port không?**
 
-    Routing chọn next hop/path. Firewall có thể allow/block. NAT có thể translate source/destination address.
-
-    Đây là **network reachability**, không phải một chuỗi bắt buộc `Router → Firewall → NAT`.
+    Routing chọn path/next hop. Firewall/security policy có thể allow/block. NAT có thể translate address khi cần.
   </ConceptCard>
 
   <ConceptCard title="3 · Establish Communication">
-    **Hai endpoint đã có channel để nói chuyện chưa?**
+    **Hai endpoint đã nói chuyện được chưa?**
 
-    TCP kết nối tới `IP:port`; với HTTPS, TLS tạo secure channel; sau đó HTTP message mới được trao đổi trên channel đó.
-
-    TCP success không có nghĩa TLS, authentication hay business logic đã đúng.
+    TCP thiết lập connection tới `IP:port`; với HTTPS, TLS tạo secure channel.
   </ConceptCard>
 
   <ConceptCard title="4 · Process Request">
-    **Server xử lý request ra sao?**
+    **Web request được xử lý ra sao?**
 
-    Request có thể qua reverse proxy/load balancer, tới application, rồi đọc/ghi cache hoặc database trước khi response quay lại client.
-
-    Những component này mô tả **responsibility**, không phải lúc nào cũng là các physical hop riêng biệt.
+    HTTP request đi vào server-side boundary, có thể qua proxy/load balancer, application và data layer tùy kiến trúc.
   </ConceptCard>
 </ConceptGrid>
 
-### Story của một request
+### Cách dùng flow để debug
 
-Đừng bắt đầu bằng topology. Hãy theo dõi **state mà client biết được sau mỗi phase**:
-
-```text
-User types https://api.company.com/users
-
-        ↓ 1. Resolve destination
-Known: destination IP = 203.0.113.20
-Unknown: route / reachability / application health
-
-        ↓ 2. Reach destination
-Known: traffic can reach 203.0.113.20:443
-Unknown: secure session / HTTP result
-
-        ↓ 3. Establish communication
-Known: TCP + TLS channel is ready
-Unknown: authorization / business result
-
-        ↓ 4. Process request
-Known: HTTP request reached server-side processing
-Result: response or application-level failure
-```
-
-Mental model này cố tình **không vẽ DNS → Router → Firewall → NAT → TCP → TLS → HTTP như một physical pipeline**. Một router/gateway có thể đồng thời làm routing, firewall và NAT; proxy/load balancer có thể nằm ở nhiều deployment boundary khác nhau. Điều cần giữ là **responsibility và failure boundary**, không phải số lượng box.
-
-### Cách dùng mental model để debug
+Đi theo flow từ trái sang phải và dừng ở boundary đầu tiên chưa thành công:
 
 ```text
 Domain không resolve?
-→ Phase 1: DNS / name resolution
+→ 1 · Resolve: DNS / name resolution
 
-Resolve được nhưng IP:port timeout?
-→ Phase 2–3: route / firewall / NAT / TCP
+Resolve được nhưng IP:443 timeout?
+→ 2–3 · Reach / Connect: route, firewall, NAT, TCP
 
 TCP được nhưng TLS fail?
-→ Phase 3: certificate / protocol / TLS boundary
+→ 3 · Connect: certificate / TLS / protocol boundary
 
 Đã nhận HTTP 401 / 403 / 500?
-→ Phase 4: request đã đi đủ xa để server trả HTTP response
+→ 4 · Process: request đã đi đủ xa để server trả HTTP response
 
 Backend đúng nhưng browser vẫn stale?
-→ phía trên request lifecycle cơ bản: cache / CDN / browser behavior
+→ kiểm tra cache / CDN / browser behavior phía trên lifecycle cơ bản
 ```
 
-Điểm quan trọng: **success ở phase trước chỉ mở đường cho phase sau**. DNS success chưa chứng minh TCP thông; TCP thông chưa chứng minh TLS/authentication đúng; HTTP `200` cũng chưa chứng minh dữ liệu client thấy là fresh.
+Điểm quan trọng: **success ở boundary trước chỉ mở đường cho boundary sau**. DNS success chưa chứng minh TCP thông; TCP thông chưa chứng minh TLS/authentication đúng; HTTP `200` cũng chưa chứng minh dữ liệu client thấy là fresh.
 
 ## Core Concepts
 
@@ -141,7 +184,7 @@ Outbound NAT IP            14.1.2.9
 Partner allowlist          14.1.2.3 only
 ```
 
-Đừng sửa `/orders` hoặc JSON trước. Request đang fail ở network/TCP boundary; outbound IP cũng không khớp allowlist.
+Đừng sửa `/orders` hoặc JSON trước. Request đang fail ở Reach/Connect boundary; outbound IP cũng không khớp allowlist.
 
 ## When to Use
 
@@ -153,10 +196,11 @@ Partner allowlist          14.1.2.3 only
 
 ## Common Mistakes
 
-- **Hiểu diagram như physical topology:** responsibility có thể cùng nằm trên một infrastructure component; đừng suy ra một chuỗi physical hop chỉ từ tên layer.
+- **Hiểu phase flow như physical topology:** phase mô tả responsibility/failure boundary, không khẳng định số lượng thiết bị.
+- **Bung mọi responsibility thành node nối tiếp:** routing/firewall/NAT hoặc proxy/LB/data layer không phải lúc nào cũng có strict ordering/topology giống nhau.
 - **Gọi mọi failure là “API lỗi”:** nhiều failure xảy ra trước HTTP/application.
 - **Debug sai layer:** có `401` mà vẫn bắt đầu từ DNS/firewall, hoặc TCP timeout mà sửa JSON.
-- **Trộn responsibility:** DNS tìm destination; routing tìm path; TCP tạo connection; TLS bảo vệ channel; HTTP định nghĩa web request/response.
+- **Trộn responsibility:** DNS tìm destination; routing đưa traffic về phía destination; TCP tạo connection; TLS bảo vệ channel; HTTP định nghĩa web request/response.
 
 ## Related Knowledge
 
