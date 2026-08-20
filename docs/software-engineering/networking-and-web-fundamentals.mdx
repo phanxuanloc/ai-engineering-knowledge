@@ -4,7 +4,6 @@ description: Mental map end-to-end của một web request và learning path cho
 tags: [networking, web, http, tcp, dns]
 ---
 
-import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 import {ConceptCard, ConceptGrid, TLDR} from '@site/src/components/Learning';
 
 # Networking & Web Fundamentals
@@ -13,79 +12,94 @@ import {ConceptCard, ConceptGrid, TLDR} from '@site/src/components/Learning';
 
 <TLDR>
 
-Đừng hiểu networking như 11 thiết bị mà một packet lần lượt chui qua. Mental model hữu ích hơn là **4 phase**: **Resolve Destination → Reach Destination → Establish Communication → Process Request**. Mỗi phase gồm các responsibility khác nhau để một web request hoàn thành.
+Đừng hiểu networking như một packet phải lần lượt đi qua 11 box. Mental model hữu ích hơn là **một web request phải vượt qua 4 câu hỏi độc lập**: **đích là đâu? → có tới được đích không? → hai endpoint nói chuyện được chưa? → server xử lý request thế nào?**
 
 </TLDR>
 
 ## Mental Model
 
-<ReactFlowDiagram
-  ariaLabel="Four phases of an end-to-end web request"
-  caption="Một request được hiểu qua 4 phase. DNS tìm destination; routing/network đưa traffic tới destination; TCP/TLS thiết lập communication; HTTP/proxy/application xử lý web request và data. Các box là responsibility/giai đoạn, không nhất thiết là các thiết bị vật lý riêng biệt."
-  fullscreen
-  height={760}
-  interactive={false}
-  kind="workflow"
-  layout="authored"
-  primaryPath={['domain', 'dns', 'ip', 'routing', 'network', 'tcp', 'tls', 'http', 'proxy', 'application', 'cache']}
-  nodes={[
-    {id: 'domain', x: 0, y: 0, eyebrow: '1 · RESOLVE DESTINATION', label: 'Domain', detail: 'api.company.com', role: 'source', size: 'standard'},
-    {id: 'dns', x: 300, y: 0, eyebrow: '1 · RESOLVE DESTINATION', label: 'DNS', detail: 'Which IP?', role: 'process', size: 'standard'},
-    {id: 'ip', x: 600, y: 0, eyebrow: '1 · RESOLVE DESTINATION', label: 'Destination IP', detail: '203.0.113.20', role: 'state', size: 'standard'},
+### Một web request = 4 câu hỏi debug
 
-    {id: 'routing', x: 900, y: 0, eyebrow: '2 · REACH DESTINATION', label: 'Routing', detail: 'Which path / next hop?', role: 'process', size: 'standard'},
-    {id: 'network', x: 900, y: 220, eyebrow: '2 · REACH DESTINATION', label: 'Firewall / NAT', detail: 'Allowed? translated?', role: 'constraint', size: 'standard'},
+<ConceptGrid>
+  <ConceptCard title="1 · Resolve Destination">
+    **Đích là đâu?**
 
-    {id: 'tcp', x: 600, y: 220, eyebrow: '3 · ESTABLISH COMMUNICATION', label: 'TCP : port', detail: 'Connect endpoints', role: 'process', emphasis: true, size: 'standard'},
-    {id: 'tls', x: 300, y: 220, eyebrow: '3 · ESTABLISH COMMUNICATION', label: 'TLS', detail: 'Secure channel', role: 'process', size: 'standard'},
-    {id: 'http', x: 0, y: 220, eyebrow: '3 · ESTABLISH COMMUNICATION', label: 'HTTP Request', detail: 'GET /users', role: 'process', size: 'standard'},
+    `api.company.com` → DNS → `203.0.113.20`
 
-    {id: 'proxy', x: 0, y: 440, eyebrow: '4 · PROCESS REQUEST', label: 'Proxy / LB', detail: 'Route to backend', role: 'process', size: 'standard'},
-    {id: 'application', x: 300, y: 440, eyebrow: '4 · PROCESS REQUEST', label: 'Application', detail: 'Auth + business logic', role: 'process', size: 'standard'},
-    {id: 'cache', x: 600, y: 440, eyebrow: '4 · PROCESS REQUEST', label: 'Cache / Data', detail: 'Read / write state', role: 'output', size: 'standard'},
-  ]}
-  edges={[
-    {source: 'domain', target: 'dns', route: 'primary', sourceHandle: 'right', targetHandle: 'left'},
-    {source: 'dns', target: 'ip', route: 'primary', sourceHandle: 'right', targetHandle: 'left'},
-    {source: 'ip', target: 'routing', route: 'primary', sourceHandle: 'right', targetHandle: 'left'},
-    {source: 'routing', target: 'network', route: 'primary', sourceHandle: 'bottom', targetHandle: 'top', type: 'smoothstep'},
-    {source: 'network', target: 'tcp', route: 'primary', sourceHandle: 'left', targetHandle: 'right'},
-    {source: 'tcp', target: 'tls', route: 'primary', sourceHandle: 'left', targetHandle: 'right'},
-    {source: 'tls', target: 'http', route: 'primary', sourceHandle: 'left', targetHandle: 'right'},
-    {source: 'http', target: 'proxy', route: 'primary', sourceHandle: 'bottom', targetHandle: 'top', type: 'smoothstep'},
-    {source: 'proxy', target: 'application', route: 'primary', sourceHandle: 'right', targetHandle: 'left'},
-    {source: 'application', target: 'cache', route: 'primary', sourceHandle: 'right', targetHandle: 'left'},
-  ]}
-/>
+    Output của phase này là **destination IP**. DNS không quyết định packet sẽ đi qua router nào và cũng chưa chứng minh server reachable.
+  </ConceptCard>
 
-### Cách đọc diagram
+  <ConceptCard title="2 · Reach Destination">
+    **Traffic có tới được destination IP:port không?**
 
-**1 · Resolve Destination — “Đích là đâu?”**
+    Routing chọn next hop/path. Firewall có thể allow/block. NAT có thể translate source/destination address.
 
-Client bắt đầu với domain như `api.company.com`. DNS resolve tên đó thành destination IP, ví dụ `203.0.113.20`. DNS làm nhiệm vụ **name → IP**; nó không quyết định packet sẽ đi qua router nào.
+    Đây là **network reachability**, không phải một chuỗi bắt buộc `Router → Firewall → NAT`.
+  </ConceptCard>
 
-**2 · Reach Destination — “Đi đường nào tới IP đó?”**
+  <ConceptCard title="3 · Establish Communication">
+    **Hai endpoint đã có channel để nói chuyện chưa?**
 
-Khi đã biết destination IP, operating system/network dùng routing để chọn path/next hop. Trên đường đi, firewall/security policy có thể allow hoặc block traffic; NAT có thể translate private source IP thành outbound IP. Routing, firewall và NAT là các **network responsibilities** và có thể cùng tồn tại trên một router/gateway/firewall appliance — không nhất thiết là ba máy đứng nối tiếp nhau.
+    TCP kết nối tới `IP:port`; với HTTPS, TLS tạo secure channel; sau đó HTTP message mới được trao đổi trên channel đó.
 
-**3 · Establish Communication — “Hai endpoint nói chuyện được chưa?”**
+    TCP success không có nghĩa TLS, authentication hay business logic đã đúng.
+  </ConceptCard>
 
-Client thiết lập TCP connection tới `destination IP:port`, ví dụ `203.0.113.20:443`. Với HTTPS, TLS handshake sau đó tạo secure channel. Khi transport/security boundary đã sẵn sàng, HTTP request mới được trao đổi qua channel đó.
+  <ConceptCard title="4 · Process Request">
+    **Server xử lý request ra sao?**
 
-**4 · Process Request — “Server xử lý request thế nào?”**
+    Request có thể qua reverse proxy/load balancer, tới application, rồi đọc/ghi cache hoặc database trước khi response quay lại client.
 
-HTTP request có thể tới reverse proxy/load balancer trước, được route tới application instance, rồi application thực hiện authentication/business logic và đọc/ghi cache hoặc database. Response sau đó quay trở lại client qua communication path.
+    Những component này mô tả **responsibility**, không phải lúc nào cũng là các physical hop riêng biệt.
+  </ConceptCard>
+</ConceptGrid>
 
-Mental model debug tương ứng:
+### Story của một request
+
+Đừng bắt đầu bằng topology. Hãy theo dõi **state mà client biết được sau mỗi phase**:
 
 ```text
-1. Resolve destination   Domain → DNS → Destination IP
-2. Reach destination     IP → Routing → Firewall/NAT → destination:port
-3. Establish communication   TCP → TLS → HTTP request
-4. Process request       Proxy/LB → Application → Cache/Data
+User types https://api.company.com/users
+
+        ↓ 1. Resolve destination
+Known: destination IP = 203.0.113.20
+Unknown: route / reachability / application health
+
+        ↓ 2. Reach destination
+Known: traffic can reach 203.0.113.20:443
+Unknown: secure session / HTTP result
+
+        ↓ 3. Establish communication
+Known: TCP + TLS channel is ready
+Unknown: authorization / business result
+
+        ↓ 4. Process request
+Known: HTTP request reached server-side processing
+Result: response or application-level failure
 ```
 
-Điểm quan trọng: đây là **logical request lifecycle**, không phải danh sách 11 physical hops. DNS success chưa chứng minh route/TCP thông; TCP thông chưa chứng minh TLS/authentication đúng; HTTP `200` cũng chưa chứng minh dữ liệu client thấy là fresh.
+Mental model này cố tình **không vẽ DNS → Router → Firewall → NAT → TCP → TLS → HTTP như một physical pipeline**. Một router/gateway có thể đồng thời làm routing, firewall và NAT; proxy/load balancer có thể nằm ở nhiều deployment boundary khác nhau. Điều cần giữ là **responsibility và failure boundary**, không phải số lượng box.
+
+### Cách dùng mental model để debug
+
+```text
+Domain không resolve?
+→ Phase 1: DNS / name resolution
+
+Resolve được nhưng IP:port timeout?
+→ Phase 2–3: route / firewall / NAT / TCP
+
+TCP được nhưng TLS fail?
+→ Phase 3: certificate / protocol / TLS boundary
+
+Đã nhận HTTP 401 / 403 / 500?
+→ Phase 4: request đã đi đủ xa để server trả HTTP response
+
+Backend đúng nhưng browser vẫn stale?
+→ phía trên request lifecycle cơ bản: cache / CDN / browser behavior
+```
+
+Điểm quan trọng: **success ở phase trước chỉ mở đường cho phase sau**. DNS success chưa chứng minh TCP thông; TCP thông chưa chứng minh TLS/authentication đúng; HTTP `200` cũng chưa chứng minh dữ liệu client thấy là fresh.
 
 ## Core Concepts
 
@@ -139,7 +153,7 @@ Partner allowlist          14.1.2.3 only
 
 ## Common Mistakes
 
-- **Hiểu diagram như physical topology:** các box mô tả responsibility/giai đoạn; router, firewall và NAT có thể nằm trên cùng infrastructure component.
+- **Hiểu diagram như physical topology:** responsibility có thể cùng nằm trên một infrastructure component; đừng suy ra một chuỗi physical hop chỉ từ tên layer.
 - **Gọi mọi failure là “API lỗi”:** nhiều failure xảy ra trước HTTP/application.
 - **Debug sai layer:** có `401` mà vẫn bắt đầu từ DNS/firewall, hoặc TCP timeout mà sửa JSON.
 - **Trộn responsibility:** DNS tìm destination; routing tìm path; TCP tạo connection; TLS bảo vệ channel; HTTP định nghĩa web request/response.

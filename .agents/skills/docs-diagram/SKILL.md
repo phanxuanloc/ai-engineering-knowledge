@@ -1,192 +1,211 @@
 ---
 name: docs-diagram
-description: Orchestrate educational visuals for this repository before renderer-specific work. Classify whether the teaching job is a mental model, static topology, runtime behavior, or quantitative trend; route to Excalidraw, React Flow, Visual Explainer, or charting accordingly; define grounded semantic content and validate the result.
+description: Orchestrate educational visuals before renderer-specific work. Start from learner question and semantic truth, design the visual story, then choose Excalidraw, React Flow, FlowExplainer, charting, or no diagram.
 ---
 
 # Documentation Visual Orchestration
 
-Treat every visual as a teaching artifact, not decoration and not a renderer demo. The first decision is **what must the learner understand within 3–5 seconds?** The second is whether that understanding is about an idea, a structure, a behavior over time, or a quantitative change.
+Treat every visual as a teaching artifact, not decoration and not a renderer demo. The visual pipeline is:
 
-## Classify before choosing a renderer
+**Learner Question → Semantic Truth → Visual Story → Visual Grammar → Renderer → Validation**
 
-Use these four first-class visual modes:
+Never start by asking “which diagram/library should I use?”. Start by asking **what misconception or question must become obvious within 3–5 seconds?**
 
-1. **Mental Model / Conceptual Sketch** → `docs-excalidraw`.
-   Use for analogy, intuition, conceptual relationships, comparisons, boundaries, filters, buckets, and whiteboard-style explanations.
-2. **Static Flow / System Diagram** → `docs-react-flow`.
-   Use for architecture, topology, dependency, pipeline structure, component relationships, and graphs where the important lesson is **what connects to what**.
-3. **Animated Flow Explainer** → `visual-explainer`.
-   Use when the lesson depends on **what happens over time**: request/response, packet/message travel, streaming, retries, tool calls, agent loops, state transitions, retrieval/selection, token/chunk movement, event propagation, queue processing, or lifecycle execution.
-4. **Animated Chart / Quantitative Visual** → a shared chart component or the simplest existing charting stack.
-   Use when the lesson is a metric, comparison, progression, distribution, latency, token usage, throughput, error rate, score, budget, or value changing over time.
+## 1. Story-first gate
 
-## Mandatory runtime-explainer gate
+Before creating any visual, write a compact internal spec with these fields:
 
-**If a runtime behavior can be represented truthfully and readably with the shared Animated Flow Explainer, using only a static diagram is a failure.** This is a mandatory renderer-selection rule, not a stylistic preference.
+- **Learner question:** the exact question the visual answers.
+- **Five-second takeaway:** what should be obvious before every label is read.
+- **Entities:** real concepts/components/states that are allowed to appear.
+- **Relationships:** only relationships supported by the note/source.
+- **Ordering:** which events are strictly ordered, partially ordered, concurrent, or unordered.
+- **State changes:** what actually changes over time, if anything.
+- **Invariants:** facts the visual must preserve at every breakpoint.
+- **Forbidden implications:** relationships/order/topology the layout must never suggest.
 
-Before accepting any `workflow`, `sequence`, `data-flow`, `lifecycle`, request/response, streaming, retry, agent/tool, RAG, Context Engineering, queue/event, or state-transition visual, explicitly answer:
+If these cannot be stated confidently, do not draw yet. Repair the semantic model first.
 
-> Can the important runtime behavior be taught truthfully with `FlowExplainer` using finite states/steps and grounded transitions?
+### Semantic implication gate
 
-- **If yes:** use Animated Flow Explainer for the runtime story.
-- **If the same lesson also needs topology:** keep or add a Static React Flow view for **what connects to what**, and use Animated Flow Explainer for **what happens over time**.
-- **If no:** record the concrete reason before using a static-only representation. Valid reasons are limited to:
-  1. motion adds no learning value because time/order/state is not part of the lesson;
-  2. the current explainer cannot represent the topology/semantics without distortion or hiding important facts;
-  3. accessibility, performance, or rendering constraints would make the animated version materially worse than the static alternative.
+A visual is wrong when its geometry implies something the semantic spec does not.
 
-“Static is simpler”, “React Flow already exists”, “the article already has a diagram”, implementation convenience, or lack of initiative are **not** valid exceptions.
+Examples:
 
-Do not satisfy this gate by enabling perpetual packet animation on a static React Flow. Continuous edge motion is not a substitute for step/state semantics, direction changes, intermediate states, learner controls, or causal explanation.
+- sibling branches stacked vertically must not read as `A → B → C`;
+- routing, firewall, and NAT responsibilities must not automatically become three physical hops;
+- independent GraphQL resolver calls must not become a forced sequence;
+- a conceptual progression must not be presented as a packet path unless real transport is the lesson.
 
-Do not collapse static topology and runtime explanation into one compromised visual when both teaching jobs are important. Prefer the pair:
+Validation must check **rendered implication**, not only whether the authored edge list is technically correct.
 
-**Static React Flow = what connects to what**  
-**Animated Flow Explainer = what happens over time**
+## 2. No-diagram is a valid outcome
 
-## Run the pipeline
+A visual must expose something that prose, a short list, or normal learning cards cannot expose as clearly.
 
-1. Read the relevant note and verified source facts.
-2. State the 3–5 second teaching message and the evidence supporting every entity, relationship, state, and transition.
-3. Decide whether a visual materially improves comprehension. Keep normal MDX when prose is clearer.
-4. Classify as `mental-model`, `static-topology`, `runtime-behavior`, or `quantitative-change` before selecting a renderer.
-5. If runtime behavior exists, run the **Mandatory runtime-explainer gate** before implementing anything static.
-6. Define a bounded semantic spec before implementation:
-   - stable IDs;
-   - entities/nodes and roles;
-   - relationships;
-   - states and transitions when behavior matters;
-   - primary path;
-   - timeline/step order when behavior matters;
-   - metric and scale when charting;
-   - **desktop composition and mobile composition separately**;
-   - accessibility message.
-7. Select the renderer from the classification and mandatory gate, not from library convenience.
-8. Reuse shared infrastructure. Article MDX should declare semantic data/story; shared components own layout, motion, controls, theme, and responsive behavior.
-9. Validate structural correctness, layout, routing, readability, animation semantics, reduced-motion behavior, mobile, light/dark themes, and actual visual output.
-10. Repair the diagnosed layer only. Regenerate the whole visual only when classification or semantic modeling is wrong.
+Use **no diagram** when:
 
-## Detect behavioral content automatically
+- the idea is already clear in 2–4 short lines;
+- spatial layout adds no information;
+- drawing would invent topology/order;
+- the main lesson is a set of independent questions/responsibilities rather than a path.
 
-Treat these as strong signals that the mandatory runtime-explainer gate applies:
+Do not add a diagram merely because the page should look “AI-native” or because a renderer is available.
 
-- words such as sends, receives, returns, retries, streams, emits, consumes, calls, waits, transitions, selects, filters, scores, evicts, compresses, chunks, retrieves, routes, propagates, acknowledges;
-- arrows whose meaning changes by step or direction;
-- a reader asking “what happens next?”, “where is the packet now?”, “why did this item disappear?”, or “how does the state change?”;
-- multiple messages over the same connection;
-- an important intermediate state that would otherwise be hidden in prose.
+## 3. Choose visual grammar before renderer
 
-For API communication, agent execution, Context Engineering, RAG, tool calling, queues/events, and streaming, assume the gate applies unless inspection shows the lesson is topology-only.
+Classify the teaching job using the smallest grammar that preserves truth:
 
-## Animation must encode meaning
+1. **Concept / Boundary / Mental Model** — analogy, responsibilities, buckets, filters, layers, constraints, comparisons.
+2. **Topology** — what connects to what.
+3. **Sequence / Timeline** — what happens before/after and where time/order matters.
+4. **State Transition** — one entity changing state.
+5. **Transformation** — input becomes another representation, e.g. documents → chunks → embeddings.
+6. **Transport** — packet/message/token physically or logically moves between endpoints.
+7. **Quantitative Change / Simulation** — values, metrics, distributions, trade-offs, or causal input/output changes.
 
-Animation is allowed only when motion teaches behavior. A good explainer normally has:
+Do not collapse all runtime behavior into “a flow with moving dots”. Transport, state transition, transformation, sequence, and simulation are different teaching grammars.
 
-- a finite sequence of named events;
-- one clearly active state or meaningful parallel event group at a time;
-- active nodes that pulse/highlight subtly;
-- active edges that become visually dominant while unrelated edges fade;
-- packet/token/chunk motion with restrained glow/trail when movement itself matters;
-- a short narrative explaining the current event;
-- play/pause, previous/next, replay, and direct event selection when the sequence is inspectable;
-- deterministic reset state;
+## 4. Renderer routing
+
+Choose a renderer only after the grammar is clear:
+
+- **Excalidraw** → analogy-first mental models, conceptual boundaries, comparisons, filters, whiteboard explanations.
+- **React Flow** → topology, dependency, architecture, structured graph relationships where `what connects to what` is the lesson.
+- **FlowExplainer** → inspectable runtime stories with finite events, meaningful state changes, request/response, fan-out/fan-in, retries, streaming, agent/tool loops.
+- **Chart / interactive component** → quantitative change, simulation, distributions, latency/cost/quality trade-offs.
+- **Normal MDX / Concept cards** → independent responsibilities/questions where a graph would falsely imply topology or order.
+
+Renderer choice is a consequence of the semantic story, never the starting point.
+
+## 5. Progressive story instead of show-everything-first
+
+When the learner benefits from building the model incrementally, define **scenes**. A scene may show only the subset needed for the current inference.
+
+Each scene can specify:
+
+- visible entities;
+- active/highlighted entities;
+- transitions;
+- state changes;
+- annotations;
+- takeaway.
+
+Do not show the complete architecture in frame 1 by default. Reveal complexity only when the learner needs it.
+
+A valid progressive explainer may look like:
+
+`Question → candidate set → scoring → selected subset → context window → answer`
+
+rather than presenting every source, ranker, store, model, and edge immediately.
+
+## 6. Mandatory runtime-explainer gate
+
+If the lesson depends on time/order/state and shared `FlowExplainer` can represent it truthfully, static-only treatment is a failure.
+
+Before accepting a workflow, lifecycle, request/response, streaming, retry, agent/tool, RAG, Context Engineering, queue/event, or state-transition visual, ask:
+
+> Can the important runtime behavior be taught truthfully with finite scenes/events and grounded transitions?
+
+- **Yes** → use FlowExplainer or another semantic runtime primitive.
+- **Topology also matters** → pair a focused static topology with the runtime story; do not overload one view.
+- **No** → document the concrete reason: motion adds no learning value, the runtime renderer would distort semantics, or accessibility/performance would materially worsen the lesson.
+
+Perpetual edge animation is not a substitute for event semantics.
+
+## 7. Animation must encode meaning
+
+Animation is allowed only when motion teaches causality.
+
+Good animation can encode:
+
+- one-shot message transport;
+- state changes such as pending → running → success;
+- transformation such as documents → chunks;
+- progressive reveal/construction;
+- finite fan-out/fan-in;
+- persistent stream/waiting state;
+- numeric progression.
+
+Avoid ambient motion, infinite packets, pulsing every node, or effects that merely make the page look technical.
+
+For inspectable runtime stories, prefer:
+
+- finite named events;
+- deterministic reset;
+- previous/next/play/pause/replay;
+- direct event selection when useful;
+- visible current-event narrative;
 - `prefers-reduced-motion` support.
 
-Never animate all edges forever just to make a page feel alive. Continuous ambient motion is secondary to event semantics.
+## 8. Complexity bound
 
-## Mobile-first visual contract
+Use **one visual = one learning question**.
 
-A visual is not accepted until its **mobile composition is intentional**. `fitView`, browser scaling, or clipping a desktop canvas are not mobile strategies.
+Prefer roughly 4–10 primary entities in one topology view. Split overloaded stories. If several technologies/scenarios share the same teaching question, use tabs/scenarios rather than overlaying every path.
 
-For every diagram, FlowExplainer, or chart, decide before implementation what happens around a 360–430px article width.
+Do not create long snake diagrams simply to fit many concepts. A 10-node primary path is a warning sign: verify that those nodes are truly sequential events rather than independent responsibilities, optional infrastructure, branches, or conceptual layers.
 
-- **Prefer recomposition over shrinking.** A desktop `LR` graph should normally become a `TB`/vertical composition on narrow screens when semantics survive the change. Runtime explainers should prefer a vertical event spine or stacked narrative rather than scaling a long horizontal trace to tiny text.
-- **Reflow geometry, never semantics.** Responsive layout may change direction, spacing, stacking, or lanes, but must preserve the authored graph relationships. Never turn sibling branches, parallel calls, or fan-out/fan-in into a false sequential chain just because a one-column layout is convenient.
-- **Linear vs branching mobile composition is a deliberate choice.** A genuinely linear scenario may use one vertical spine. A branching scenario should use a topology-aware mobile form such as hub + stacked branches, balanced lanes, or another composition where each branch remains visibly owned by its real parent/hub.
-- **Preserve authored edges across breakpoints.** Node array order is not topology. Do not infer mobile edges from visual stacking order, and do not make vertically adjacent branch cards look connected unless an authored relationship exists.
-- **Branch labels need independent ownership.** Fan-out labels/messages must stay attached to their own connector lanes and must not share a vertical label corridor that collides with sibling nodes or implies a common sequential edge.
-- **Do not preserve desktop coordinates blindly.** Fixed horizontal gaps that look good on desktop must not force mobile zoom below readable size or push nodes outside the first frame.
-- **No silent clipping.** Nodes, labels, arrowheads, legends, axes, tooltips, controls, and active packets must stay reachable. Page-level horizontal overflow is a failure.
-- **Horizontal scrolling is a fallback, not the default.** Use an internal scroll/pan viewport only when topology genuinely depends on horizontal spatial relationships that would be distorted by reflow. The first frame must still explain how to inspect the rest.
-- **Fixed height is not authoritative on mobile.** Recompute canvas height from the final responsive node bounds—including node height, branch offsets, and breathing room—so a desktop height or `nodes.length * gap` estimate cannot crop a reflowed graph.
-- **Fit only after responsive layout settles.** `fitView` frames valid geometry; it must not be used to compensate for invalid responsive topology or stale pre-reflow positions.
-- **Controls must not cover learning content.** Compact, move, or hide nonessential controls on narrow screens; maintain touch targets of roughly 44px where controls remain important.
-- **Text stays normal reading size.** Do not solve mobile by shrinking node/axis/legend text until it technically fits.
+## 9. Mobile semantic contract
 
-For charts specifically:
-- use responsive width; never rely on a fixed desktop plot width;
-- keep category labels readable rather than clipping or auto-skipping the labels that carry the lesson;
-- for many categories, prefer a vertical list / horizontal-bar presentation on mobile when that improves label readability;
-- wrap or relocate legends instead of letting them steal plot width;
-- keep axes, units, and tooltip values accessible; if an axis becomes unreadable, change composition or label density deliberately rather than simply scaling the entire chart down;
-- mobile animation must preserve the metric story and must not require hover-only interaction.
+Responsive layout may change geometry but never meaning.
 
-Mobile acceptance must inspect at least one narrow viewport representative of ~375px and one wider phone viewport around ~430px whenever execution/render access is available.
+- Recompose before shrinking.
+- Linear flows may become vertical.
+- Sibling branches remain siblings.
+- Fan-out/fan-in must not become false chains.
+- Preserve authored relationships across breakpoints; node array order is not topology.
+- Branch labels remain owned by their branch.
+- Do not silently clip nodes, labels, arrows, controls, or active packets.
+- Horizontal scroll/pan is a fallback only when reflow would distort the topology.
+- Compute bounds from final responsive geometry; `fitView` frames valid geometry, it does not repair invalid layout.
+- Keep readable text and usable touch targets.
 
-`api-communication-fundamentals.mdx` GraphQL is a canonical mobile regression case: `Database`, `REST Service`, and `gRPC Service` may stack vertically, but they must remain three sibling branches from `GraphQL Server`; the responsive composition must never read as `Database → REST Service → gRPC Service`.
+## 10. React Flow acceptance
 
-## Static React Flow label-clearance gate
+Use React Flow only when topology itself teaches the lesson.
 
-Treat every visible edge label as **layout geometry**, not decoration painted after layout.
+Before accepting:
 
-Before accepting a static React Flow diagram:
+- primary path/branch structure is obvious within seconds;
+- no invented sequential relationship;
+- no node/edge/label overlap;
+- labels visibly belong to their connectors;
+- feedback loops stay outside the main corridor;
+- arrow direction is clear;
+- mobile preserves topology semantics;
+- interaction matches the teaching job;
+- a simpler mental-model or MDX representation would not be clearer.
 
-- reserve enough rank/node spacing for the longest meaningful edge labels at the current direction and breakpoint;
-- keep labels visually attached to their own connector and inside the clear gap between endpoint nodes whenever possible;
-- no edge label may overlap node borders, node text, arrowheads, another label, or an unrelated connector;
-- for `LR`, horizontal rank spacing must account for label width; for `TB`, inspect sibling/branch lanes because label width can collide laterally even when vertical rank spacing is sufficient;
-- when a label does not fit, repair in this order: **shorten redundant wording → increase shared spacing/layout clearance → improve routing/handle placement → split an over-dense view**;
-- do **not** fix recurring collisions with arbitrary per-edge `x/y` offsets, negative margins, transforms, tiny font sizes, or by pushing the label so far from the connector that ownership becomes ambiguous;
-- opaque label backgrounds may create a clean visual break in the connector, but masking a line does not excuse insufficient node clearance;
-- validate the actual render at desktop and narrow/mobile widths after changing labels, node copy, node width, direction, or spacing.
+Static React Flow answers **what connects to what**, not automatically **what happens over time**.
 
-Shared layout infrastructure should solve repeated label-clearance problems automatically when practical. Article authors should not need coordinate patches for ordinary labeled edges.
+## 11. Mental-model acceptance
 
-## Runtime layout and label gate
+For a Mental Model section, do not assume a graph is required.
 
-For `FlowExplainer`, runtime readability includes geometry—not only whether motion exists.
+Prefer one of these outcomes:
 
-Before accepting the explainer:
+- conceptual Excalidraw when spatial metaphor helps;
+- progressive explainer when understanding requires observing change;
+- responsibility/question cards when concepts are independent boundaries;
+- a tiny topology only when real relationships are the lesson;
+- plain prose when that is clearest.
 
-- edge message labels should remain visually attached to their connector, normally centered in the connector lane;
-- a connector may be visually masked behind the label so the line does not cross the text;
-- if a centered message collides with an endpoint node, **increase spacing or shorten the graph label first** rather than pushing the message far away from the connector;
-- long graph labels may be truncated when their full value is available in the event narrative/accessible text;
-- bounded FlowExplainer node text must remain inside the geometry used for routing; do not allow DOM content growth to silently invalidate node bounds;
-- no label may overlap node borders/text, arrowheads, packet paths, or unrelated connectors;
-- do not make text unreadably small to rescue an over-dense layout.
+A mental model fails when the visual contradicts the prose. If prose says “these are responsibilities, not sequential physical hops”, the visual must not present them as one long connected primary path.
 
-Keep this distinction clear: static React Flow can use content-aware node sizing and recalculate topology around it; FlowExplainer may deliberately use compact bounded event-node geometry to preserve stable motion and routing.
+## 12. Validation
 
-## AI-technical aesthetic
+Before finishing visual work:
 
-The site may feel slightly “AI-native”: precise, dark-mode friendly, alive, and technical. Use glow, trail, pulse, gradient accents, luminous focus, and compact status indicators **sparingly and semantically**. The active computation/message may glow; the entire page should not.
+1. Re-read the learner question.
+2. Verify every entity, relationship, order, and state change against source truth.
+3. Check forbidden implications against the actual rendered composition.
+4. Verify the first frame teaches without interaction.
+5. Verify mobile preserves semantics.
+6. Verify animation encodes causality rather than decoration.
+7. Verify light/dark and reduced-motion behavior where applicable.
+8. Verify no clipping, overflow, unreadable labels, or controls covering learning content.
+9. Run `npm run typecheck`, `npm run build`, and `git diff --check` when execution access exists.
+10. Never claim visual review passed unless the rendered output was actually inspected.
 
-Avoid cyberpunk decoration, excessive neon, rainbow gradients, glassmorphism everywhere, dense dashboard chrome, or effects that compete with reading. The target is **observing a real system run**, not a sci-fi poster.
-
-## Bound complexity
-
-Keep one primary path or mental model obvious. Prefer roughly 4–10 primary entities in one view. Split before a flow becomes visually dense. Runtime explainers should usually teach one behavior per scenario; use scenario tabs for closely related variants such as REST, gRPC Unary, gRPC Streaming, and GraphQL rather than overlaying every behavior at once.
-
-## Acceptance
-
-Before finishing any visual work:
-
-- verify semantic truth against the note/source;
-- verify the first frame is understandable without interaction;
-- verify every behavioral visual passed the Mandatory runtime-explainer gate;
-- if a behavioral visual remains static-only, verify a valid exception is explicitly documented;
-- verify controls and keyboard focus;
-- verify mobile/narrow article width with an intentional mobile composition, not only scaled desktop output;
-- verify mobile reflow preserves authored topology: linear stays linear, sibling branches stay siblings, and fan-out/fan-in never becomes a false sequential chain;
-- verify responsive canvas bounds come from final node positions and `fitView` runs only after responsive geometry settles;
-- verify light and dark themes;
-- verify reduced-motion behavior;
-- verify no clipping or page-level horizontal overflow;
-- verify animation reveals causality rather than decoration;
-- for static React Flow, verify every visible edge label has clear ownership and collision-free node/arrow/label clearance at inspected breakpoints;
-- for FlowExplainer, verify edge labels stay attached to connectors and remain collision-free at inspected breakpoints;
-- for FlowExplainer, verify node text and visible DOM bounds match the geometry used for routing;
-- for charts, verify axes/category labels/legend remain readable on mobile and no essential information depends on hover;
-- run `npm run typecheck`, `npm run build`, and `git diff --check` when execution access is available;
-- never claim visual review passed unless the rendered result was actually inspected.
+When a gate fails, repair the semantic model/story first. Only then repair renderer/layout details. Do not accumulate coordinate hacks around a wrong teaching abstraction.
