@@ -117,9 +117,10 @@ Compact flow is a teaching composition, not a generic editor canvas.
 - More complex topologies may use a lower floor when necessary, but complexity should explicitly justify it. A fan-out graph can tolerate more zoom-out than a three-node request/response trace.
 - Mobile should also retain a readability floor; do not solve a tall trace by shrinking the entire canvas indefinitely.
 - If connector clearance increases graph width enough that `fitView` would cross the readability floor, **recompose or modestly reduce spacing before shrinking the graph further**.
-- Prefer this order: **semantic recompose/progressive reveal → balanced spacing → bounded graph label → readability-preserving fitView**.
+- A side narrative/inspector must not steal enough width to make the graph clip at the readability floor. When a normal 3-node horizontal trace no longer fits beside narration, move narration below the graph rather than clipping a node or lowering zoom aggressively.
+- Prefer this order: **semantic recompose/progressive reveal → give the graph enough stage width → balanced spacing → bounded graph label → readability-preserving fitView**.
 - Never increase global spacing in isolation without checking resulting viewport scale. Connector clarity and node readability are one layout problem, not separate CSS problems.
-- Inspect the rendered node text size after any rank/column spacing change. CSS font-size being unchanged does not prove readability if the React Flow viewport is scaled down.
+- Inspect the rendered node text size and canvas bounds after any rank/column spacing or stage-layout change. CSS font-size being unchanged does not prove readability if the React Flow viewport is scaled down or a node is clipped.
 
 ### Horizontal connector clearance
 
@@ -206,17 +207,19 @@ Before accepting a change, verify:
 8. Labels stay attached to their connector and do not collide.
 9. Horizontal labeled connectors retain visible line before and after the pill; message text must not consume the whole lane.
 10. Simple desktop flows do not fall below the readability floor merely because spacing increased.
-11. Normal article width keeps node text comfortably readable without aggressive shrinking.
-12. Mobile recomposes before shrinking and has no page-level overflow.
-13. On a mobile vertical trace, each labeled connector still exposes visible line before and after the pill; the label must not consume the whole lane.
-14. Test representative horizontal messages such as `GetPaymentRequest`, `conversation message`, and `persisted message` when applicable.
-15. Test representative mobile messages including `DNS query`, `203.0.113.20`, `TCP :443`, `GET /users`, and `200 OK` when applicable.
-16. After any spacing change, inspect effective viewport scale as well as CSS font size.
-17. Light/dark themes retain contrast.
-18. Reduced-motion mode retains all semantic states.
-19. No decorative grid/scanline/glow obscures information hierarchy.
-20. Run `npm run typecheck`, `npm run build`, and `git diff --check` when execution access exists.
-21. Never claim rendered visual QA passed unless the actual rendered page was inspected.
+11. No graph node or arrowhead is clipped by the canvas because a side narrative panel consumed too much width.
+12. A 3-node horizontal trace is tested at normal article width with narration visible; narration should stack below when side-by-side layout would violate graph bounds/readability.
+13. Normal article width keeps node text comfortably readable without aggressive shrinking.
+14. Mobile recomposes before shrinking and has no page-level overflow.
+15. On a mobile vertical trace, each labeled connector still exposes visible line before and after the pill; the label must not consume the whole lane.
+16. Test representative horizontal messages such as `GetPaymentRequest`, `conversation message`, and `persisted message` when applicable.
+17. Test representative mobile messages including `DNS query`, `203.0.113.20`, `TCP :443`, `GET /users`, and `200 OK` when applicable.
+18. After any spacing change, inspect effective viewport scale as well as CSS font size.
+19. Light/dark themes retain contrast.
+20. Reduced-motion mode retains all semantic states.
+21. No decorative grid/scanline/glow obscures information hierarchy.
+22. Run `npm run typecheck`, `npm run build`, and `git diff --check` when execution access exists.
+23. Never claim rendered visual QA passed unless the actual rendered page was inspected.
 
 ## Regression cases
 
@@ -224,7 +227,7 @@ Review shared FlowExplainer changes against at least:
 
 - Networking web request journey — progressive request lifecycle and mobile connector-label clearance;
 - Chat System Design — compact horizontal trace with `conversation message` / `persisted message` labels;
-- REST request/response — simple three-node readability floor;
+- REST request/response — simple three-node readability floor and no side-panel clipping;
 - gRPC unary remote boundary with `GetPaymentRequest` / `GetPaymentResponse` labels;
 - gRPC streaming finite repeated messages + persistent stream;
 - GraphQL fan-out/fan-in preserving sibling topology without forcing the same zoom floor as a simple trace.
