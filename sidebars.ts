@@ -118,7 +118,10 @@ const sidebars: SidebarsConfig = {
           type: 'category',
           label: 'Security Engineering',
           link: {type: 'doc', id: 'software-engineering/security-engineering'},
-          items: [],
+          items: [
+            'software-engineering/threat-modeling-and-attack-surface',
+            'software-engineering/secrets-and-credential-security',
+          ],
         },
         {
           type: 'category',
