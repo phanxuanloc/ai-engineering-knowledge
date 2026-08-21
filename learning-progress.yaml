@@ -279,6 +279,9 @@ topics:
     confidence: 3
     checkpoints:
       - search-and-ranking-fundamentals
+      - hashing-and-hash-table-fundamentals
+      - stack-and-queue-fundamentals
+      - trees-graphs-and-traversal-fundamentals
     checkpoint_progress:
       search-and-ranking-fundamentals:
         status: understood
@@ -293,7 +296,31 @@ topics:
           - selected-top-10-from-two-thousand-retrieved-candidates-for-a-ten-chunk-context-budget
           - selected-binary-search-for-exact-transaction-id-lookup-in-ten-million-sorted-transactions
           - selected-top-20-from-fifty-thousand-scored-search-results
-    next_checkpoint: hashing-and-hash-table-fundamentals
+      hashing-and-hash-table-fundamentals:
+        status: understood
+        note: docs/software-engineering/hashing-and-hash-table-fundamentals.mdx
+        learned_at: 2026-08-21
+        evidence:
+          - selected-hashset-for-fast-file-membership-checks-without-associated-values
+          - identified-collision-as-distinct-keys-sharing-a-bucket-without-implying-overwrite
+          - selected-hashset-hashmap-and-list-for-membership-key-value-and-ordering-requirements
+      stack-and-queue-fundamentals:
+        status: understood
+        note: docs/software-engineering/stack-and-queue-fundamentals.mdx
+        learned_at: 2026-08-21
+        evidence:
+          - selected-stack-and-lifo-for-undoing-the-most-recent-coding-agent-change
+          - selected-queue-and-fifo-for-jobs-that-must-process-in-arrival-order
+          - applied-queue-for-layered-exploration-and-stack-for-latest-change-undo
+      trees-graphs-and-traversal-fundamentals:
+        status: understood
+        note: docs/software-engineering/trees-graphs-and-traversal-fundamentals.mdx
+        learned_at: 2026-08-21
+        evidence:
+          - distinguished-dfs-as-depth-first-branch-exploration-after-clarification
+          - selected-bfs-for-fewest-hop-path-in-an-unweighted-dependency-graph
+          - independently-selected-bfs-queue-and-hashset-for-shortest-dependency-path-and-cycle-safe-traversal
+    next_checkpoint: sorting-fundamentals
     experiments: []
     prerequisites: []
     related:
