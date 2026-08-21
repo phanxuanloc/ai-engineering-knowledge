@@ -13,7 +13,12 @@ const sidebars: SidebarsConfig = {
           label: 'Evaluation',
           collapsible: true,
           collapsed: true,
-          link: {type: 'doc', id: 'ai-fundamentals/evaluation-fundamentals'},
+          link: {
+            type: 'generated-index',
+            title: 'Evaluation',
+            description: 'Learning path về cách thiết kế evaluation, dataset, metrics, reliability và production regression gates cho AI systems.',
+            slug: '/ai-fundamentals/evaluation',
+          },
           items: [
             'ai-fundamentals/evaluation-fundamentals',
             'ai-fundamentals/evaluation-methods-and-evaluators',
