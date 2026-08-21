@@ -20,7 +20,7 @@ The docs sidebar is an always-open knowledge map:
 3. article links are quieter and optimized for scanning;
 4. the current article gets the only strong sidebar emphasis.
 
-Categories do not collapse. The sidebar scrolls independently on desktop and inside the mobile drawer. A long menu is acceptable when hierarchy remains obvious.
+Use progressive disclosure for hierarchy depth: domain-level categories stay expanded so all level-2 knowledge groups remain visible, while level-3 article lists are collapsed by default. Readers expose level-3 articles by expanding the relevant knowledge group; the active descendant path should remain visible while reading inside that group. The sidebar scrolls independently on desktop and inside the mobile drawer.
 
 ## Article hierarchy
 
