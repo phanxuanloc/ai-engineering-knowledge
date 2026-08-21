@@ -1,0 +1,132 @@
+---
+title: Feed / Timeline System Design
+description: Thiết kế social feed bằng fan-out on write, fan-out on read, async workers và hybrid strategy theo workload.
+tags: [system-design, feed, fan-out, queue, scalability]
+---
+
+import {Principle, TLDR} from '@site/src/components/Learning';
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
+
+# Feed / Timeline System Design
+
+## TL;DR
+
+<TLDR>
+
+Feed generation là bài toán quyết định **khi nào** và **ở đâu** chuẩn bị candidate posts cho mỗi reader. **Fan-out on Write** trả giá lúc author đăng bài để read nhanh; **Fan-out on Read** trì hoãn công việc tới lúc reader mở feed. Production thường dùng hybrid strategy dựa trên follower count, post frequency, read frequency, freshness requirement và system capacity.
+
+</TLDR>
+
+## Mental Model
+
+Câu hỏi cốt lõi là: **ai làm phần việc tạo feed — write path của author hay read path của reader?**
+
+<Principle label="Trade-off">Fan-out on Write chuyển cost sang write để giảm read latency; Fan-out on Read giảm write amplification nhưng làm read path phải fetch, merge và rank nhiều nguồn hơn.</Principle>
+
+<FlowExplainer
+  title="Hai thời điểm để tạo feed"
+  description="Cùng một post nhưng hệ thống có thể chuẩn bị follower feeds khi write hoặc chờ tới read mới tổng hợp candidates."
+  scenarios={[
+    {
+      id: 'fanout-write',
+      label: 'Fan-out on Write',
+      layout: 'compact',
+      nodes: [
+        {id: 'author', label: 'Author', detail: 'Creates post', role: 'user'},
+        {id: 'post', label: 'Post Store', detail: 'Durable post', role: 'database'},
+        {id: 'queue', label: 'Queue', detail: 'Fan-out work', role: 'data'},
+        {id: 'worker', label: 'Fan-out Worker', detail: 'Updates follower feeds', role: 'service'},
+        {id: 'feed', label: 'Feed Store', detail: 'Precomputed post IDs', role: 'database'},
+        {id: 'reader', label: 'Reader', detail: 'Fast feed read', role: 'user'},
+      ],
+      steps: [
+        {title: '1 · Persist post', from: 'author', to: 'post', message: 'post', description: 'Post content được lưu ở durable source trước.'},
+        {title: '2 · Enqueue fan-out', from: 'post', to: 'queue', message: 'post event', description: 'Request path không cần chờ toàn bộ follower feeds được update.'},
+        {title: '3 · Update feeds async', from: 'queue', to: 'worker', message: 'fan-out job', description: 'Workers có thể scale độc lập và cập nhật nhiều follower feeds.'},
+        {title: '4 · Materialize candidates', from: 'worker', to: 'feed', message: 'post_id', description: 'Feed Store giữ candidate references đã được chuẩn bị trước.'},
+        {title: '5 · Read quickly', from: 'feed', to: 'reader', message: 'feed candidates', description: 'Reader tránh phải tổng hợp toàn bộ sources tại request time.'},
+      ],
+    },
+    {
+      id: 'fanout-read',
+      label: 'Fan-out on Read',
+      layout: 'compact',
+      nodes: [
+        {id: 'author', label: 'Author', detail: 'Creates post', role: 'user'},
+        {id: 'post', label: 'Post Store', detail: 'No per-follower push', role: 'database'},
+        {id: 'reader', label: 'Reader', detail: 'Opens feed', role: 'user'},
+        {id: 'sources', label: 'Followed Sources', detail: 'Recent posts', role: 'data'},
+        {id: 'rank', label: 'Merge / Rank', detail: 'Builds final feed', role: 'service'},
+      ],
+      steps: [
+        {title: '1 · Persist only', from: 'author', to: 'post', message: 'post', description: 'Write path không update hàng triệu follower feeds.'},
+        {title: '2 · Reader requests feed', from: 'reader', to: 'sources', message: 'follow graph', description: 'Read path mới tìm recent posts từ các nguồn reader follow.'},
+        {title: '3 · Build candidates', from: 'sources', to: 'rank', message: 'recent posts', description: 'Candidates được merge và rank tại read time.'},
+        {title: '4 · Return feed', from: 'rank', to: 'reader', message: 'ranked feed', description: 'Read cost cao hơn nhưng tránh write amplification lớn.'},
+      ],
+    },
+  ]}
+/>
+
+## Core Concepts
+
+### Fan-out on Write
+
+Khi author đăng bài, hệ thống đẩy `post_id` vào Feed Store của followers trước. Read path rất nhanh, nhưng một author có nhiều followers tạo **write amplification** lớn.
+
+### Fan-out on Read
+
+Write chỉ persist post. Khi reader mở feed, hệ thống fetch recent posts từ các sources được follow rồi merge/rank. Write nhẹ hơn nhưng read path đắt hơn.
+
+### Hybrid strategy
+
+Không nên dùng rule cứng kiểu “celebrity luôn fan-out on read”. Quyết định phải xét đồng thời follower count, **post frequency**, **feed read frequency**, freshness requirement và capacity. Một account 10M followers nhưng post một lần/tháng có thể vẫn đáng fan-out on write; cùng follower count nhưng 100 posts/ngày nghiêng mạnh về on-read hoặc hybrid.
+
+### Queue và eventual consistency
+
+Fan-out lớn không nên kéo dài synchronous post request. Persist post rồi enqueue fan-out work cho Workers giúp user nhận response sớm và cho phép fan-out hoàn thành async. Đổi lại, follower feeds có thể cập nhật sau một khoảng ngắn — đây là **eventual consistency**.
+
+### Feed generation khác ranking
+
+Feed generation quyết định candidate posts nào được xét. Ranking quyết định candidate nào đứng trước. Mental model tương tự `retrieve candidates → rank → top K`.
+
+## Example
+
+Một social network có user thường khoảng 200 followers và một account lớn 8M followers. Normal users có thể fan-out on write để đổi vài trăm writes lấy read nhanh. Account 8M followers có thể không push mọi post tới 8M feeds; read path merge recent posts của account đó với phần feed đã precompute. Nếu account lớn post rất hiếm, write fan-out vẫn có thể đáng cân nhắc vì cost xảy ra ít lần trong khi feed được đọc rất nhiều.
+
+## When to Use
+
+- Dùng Fan-out on Write khi follower fan-out còn kiểm soát được và read latency là ưu tiên lớn.
+- Dùng Fan-out on Read khi write amplification quá lớn hoặc source có post frequency cao.
+- Dùng hybrid khi workload có cả normal users và extreme high-fan-out users.
+- Dùng Queue/Workers khi fan-out không cần hoàn tất trước HTTP response.
+
+## Common Mistakes
+
+- **Celebrity = luôn Fan-out on Read:** follower count chỉ là một signal; post/read frequency có thể đổi quyết định.
+- **Fan-out đồng bộ trong request:** user phải chờ hàng nghìn hoặc hàng triệu feed updates không cần thiết.
+- **Copy toàn bộ post vào mọi feed:** thường chỉ cần references/candidate IDs; content có canonical storage riêng.
+- **Feed generation = ranking:** candidate generation và ordering giải quyết hai trách nhiệm khác nhau.
+
+## Related Knowledge
+
+- [System Design Fundamentals](./system-design-fundamentals.mdx) — framework requirements → workload → building block → trade-off.
+- [Notification System Design](./notification-system-design.mdx) — Queue/Worker và async side-effect pipeline.
+- [Database Design Foundations](./database-design-foundations.mdx) — durable state và access patterns.
+
+## Self-test
+
+1. Fan-out on Write chuyển cost sang path nào và đổi lại lợi ích gì?
+2. Vì sao account nhiều followers chưa đủ để kết luận phải Fan-out on Read?
+3. Queue giúp fan-out ở điểm nào và trade-off freshness là gì?
+4. Feed generation khác ranking thế nào?
+
+<details>
+<summary>Answers</summary>
+
+1. Chuyển cost sang write path để precompute follower feeds và làm read nhanh hơn.
+2. Cần xét thêm post frequency, read frequency, freshness và system capacity.
+3. Queue đưa fan-out khỏi synchronous request; follower feeds có thể eventually consistent trong thời gian Workers xử lý.
+4. Generation tạo candidate set; ranking sắp thứ tự candidates và chọn top results.
+
+</details>
