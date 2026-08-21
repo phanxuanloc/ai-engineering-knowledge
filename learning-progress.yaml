@@ -514,3 +514,28 @@ topics:
       - database-design
       - system-design
       - api-communication
+  observability-and-reliability:
+    title: Observability & Reliability
+    category: Software Engineering
+    status: learning
+    note: docs/software-engineering/observability-and-reliability.mdx
+    learned_at: 2026-08-21
+    last_reviewed: null
+    confidence: 3
+    checkpoints:
+      - observability-and-reliability-fundamentals
+    checkpoint_progress:
+      observability-and-reliability-fundamentals:
+        status: understood
+        note: docs/software-engineering/observability-and-reliability.mdx
+        learned_at: 2026-08-21
+        evidence:
+          - selected-traces-to-locate-the-failing-service-or-tool-after-metrics-detected-agent-degradation
+          - distinguished-high-http-availability-from-end-to-end-reliability-when-agent-task-success-violated-its-slo
+          - correctly-distinguished-measured-99-7-percent-sli-from-target-99-9-percent-slo
+    next_checkpoint: alerting-slo-and-error-budget
+    experiments: []
+    prerequisites: []
+    related:
+      - system-design
+      - evaluation
