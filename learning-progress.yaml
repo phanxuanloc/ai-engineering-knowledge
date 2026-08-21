@@ -339,6 +339,8 @@ topics:
       - rate-limiter
       - notification-system
       - chat-system
+      - feed-timeline-system
+      - distributed-cache-design
     checkpoint_progress:
       system-design-fundamentals:
         status: understood
@@ -376,7 +378,27 @@ topics:
         evidence:
           - identified-distributed-websocket-connection-routing-state
           - separated-realtime-websocket-delivery-from-durable-message-storage
-    next_checkpoint: feed-timeline-system
+      feed-timeline-system:
+        status: understood
+        note: docs/software-engineering/feed-timeline-system-design.mdx
+        learned_at: 2026-08-21
+        evidence:
+          - selected-fan-out-on-write-for-normal-user-with-small-follower-count-to-optimize-feed-read-latency
+          - selected-fan-out-on-read-for-high-fan-out-celebrity-to-avoid-millions-of-per-post-feed-writes
+          - selected-queue-and-workers-to-move-feed-fan-out-off-the-synchronous-post-request-path
+          - reasoned-that-fan-out-strategy-must-consider-post-frequency-and-read-frequency-not-follower-count-alone
+          - selected-fan-out-on-write-for-rare-posting-high-follower-account-and-fan-out-on-read-for-high-frequency-account
+      distributed-cache-design:
+        status: understood
+        note: docs/software-engineering/distributed-cache-design.mdx
+        learned_at: 2026-08-21
+        evidence:
+          - correctly-distinguished-cache-stampede-from-hot-key-traffic-concentration
+          - selected-single-flight-locking-to-prevent-concurrent-cache-rebuilds-from-overloading-the-database
+          - rejected-write-behind-for-bank-balance-durability-requirements
+          - corrected-write-through-choice-and-recognized-durable-queue-backed-write-behind-for-delay-tolerant-analytics
+          - selected-explicit-cache-invalidation-with-ttl-safety-net-for-security-critical-permission-revocation
+    next_checkpoint: load-balancing-and-service-scaling
     experiments: []
     prerequisites:
       - api-communication
