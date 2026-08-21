@@ -112,7 +112,15 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category', label: 'System Design', collapsible: true, collapsed: true,
           link: {type: 'doc', id: 'software-engineering/system-design'},
-          items: ['software-engineering/system-design-fundamentals','software-engineering/url-shortener-system-design','software-engineering/distributed-rate-limiter-system-design','software-engineering/notification-system-design','software-engineering/chat-system-design'],
+          items: [
+            'software-engineering/system-design-fundamentals',
+            'software-engineering/url-shortener-system-design',
+            'software-engineering/distributed-rate-limiter-system-design',
+            'software-engineering/notification-system-design',
+            'software-engineering/chat-system-design',
+            'software-engineering/feed-timeline-system-design',
+            'software-engineering/distributed-cache-design',
+          ],
         },
         {
           type: 'category', label: 'Development Workflows', collapsible: true, collapsed: true,
