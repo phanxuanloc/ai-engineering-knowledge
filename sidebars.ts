@@ -59,13 +59,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Algorithms & Data Structures',
-          link: {
-            type: 'generated-index',
-            title: 'Algorithms & Data Structures',
-            description:
-              'Các mental model và kỹ thuật nền tảng để tổ chức, tìm kiếm và xử lý dữ liệu hiệu quả.',
-            slug: '/software-engineering/algorithms-and-data-structures',
-          },
+          link: {type: 'generated-index', title: 'Algorithms & Data Structures', description: 'Các mental model và kỹ thuật nền tảng để tổ chức, tìm kiếm và xử lý dữ liệu hiệu quả.', slug: '/software-engineering/algorithms-and-data-structures'},
           items: [
             'software-engineering/search-and-ranking-fundamentals',
             'software-engineering/hashing-and-hash-table-fundamentals',
@@ -74,112 +68,47 @@ const sidebars: SidebarsConfig = {
           ],
         },
         {
-          type: 'category',
-          label: 'Databases',
-          link: {
-            type: 'generated-index',
-            title: 'Databases',
-            description:
-              'Data modeling, indexing, transactions và các cơ chế giữ correctness cho persistent state.',
-            slug: '/software-engineering/databases',
-          },
+          type: 'category', label: 'Databases',
+          link: {type: 'generated-index', title: 'Databases', description: 'Data modeling, indexing, transactions và các cơ chế giữ correctness cho persistent state.', slug: '/software-engineering/databases'},
           items: ['software-engineering/database-design-foundations'],
         },
         {
-          type: 'category',
-          label: 'Networking & Web Fundamentals',
+          type: 'category', label: 'Networking & Web Fundamentals',
           link: {type: 'doc', id: 'software-engineering/networking-and-web-fundamentals'},
-          items: [
-            'software-engineering/network-addressing-and-routing',
-            'software-engineering/transport-tls-and-http',
-            'software-engineering/proxies-load-balancing-and-client-ip',
-            'software-engineering/cors-caching-and-cdn',
-          ],
+          items: ['software-engineering/network-addressing-and-routing','software-engineering/transport-tls-and-http','software-engineering/proxies-load-balancing-and-client-ip','software-engineering/cors-caching-and-cdn'],
         },
         {
-          type: 'category',
-          label: 'API & Integration',
-          link: {
-            type: 'generated-index',
-            title: 'API & Integration',
-            description:
-              'Cách các client và services giao tiếp qua những communication boundary khác nhau.',
-            slug: '/software-engineering/api-and-integration',
-          },
+          type: 'category', label: 'API & Integration',
+          link: {type: 'generated-index', title: 'API & Integration', description: 'Cách các client và services giao tiếp qua những communication boundary khác nhau.', slug: '/software-engineering/api-and-integration'},
           items: ['software-engineering/api-communication-fundamentals'],
         },
+        {type: 'category', label: 'Testing & Quality Engineering', link: {type: 'doc', id: 'software-engineering/testing-and-quality-engineering'}, items: []},
         {
-          type: 'category',
-          label: 'Testing & Quality Engineering',
-          link: {type: 'doc', id: 'software-engineering/testing-and-quality-engineering'},
-          items: [],
-        },
-        {
-          type: 'category',
-          label: 'Security Engineering',
+          type: 'category', label: 'Security Engineering',
           link: {type: 'doc', id: 'software-engineering/security-engineering'},
-          items: [
-            'software-engineering/threat-modeling-and-attack-surface',
-            'software-engineering/secrets-and-credential-security',
-          ],
+          items: ['software-engineering/threat-modeling-and-attack-surface','software-engineering/secrets-and-credential-security'],
         },
         {
-          type: 'category',
-          label: 'System Design',
-          link: {
-            type: 'generated-index',
-            title: 'System Design',
-            description:
-              'Learning path từ fundamentals tới các design chuyên sâu đã được checkpoint.',
-            slug: '/software-engineering/system-design',
-          },
-          items: [
-            'software-engineering/system-design-fundamentals',
-            'software-engineering/url-shortener-system-design',
-            'software-engineering/distributed-rate-limiter-system-design',
-            'software-engineering/notification-system-design',
-            'software-engineering/chat-system-design',
-          ],
+          type: 'category', label: 'System Design',
+          link: {type: 'generated-index', title: 'System Design', description: 'Learning path từ fundamentals tới các design chuyên sâu đã được checkpoint.', slug: '/software-engineering/system-design'},
+          items: ['software-engineering/system-design-fundamentals','software-engineering/url-shortener-system-design','software-engineering/distributed-rate-limiter-system-design','software-engineering/notification-system-design','software-engineering/chat-system-design'],
         },
         {
-          type: 'category',
-          label: 'Development Workflows',
-          link: {
-            type: 'generated-index',
-            title: 'Development Workflows',
-            description:
-              'Các workflow giúp team tích hợp, kiểm thử và release software an toàn.',
-            slug: '/software-engineering/development-workflows',
-          },
-          items: [
-            'software-engineering/git-workflows',
-            'software-engineering/git-history-and-change-integration',
-            'software-engineering/release-safety-and-traceability',
-          ],
+          type: 'category', label: 'Development Workflows',
+          link: {type: 'generated-index', title: 'Development Workflows', description: 'Các workflow giúp team tích hợp, kiểm thử và release software an toàn.', slug: '/software-engineering/development-workflows'},
+          items: ['software-engineering/git-workflows','software-engineering/git-history-and-change-integration','software-engineering/release-safety-and-traceability'],
         },
-        {
-          type: 'category',
-          label: 'DevOps, Cloud & Infrastructure',
-          link: {type: 'doc', id: 'software-engineering/devops-cloud-and-infrastructure'},
-          items: [],
-        },
+        {type: 'category', label: 'DevOps, Cloud & Infrastructure', link: {type: 'doc', id: 'software-engineering/devops-cloud-and-infrastructure'}, items: []},
         {
           type: 'category',
           label: 'Observability & Reliability',
           link: {type: 'doc', id: 'software-engineering/observability-and-reliability'},
-          items: [],
+          items: ['software-engineering/observability-and-reliability-fundamentals'],
         },
         {
-          type: 'category',
-          label: 'Operating Systems & Concurrency',
+          type: 'category', label: 'Operating Systems & Concurrency',
           link: {type: 'doc', id: 'software-engineering/operating-systems-and-concurrency'},
-          items: [
-            'software-engineering/process-thread-and-concurrency',
-            'software-engineering/synchronization-and-deadlocks',
-            'software-engineering/async-io-and-event-loop',
-            'software-engineering/memory-management',
-            'software-engineering/cpu-scheduling-and-context-switching',
-          ],
+          items: ['software-engineering/process-thread-and-concurrency','software-engineering/synchronization-and-deadlocks','software-engineering/async-io-and-event-loop','software-engineering/memory-management','software-engineering/cpu-scheduling-and-context-switching'],
         },
       ],
     },

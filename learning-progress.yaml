@@ -518,7 +518,7 @@ topics:
     title: Observability & Reliability
     category: Software Engineering
     status: learning
-    note: docs/software-engineering/observability-and-reliability.mdx
+    note: docs/software-engineering/observability-and-reliability-fundamentals.mdx
     learned_at: 2026-08-21
     last_reviewed: null
     confidence: 3
@@ -527,11 +527,11 @@ topics:
     checkpoint_progress:
       observability-and-reliability-fundamentals:
         status: understood
-        note: docs/software-engineering/observability-and-reliability.mdx
+        note: docs/software-engineering/observability-and-reliability-fundamentals.mdx
         learned_at: 2026-08-21
         evidence:
           - selected-traces-to-locate-the-failing-service-or-tool-after-metrics-detected-agent-degradation
-          - distinguished-high-http-availability-from-end-to-end-reliability-when-agent-task-success-violated-its-slo
+          - distinguished-high-http-availability-from-end-to-end-agent-reliability-when-task-success-missed-its-slo
           - correctly-distinguished-measured-99-7-percent-sli-from-target-99-9-percent-slo
     next_checkpoint: alerting-slo-and-error-budget
     experiments: []
@@ -539,3 +539,4 @@ topics:
     related:
       - system-design
       - evaluation
+      - api-communication
