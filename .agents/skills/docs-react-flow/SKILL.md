@@ -9,6 +9,8 @@ Build learning diagrams whose structure is understandable within five seconds. A
 
 Use this skill only after `docs-diagram` classifies the communication intent and selects React Flow. Treat MDX `nodes`, `edges`, `kind`, and `primaryPath` as the renderer-facing Diagram Spec. Keep stable IDs and authored facts unchanged during layout repair.
 
+For theme, surfaces, typography, responsive shell, and palette decisions, follow `docs-ui` and `DESIGN.md`. React Flow may use semantic role colors, but cyan/teal remains the primary interface accent and both light/dark themes must preserve contrast.
+
 Use the current `@xyflow/react` v12 API. Treat [React Flow documentation](https://reactflow.dev/) as the API source of truth, especially its [layouting guide](https://reactflow.dev/learn/layouting/layouting), [custom nodes guide](https://reactflow.dev/learn/customization/custom-nodes), and [built-in components guide](https://reactflow.dev/learn/concepts/built-in-components).
 
 ## Choose the medium and mode

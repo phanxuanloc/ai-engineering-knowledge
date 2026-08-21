@@ -1,48 +1,58 @@
-# Learning UI guide
+# AI Engineering Knowledge — Design System
 
-The site presents verified learning, not a generic documentation catalog. Visual treatment should make a concept easier to understand or recall, make actual progress clearer, or make the next learning action obvious.
+This site is a calm, future-facing AI Engineering knowledge environment. It should feel technical and alive without becoming a gaming dashboard. Learning clarity always wins over decoration.
 
-## Knowledge articles
+## Canonical interface
 
-Use `.mdx` for every knowledge article and start from `docs/_templates/learning-note.mdx`. Prefer ordinary Markdown for prose and use the semantic components exported by `src/components/Learning` when visual hierarchy adds learning value. Keep `My Understanding` and `My Experiment` as owner-authored records.
+- **Light mode:** near-white neutral background, white surfaces, dark slate text, cyan/teal accents, crisp borders, restrained shadows.
+- **Dark mode:** deep navy background, slightly lighter navy surfaces, cool gray text, cyan/teal accents, minimal glow only for active state.
+- **Never use:** purple as a primary accent, rainbow neon, low-contrast pale text, ambient particles, heavy glass stacks, constant animation, or decorative cards around ordinary prose.
+- The logo, links, focus state, active navigation, diagram emphasis, and controls share the cyan/teal family.
 
-## Visual decisions
+Canonical tokens live in `src/css/custom.css`. Reuse semantic variables such as `--learning-active`, `--learning-border`, `--learning-surface`, and `--diagram-surface`; do not scatter one-off colors.
 
-Start with `.agents/skills/docs-visual-density/SKILL.md` to audit the page block-by-block, then use `.agents/skills/docs-diagram/SKILL.md` to classify each required visual before choosing technology:
+## Navigation
 
-- **Mental model / conceptual sketch** → Excalidraw.
-- **Static flow / system topology** → React Flow.
-- **Runtime behavior over time** → Visual Explainer / Flow Explainer.
-- **Quantitative change** → chart visualization.
-- **Genuine comparison** → Comparison or semantic table.
-- **Two to four short lines already explain it** → ordinary MDX.
+The docs sidebar is an always-open knowledge map:
 
-### Visual-first authoring rule
+1. domain headings are uppercase, compact, and accented;
+2. knowledge groups are stronger mixed-case labels with a vertical marker;
+3. article links are quieter and optimized for scanning;
+4. the current article gets the only strong sidebar emphasis.
 
-When a prose block, bullet cluster, or fenced `text` block mainly describes **flow, lifecycle, topology, hierarchy, state transition, causality, comparison, or quantitative change**, and an existing renderer can represent it truthfully, converting it to a visual is **mandatory**, not optional polish. Fenced ASCII/pseudo-diagrams are not acceptable substitutes for React Flow, FlowExplainer, Excalidraw, Comparison, or charts unless the literal terminal/text output itself is the subject.
+Categories do not collapse. The sidebar scrolls independently on desktop and inside the mobile drawer. A long menu is acceptable when hierarchy remains obvious.
 
-Do not allow long pages to become walls of prose. After roughly two substantial conceptual blocks without a visual anchor, re-run the visual-density audit. The anchor must teach something; decorative cards do not count.
+## Article hierarchy
 
-The key distinction is **structure vs behavior**. React Flow answers “what connects to what?”. Flow Explainer answers “what happens next?”. Do not animate every React Flow edge merely to make a page feel alive. When request/response, streaming, retries, events, messages, tokens, chunks, tool calls, selection, filtering, or state transitions are part of the lesson, prefer a finite step-driven explainer with visible current state.
+- H1 establishes the topic with generous whitespace and compact supporting metadata.
+- H2 starts a major learning section with a cyan-to-blue marker and divider.
+- H3 introduces a local concept without competing with H2.
+- Prose is approximately `68ch` wide with comfortable line height.
+- Inline code uses a low-contrast tinted surface, never a bright white fragment inside dark prose.
+- The desktop TOC shows major sections only; nested H3 entries stay out of the default scan path.
+- Use `TLDR`, `KeyInsight`, `Remember`, `ImportantDistinction`, `Comparison`, `ExperimentCard`, `TopicPath`, and `SelfTest` only for their semantic roles. Ordinary prose stays prose.
 
-Important visuals must remain understandable from their initial view and work cleanly on narrow screens. Keep rendering, geometry, animation, controls, theme, and responsive behavior in shared infrastructure rather than article-level boilerplate. Article MDX should declare semantic graph/story data.
+## Visual routing
 
-### AI-technical aesthetic
+Run `.agents/skills/docs-visual-density/SKILL.md`, then `.agents/skills/docs-diagram/SKILL.md` for educational visuals.
 
-The site can look slightly AI-native: technical, precise, dark-mode friendly, and alive. Use a restrained glow/trail for active packets or tokens, a subtle pulse for active computation, luminous focus/active edges, compact step/status indicators, and smooth state transitions when they encode meaning.
+- Mental model or conceptual boundary → Excalidraw.
+- Static topology or structured flow → React Flow.
+- Runtime behavior over time → FlowExplainer.
+- Quantitative relationship → chart or focused interactive visualization.
+- Genuine comparison → Comparison or semantic table.
+- Two to four short lines already explain it → normal MDX.
 
-Do not turn the site into a cyberpunk dashboard. Avoid rainbow neon, heavy glassmorphism, decorative particles, excessive gradients, or constant animation. Inactive content should stay calm. The intended feeling is **watching a real system execute**, not watching decoration.
+Animation must encode state, causality, transport, or reveal. Inactive content remains calm. Shared components own geometry, theme, responsive behavior, and controls; MDX owns semantic data.
 
-### Runtime explainer controls
+## Responsive and accessibility
 
-Finite runtime stories should normally expose `Play`, `Pause`, `Step`, and `Replay`, show the current step, and provide a one-sentence explanation of the current state. Scenario tabs are preferred for related variants. Respect `prefers-reduced-motion`; motion may disappear but semantic emphasis must remain.
+- Recompose before shrinking.
+- Keep text at normal reading size and touch targets at least 44px where interactive.
+- Preserve visible focus, meaningful alt text, keyboard access, and reduced-motion behavior.
+- Light and dark modes must both retain readable text, borders, controls, inline code, and diagram labels.
+- Validate representative pages at desktop and narrow mobile widths.
 
-## Learning state
+## Change workflow
 
-`learning-progress.yaml` is the internal source of truth for the author's learning workflow. Never infer a learned state from a file, a planned syllabus, or visual completeness. Public website data describes published content and reader navigation only; it must not expose personal progress.
-
-## Visual hierarchy
-
-Use `TLDR`, `KeyInsight`, `Remember`, and `ImportantDistinction` for high-value recall cues; `Comparison` for genuine comparisons; `ExperimentCard` for explicit experiment state; `TopicPath` for reader-oriented article structure; and `SelfTest` for question-by-question recall. Do not turn ordinary prose into cards.
-
-Dense prose-heavy rubrics use `ResponsiveRubric`: semantic tables remain available on desktop/tablet, while narrow screens group the same score progression into one stacked card per dimension. Keep one data source for both presentations; do not shrink multi-column text or make readers horizontally scroll away from row labels.
+Use `.agents/skills/docs-ui/SKILL.md` for site UI work. Prefer global tokens and shared abstractions; article-scoped styling requires a unique teaching reason. Finish with rendered light/dark and desktop/mobile inspection plus `npm run docs:check`, `npm run typecheck`, `npm run build`, and `git diff --check`.

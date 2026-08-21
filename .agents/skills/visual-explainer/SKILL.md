@@ -11,6 +11,8 @@ metadata:
 
 `FlowExplainer` is the repository's shared runtime-story renderer. It is **not** a static diagram with decorative motion. Use it when the learning question is “what happens over time?”; use `docs-react-flow` when the question is only “what connects to what?”. Always run `.agents/skills/docs-diagram/SKILL.md` first.
 
+Follow `docs-ui` and `DESIGN.md` for shared shell, typography, controls, and light/dark palette. Use cyan/teal for the primary active signal; reserve other colors for real semantic states.
+
 ## Core contract
 
 Author semantic scenarios and events. Article MDX owns facts; shared components own geometry, animation, theme, controls, responsive behavior, and visual state.

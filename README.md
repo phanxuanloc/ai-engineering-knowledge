@@ -47,7 +47,7 @@ Each note belongs to one topic directory under `docs/`. Start new notes by copyi
 
 Use a short, descriptive kebab-case `.mdx` filename and complete the front matter at the top. Category landing pages are named `index.mdx`, and each `_category_.json` controls its sidebar label and order. Write standard Markdown first; use `docs-diagram` to classify and validate visuals, genuine Excalidraw scenes and their optimized exports for conceptual explanations, and the shared read-only-but-navigable React Flow component for structured technical flows. Mermaid is reserved for rare, tiny relationships whose topology is the entire lesson. The complete visualization policy lives in `AGENTS.md`.
 
-The concise UI authoring and diagram decision rules live in [DESIGN.md](DESIGN.md).
+The canonical interface lives in [DESIGN.md](DESIGN.md). Agents changing theme, navigation, article presentation, responsive behavior, or learning-component styling must use `.agents/skills/docs-ui/SKILL.md`; educational visuals continue through the diagram skills.
 
 ## How AI agents maintain the knowledge base
 
