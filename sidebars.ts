@@ -66,7 +66,12 @@ const sidebars: SidebarsConfig = {
               'Các mental model và kỹ thuật nền tảng để tổ chức, tìm kiếm và xử lý dữ liệu hiệu quả.',
             slug: '/software-engineering/algorithms-and-data-structures',
           },
-          items: ['software-engineering/search-and-ranking-fundamentals'],
+          items: [
+            'software-engineering/search-and-ranking-fundamentals',
+            'software-engineering/hashing-and-hash-table-fundamentals',
+            'software-engineering/stack-and-queue-fundamentals',
+            'software-engineering/trees-graphs-and-traversal-fundamentals',
+          ],
         },
         {
           type: 'category',
