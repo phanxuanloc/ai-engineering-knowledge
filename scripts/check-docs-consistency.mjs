@@ -56,6 +56,10 @@ for (const file of walk(docsRoot).filter((file) => file.endsWith('.mdx'))) {
     errors.push(`${relative(file)}: put <details> and <summary> on separate lines for MDX`);
   }
 
+  for (const match of source.matchAll(/\bto="([^\"]+\.mdx)"/g)) {
+    errors.push(`${relative(file)}: component route must omit the .mdx extension: ${match[1]}`);
+  }
+
   for (const match of source.matchAll(/\[[^\]]+\]\(([^)]+\.mdx(?:#[^)]+)?)\)/g)) {
     const link = match[1].split('#')[0];
     if (/^(?:https?:|\/)/u.test(link)) continue;
@@ -66,13 +70,31 @@ for (const file of walk(docsRoot).filter((file) => file.endsWith('.mdx'))) {
   }
 }
 
-const checkpointNotes = new Set(
-  [...progress.matchAll(/^ {8}note: (docs\/[^^\n]+\.mdx)$/gm)].map((match) => match[1].trim()),
-);
+const checkpointNotes = new Set();
+let insideCheckpointProgress = false;
+
+for (const line of progress.split('\n')) {
+  if (/^ {4}checkpoint_progress:\s*$/u.test(line)) {
+    insideCheckpointProgress = true;
+    continue;
+  }
+
+  if (insideCheckpointProgress && /^ {4}\S/u.test(line)) {
+    insideCheckpointProgress = false;
+  }
+
+  if (insideCheckpointProgress) {
+    const noteMatch = line.match(/^ {8}note: (docs\/[^\n]+\.mdx)\s*$/u);
+    if (noteMatch) checkpointNotes.add(noteMatch[1]);
+  }
+}
 for (const note of checkpointNotes) {
   const notePath = path.join(root, note);
   if (!fs.existsSync(notePath)) continue;
   const source = fs.readFileSync(notePath, 'utf8');
+  const isStructuralLandingPage = /<LandingCardGrid(?:\s|>)/u.test(source);
+  if (isStructuralLandingPage) continue;
+
   for (const heading of requiredHeadings) {
     if (!source.includes(`## ${heading}`)) {
       errors.push(`${note}: missing required heading "${heading}"`);
