@@ -69,14 +69,16 @@ Một bản design tốt phải nối được từng quyết định kỹ thu�
   <ConceptCard title="Buffered work">Queue giữ work intent để decouple producer/consumer và absorb burst, nhưng không tự bảo vệ business invariant.</ConceptCard>
 </ConceptGrid>
 
-### Bốn deep dive đã học
+### Sáu deep dive đã học
 
 - [URL Shortener](./url-shortener-system-design.mdx) — thiết kế read-heavy redirect path, key generation, cache và hot-key skew.
 - [Distributed Rate Limiter](./distributed-rate-limiter-system-design.mdx) — thiết kế global quota với shared state và atomic check-and-increment.
 - [Notification System](./notification-system-design.mdx) — thiết kế async delivery, retry, acknowledgement, DLQ và idempotency.
 - [Chat System](./chat-system-design.mdx) — tách realtime WebSocket delivery, distributed connection routing và durable message storage.
+- [Feed / Timeline System](./feed-timeline-system-design.mdx) — trade-off Fan-out on Write, Fan-out on Read, Queue/Workers và hybrid strategy.
+- [Distributed Cache](./distributed-cache-design.mdx) — Cache-Aside, TTL/invalidation, Hot Key, Cache Stampede và write strategies.
 
-Đây là **Learning Map của phần đã được checkpoint**, không phải danh sách mọi System Design có thể tồn tại. Feed/Timeline vẫn là checkpoint tiếp theo, chưa được biểu diễn như kiến thức đã học.
+Đây là **Learning Map của phần đã được checkpoint**, không phải danh sách mọi System Design có thể tồn tại.
 
 ## Example
 
@@ -89,7 +91,7 @@ Hai case dùng building block khác nhau vì vấn đề cần giải quyết kh
 - Dùng framework này khi bắt đầu một design mới hoặc review một architecture proposal.
 - Tách read, write, async và realtime path khi mỗi path có workload hoặc failure mode khác nhau.
 - Truy ngược từng component về property mà nó tạo ra; component không có trách nhiệm rõ là signal của over-design.
-- Mở deep dive tương ứng khi vấn đề chính là read-heavy lookup, global quota, reliable side effect hoặc realtime messaging.
+- Mở deep dive tương ứng khi vấn đề chính là read-heavy lookup, global quota, reliable side effect, realtime messaging, feed generation hoặc cache behavior.
 
 ## Common Mistakes
 
@@ -120,6 +122,6 @@ Hai case dùng building block khác nhau vì vấn đề cần giải quyết kh
 2. Capacity xử lý lượng work; correctness bảo vệ invariant; durability giữ state qua failure; realtime delivery vận chuyển dữ liệu với latency thấp.
 3. Queue buffer và phân phối work, nhưng nhiều Worker vẫn có thể tranh cùng business state nếu source of truth không enforce atomicity.
 4. Cache là fast copy; coordination state giúp nhiều instance thống nhất một rule/routing decision; durable state giữ business fact lâu dài.
-5. URL Shortener cho read-heavy lookup; Rate Limiter cho global quota; Notification cho retryable side effect; Chat cho realtime delivery kết hợp durable history.
+5. URL Shortener cho read-heavy lookup; Rate Limiter cho global quota; Notification cho retryable side effect; Chat cho realtime delivery; Feed/Timeline cho fan-out trade-off; Distributed Cache cho cache freshness và failure modes.
 
 </details>
