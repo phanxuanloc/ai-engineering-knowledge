@@ -2,12 +2,16 @@
   --ifm-color-primary:#087f9f; --ifm-color-primary-dark:#07728f; --ifm-color-primary-darker:#066b86; --ifm-color-primary-darkest:#05586f; --ifm-color-primary-light:#1590b1; --ifm-color-primary-lighter:#2499b8; --ifm-color-primary-lightest:#53b2c9;
   --ifm-font-family-base:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; --ifm-heading-font-family:var(--ifm-font-family-base); --ifm-heading-font-weight:700; --ifm-font-color-base:#243247; --ifm-font-color-secondary:#526176; --ifm-background-color:#f8fafc; --ifm-navbar-background-color:rgba(255,255,255,.94); --ifm-toc-border-color:rgba(31,57,82,.18); --ifm-global-radius:9px; --ifm-code-font-size:92%;
   --learning-active:#087f9f; --learning-active-soft:rgba(8,127,159,.075); --learning-active-border:rgba(8,127,159,.22); --learning-success:#187653; --learning-experiment:#956018; --learning-experiment-soft:rgba(149,96,24,.065); --learning-insight:#087f9f; --learning-border:rgba(39,63,88,.18); --learning-surface:#fff; --learning-subtle-surface:#f1f5f8; --learning-hover:rgba(8,127,159,.06); --learning-grid:rgba(24,90,115,.045); --learning-shadow:0 12px 30px rgba(22,42,64,.09),0 1px 2px rgba(22,42,64,.04); --learning-radius:12px; --learning-button:#087f9f; --learning-button-shadow:rgba(8,127,159,.2); --diagram-surface:#f8fbfd; --diagram-grid:rgba(8,127,159,.16); --docusaurus-highlighted-code-line-bg:rgba(8,127,159,.08);
-  --aa-search-input-height:38px; --aa-font-size:14px; --aa-primary-color-rgb:70,84,199; --aa-primary-color-alpha:.12; --aa-text-color-rgb:37,41,54; --aa-muted-color-rgb:91,97,112; --aa-muted-color-alpha:.82; --aa-icon-color-rgb:91,97,112; --aa-input-border-color-rgb:225,227,232; --aa-input-border-color-alpha:1; --aa-panel-border-color-rgb:225,227,232; --aa-panel-border-color-alpha:1; --aa-background-color-rgb:255,255,255; --aa-input-background-color-rgb:247,247,249; --aa-selected-color-rgb:70,84,199; --aa-selected-color-alpha:.075; --aa-description-highlight-background-color-rgb:70,84,199; --aa-description-highlight-background-color-alpha:.13; --aa-overlay-color-rgb:16,18,23; --aa-overlay-color-alpha:.32; --aa-panel-shadow:0 1px 2px rgba(20,24,40,.06),0 18px 50px rgba(20,24,40,.14); --aa-scrollbar-track-background-color-rgb:247,247,249; --aa-scrollbar-thumb-background-color-rgb:197,200,210;
 }
 [data-theme='dark'] {
   --ifm-color-primary:#49c7e8; --ifm-color-primary-dark:#31bbdf; --ifm-color-primary-darker:#29b1d5; --ifm-color-primary-darkest:#228faf; --ifm-color-primary-light:#67d1eb; --ifm-color-primary-lighter:#78d6ee; --ifm-color-primary-lightest:#a8e7f4; --ifm-font-color-base:#d4ddeb; --ifm-font-color-secondary:#a8b4c7; --ifm-background-color:#060b17; --ifm-navbar-background-color:rgba(5,9,20,.9); --ifm-toc-border-color:rgba(115,137,190,.16);
   --learning-active:#49c7e8; --learning-active-soft:rgba(47,174,211,.1); --learning-active-border:rgba(73,199,232,.3); --learning-success:#49e5b0; --learning-experiment:#f2ba64; --learning-experiment-soft:rgba(242,186,100,.07); --learning-insight:#42c7e2; --learning-border:rgba(120,143,196,.16); --learning-surface:rgba(12,20,38,.9); --learning-subtle-surface:#080f1e; --learning-hover:rgba(54,176,211,.09); --learning-grid:rgba(96,126,185,.045); --learning-shadow:0 18px 55px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.02); --learning-button:#159bb9; --learning-button-shadow:rgba(21,155,185,.22); --diagram-surface:#081121; --diagram-grid:rgba(73,199,232,.18); --docusaurus-highlighted-code-line-bg:rgba(73,199,232,.09);
-  --aa-primary-color-rgb:173,181,255; --aa-primary-color-alpha:.13; --aa-text-color-rgb:223,226,234; --aa-muted-color-rgb:174,180,193; --aa-muted-color-alpha:.82; --aa-icon-color-rgb:174,180,193; --aa-input-border-color-rgb:45,48,57; --aa-panel-border-color-rgb:45,48,57; --aa-background-color-rgb:24,27,34; --aa-input-background-color-rgb:20,22,28; --aa-selected-color-rgb:173,181,255; --aa-selected-color-alpha:.1; --aa-description-highlight-background-color-rgb:173,181,255; --aa-description-highlight-background-color-alpha:.16; --aa-overlay-color-rgb:0,0,0; --aa-overlay-color-alpha:.55; --aa-panel-shadow:0 1px 2px rgba(0,0,0,.28),0 20px 55px rgba(0,0,0,.38); --aa-scrollbar-track-background-color-rgb:20,22,28; --aa-scrollbar-thumb-background-color-rgb:65,69,82;
+}
+body {
+  --aa-search-input-height:38px; --aa-font-size:14px; --aa-primary-color-rgb:8,127,159; --aa-primary-color-alpha:.12; --aa-text-color-rgb:36,50,71; --aa-muted-color-rgb:82,97,118; --aa-muted-color-alpha:.82; --aa-icon-color-rgb:82,97,118; --aa-input-border-color-rgb:216,224,231; --aa-input-border-color-alpha:1; --aa-panel-border-color-rgb:216,224,231; --aa-panel-border-color-alpha:1; --aa-background-color-rgb:255,255,255; --aa-input-background-color-rgb:241,245,248; --aa-selected-color-rgb:8,127,159; --aa-selected-color-alpha:.075; --aa-description-highlight-background-color-rgb:8,127,159; --aa-description-highlight-background-color-alpha:.13; --aa-overlay-color-rgb:16,29,48; --aa-overlay-color-alpha:.32; --aa-panel-shadow:0 1px 2px rgba(22,42,64,.06),0 18px 50px rgba(22,42,64,.14); --aa-scrollbar-track-background-color-rgb:241,245,248; --aa-scrollbar-thumb-background-color-rgb:184,199,211;
+}
+html[data-theme='dark'] body {
+  --aa-primary-color-rgb:73,199,232; --aa-primary-color-alpha:.13; --aa-text-color-rgb:212,221,235; --aa-muted-color-rgb:168,180,199; --aa-muted-color-alpha:.82; --aa-icon-color-rgb:168,180,199; --aa-input-border-color-rgb:31,45,68; --aa-panel-border-color-rgb:31,45,68; --aa-background-color-rgb:12,20,38; --aa-input-background-color-rgb:8,15,30; --aa-selected-color-rgb:73,199,232; --aa-selected-color-alpha:.1; --aa-description-highlight-background-color-rgb:73,199,232; --aa-description-highlight-background-color-alpha:.16; --aa-overlay-color-rgb:0,0,0; --aa-overlay-color-alpha:.55; --aa-panel-shadow:0 1px 2px rgba(0,0,0,.28),0 20px 55px rgba(0,0,0,.38); --aa-scrollbar-track-background-color-rgb:8,15,30; --aa-scrollbar-thumb-background-color-rgb:52,70,99;
 }
 html { scroll-behavior:smooth; }
 body { letter-spacing:-.003em; }
@@ -209,6 +213,28 @@ body { letter-spacing:-.003em; }
   .navbar { padding-inline:.45rem; }
   .navbar__title { max-width:47vw; font-size:.84rem; }
   .navbar__logo { height:1.55rem; }
+  .navbar .dsla-search-wrapper,
+  .navbar .dsla-search-field,
+  .navbar .aa-Autocomplete { width:44px; }
+  .navbar .aa-DetachedSearchButton {
+    width:44px;
+    min-width:44px;
+    height:44px;
+    justify-content:center;
+    padding:0;
+    color:var(--learning-active);
+    background:transparent;
+    border-color:transparent;
+    border-radius:10px;
+  }
+  .navbar .aa-DetachedSearchButton:hover { background:var(--learning-hover); }
+  .navbar .aa-DetachedSearchButton:focus-visible {
+    border-color:var(--learning-active);
+    box-shadow:0 0 0 3px var(--learning-active-soft);
+  }
+  .navbar .aa-DetachedSearchButtonIcon { width:44px; }
+  .navbar .aa-DetachedSearchButtonPlaceholder,
+  .navbar .aa-DetachedSearchButtonQuery { display:none; }
   .navbar-sidebar--single-panel { width:100vw; }
 }
 
