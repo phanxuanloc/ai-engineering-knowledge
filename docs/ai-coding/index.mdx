@@ -5,42 +5,21 @@ sidebar_position: 1
 slug: /ai-coding
 ---
 
-import {ConceptCard, ConceptGrid, KeyInsight} from '@site/src/components/Learning';
+import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 
 # AI Coding
 
-Knowledge trong category này hiện tập trung vào **Context Engineering**: cách chọn, tổ chức và duy trì information để LLM hoặc AI agent có đủ evidence cho current decision.
+AI Coding tập trung vào cách tổ chức information, tools và workflows để AI hỗ trợ software development với context đúng và decisions đáng tin cậy hơn.
 
-## Context Engineering
+## Learning Areas
 
-<KeyInsight title="Bắt đầu bằng mental model, mở deep dive theo câu hỏi">
-  [Context Engineering Map](./context-engineering-map.mdx) là entry point để recall toàn topic và nhìn canonical lifecycle. Sau đó, chỉ mở deep dive phù hợp với điều đang cần hiểu hoặc áp dụng.
-</KeyInsight>
+<LandingCardGrid>
+  <LandingCard
+    eyebrow="Information for decisions"
+    title="Context Engineering"
+    description="Chọn, tối ưu và duy trì context phù hợp qua nhiều model invocations thay vì chỉ dựa vào prompt hoặc context window lớn."
+    to="./context-engineering-map.mdx"
+  />
+</LandingCardGrid>
 
-## Deep Dives
-
-<ConceptGrid columns={2}>
-  <ConceptCard eyebrow="01 · Information & lifecycle" title="Foundations & Lifecycle">
-    Model cần biết gì, Context khác Context Window thế nào, và Retrieve/Select vận hành qua nhiều invocation ra sao?
-
-    → [Mở Foundations & Lifecycle](./context-engineering.mdx)
-  </ConceptCard>
-
-  <ConceptCard eyebrow="02 · Quality & capacity" title="Context Optimization">
-    Selected context đã đủ tốt chưa, nên budget/compress thế nào và assembly theo role/order nào?
-
-    → [Mở Context Optimization](./context-optimization.mdx)
-  </ConceptCard>
-
-  <ConceptCard eyebrow="03 · Observe & protect" title="Context Operations">
-    Làm sao trace failure, đo useful signals, giữ freshness/provenance và bảo vệ trust boundaries?
-
-    → [Mở Context Operations](./context-operations.mdx)
-  </ConceptCard>
-
-  <ConceptCard eyebrow="04 · Application layer" title="Practical Context Manager">
-    Application thực thi Context Items, pinned/working/evictable context và Working State như thế nào?
-
-    → [Mở Practical Context Manager](./practical-context-manager.mdx)
-  </ConceptCard>
-</ConceptGrid>
+Bắt đầu ở topic landing page để nắm mental map, sau đó mở đúng deep dive cần thiết.

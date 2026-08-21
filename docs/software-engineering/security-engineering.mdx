@@ -1,28 +1,24 @@
 ---
-title: Security Engineering Fundamentals
-description: Mental model nền tảng để nhận diện assets, threats, attack surface, trust boundaries và thiết kế controls giới hạn blast radius.
+title: Security Engineering
+description: Topic landing page cho assets, threats, trust boundaries, controls và residual risk.
 slug: /software-engineering/security-engineering
 sidebar_position: 8
 tags: [security, least-privilege, authorization, trust-boundary, defense-in-depth]
 ---
 
-import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
+import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 
-# Security Engineering Fundamentals
+# Security Engineering
 
-## TL;DR
+Security Engineering bắt đầu từ **thứ cần bảo vệ** và các đường mà untrusted actors, input hoặc compromised components có thể tác động tới nó.
 
-<TLDR>
+## Topic Overview
 
-Security Engineering bắt đầu từ **thứ cần bảo vệ** và các đường mà untrusted actors hoặc input có thể tác động tới nó. Mental model thực dụng là **Assets → Threats → Attack Surface → Controls → Residual Risk**; mục tiêu không chỉ là ngăn failure mà còn giới hạn damage khi một lớp phòng thủ thất bại.
-
-</TLDR>
-
-## Mental Model
+Mental map: **Assets → Threats → Attack Surface → Controls → Residual Risk**. Thiết kế tốt không chỉ ngăn failure mà còn giới hạn blast radius khi một control thất bại.
 
 <ReactFlowDiagram
-  ariaLabel="Security engineering mental model from assets to residual risk"
+  ariaLabel="Security Engineering topic overview"
   direction="LR"
   kind="flow"
   interactive={false}
@@ -41,83 +37,13 @@ Security Engineering bắt đầu từ **thứ cần bảo vệ** và các đư�
   ]}
 />
 
-Một system an toàn không cần giả định mọi component luôn đúng. Hãy giả định một credential, model, service hoặc input validation có thể fail, rồi hỏi **failure đó có thể đi xa đến đâu**.
+## Lessons
 
-## Core Concepts
+<LandingCardGrid>
+  <LandingCard eyebrow="01" title="Threat Modeling & Attack Surface" description="Identify assets, threat paths, trust boundaries and where controls must interrupt attack paths." to="./threat-modeling-and-attack-surface.mdx" />
+  <LandingCard eyebrow="02" title="Secrets & Credential Security" description="Protect credentials, reduce exposed capability and limit blast radius when secrets are compromised." to="./secrets-and-credential-security.mdx" />
+</LandingCardGrid>
 
-### Asset, Threat, Vulnerability và Risk
+## Recommended Order
 
-- **Asset** là thứ có giá trị cần bảo vệ: source code, secrets, customer data, production infrastructure hoặc service availability.
-- **Threat** mô tả điều xấu có thể xảy ra với asset.
-- **Vulnerability** là weakness cho phép threat trở thành hiện thực.
-- **Risk** kết hợp hậu quả và khả năng xảy ra để giúp ưu tiên engineering effort.
-
-### Authentication khác Authorization
-
-<Comparison
-  label="Identity và permission"
-  items={[
-    {eyebrow: 'AuthN', title: 'Authentication', description: 'Who are you? Xác minh identity của caller.'},
-    {eyebrow: 'AuthZ', title: 'Authorization', description: 'Can this subject perform this action on this resource? Kiểm tra permission sau khi biết identity.'},
-  ]}
-/>
-
-Một JWT hợp lệ chỉ chứng minh caller đã được authenticate. Endpoint vẫn phải kiểm tra caller đó có quyền thực hiện action trên resource cụ thể hay không.
-
-### Least Privilege và Blast Radius
-
-Identity chỉ nên có capability tối thiểu cần cho nhiệm vụ. Coding Agent cần đọc code và tạo Pull Request không nên mặc nhiên có quyền xóa repository, đổi settings hoặc merge production code.
-
-<Principle label="Capability, không phải lời hứa">Prompt nói “đừng xóa repository” không loại bỏ quyền `delete_repository`. Security boundary phải nằm ở permission/policy thực tế.</Principle>
-
-### Trust Boundary và Untrusted Input
-
-Trust boundary là nơi mức độ tin cậy thay đổi. Dữ liệu đi qua storage hoặc retrieval không tự trở thành trusted: public issue, uploaded file, web content hay retrieved document vẫn phải được xem theo nguồn và capability mà nó có thể kích hoạt.
-
-### Defense in Depth
-
-Không phụ thuộc vào một lớp bảo vệ duy nhất. Permission, authorization, policy, approval gate, validation và audit có thể cùng giới hạn attack path. Logging hữu ích để phát hiện và điều tra nhưng không thay thế preventive control.
-
-## Example
-
-Một Coding Agent đọc public GitHub Issue rồi có thể chạy terminal và tạo PR. Issue là untrusted input; agent có privileged capability mà người tạo issue không có. Thiết kế an toàn hơn là chỉ cho agent quyền cần thiết, để branch protection/CI/human review chặn privileged transition thay vì cho prompt quyết định toàn bộ security.
-
-AI Agent chỉ là một ví dụ. Cùng mental model áp dụng cho REST API, backend service, CI/CD, database và cloud infrastructure.
-
-## When to Use
-
-- Khi thiết kế API, service account, CI/CD identity hoặc integration mới.
-- Khi thêm capability cho AI/Coding Agent, đặc biệt là terminal, database, Git hoặc production tools.
-- Khi review incident và cần xác định vì sao một failure có blast radius lớn.
-- Khi quyết định control nên nằm ở prompt/application layer hay enforcement boundary thấp hơn.
-
-## Common Mistakes
-
-- **Authenticated = authorized:** identity hợp lệ không đồng nghĩa được phép làm mọi action.
-- **Prompt là security boundary:** prompt hướng behavior nhưng không thu hồi capability thực tế.
-- **Internal = trusted:** dữ liệu nội bộ vẫn có thể bắt nguồn từ untrusted source hoặc compromised component.
-- **Logging thay prevention:** log giúp quan sát sự cố, không ngăn privileged action xảy ra.
-- **Một control là đủ:** critical path nên có defense in depth phù hợp với risk.
-
-## Related Knowledge
-
-- [Threat Modeling & Attack Surface](./threat-modeling-and-attack-surface.mdx)
-- [Secrets & Credential Security](./secrets-and-credential-security.mdx)
-- [API Communication Fundamentals](./api-communication-fundamentals.mdx)
-
-## Self-test
-
-1. Authentication và Authorization trả lời hai câu hỏi khác nhau nào?
-2. Vì sao prompt tốt không thay thế Least Privilege?
-3. Một public issue đi vào Coding Agent có terminal access tạo ra trust-boundary concern gì?
-4. Defense in Depth giúp gì khi một control thất bại?
-
-<details>
-<summary>Answers</summary>
-
-1. Authentication xác minh “bạn là ai”; Authorization kiểm tra “identity này có được làm action này trên resource này không”.
-2. Prompt chỉ hướng behavior; permission thực tế mới quyết định capability mà system có thể enforce.
-3. Untrusted input có thể manipulate một component sở hữu capability cao hơn nguồn input, tạo privilege bridge tới asset nhạy cảm.
-4. Các lớp độc lập tiếp tục chặn hoặc giới hạn damage, nhờ đó một failure không tự động trở thành system compromise.
-
-</details>
+Start with threat modeling to understand what must be protected and where trust changes; then apply that model to secrets and credentials as a high-impact capability boundary.

@@ -22,6 +22,15 @@ The docs sidebar is an always-open knowledge map:
 
 Use progressive disclosure for hierarchy depth: domain-level categories stay expanded so all level-2 knowledge groups remain visible, while level-3 article lists are collapsed by default. Readers expose level-3 articles by expanding the relevant knowledge group; the active descendant path should remain visible while reading inside that group. The sidebar scrolls independently on desktop and inside the mobile drawer.
 
+## Landing-page hierarchy
+
+- **Level 1 — Domain Landing Page:** H1 + short domain positioning + `Learning Areas` + shared linked cards to Level-2 topics. Keep it short and navigational; never use a long bullet directory as the primary interface.
+- **Level 2 — Topic Landing Page / Learning Map:** H1 + short scope + `Topic Overview` + shared linked cards to Level-3 lessons + optional recommended order. Add a diagram only when lifecycle, dependency, sequence, layering or concept relationship is materially clearer visually.
+- **Level 3 — Learning Content:** detailed knowledge, examples, distinctions, mistakes, self-tests and experiments.
+- Level 1 and Level 2 always use explicit MDX landing pages controlled by the repository. Docusaurus `generated-index` is not part of the canonical hierarchy.
+- Landing navigation uses `LandingCardGrid` and `LandingCard`; page-specific card systems are not created unless the shared abstraction cannot represent a genuine teaching need.
+- Landing pages orient and route. They do not duplicate the full teaching content of their child lessons.
+
 ## Article hierarchy
 
 - H1 establishes the topic with generous whitespace and compact supporting metadata.

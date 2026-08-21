@@ -1,0 +1,27 @@
+---
+title: Development Workflows
+description: Topic landing page cho integration, history, release safety và traceability.
+slug: /software-engineering/development-workflows
+---
+
+import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+
+# Development Workflows
+
+Development Workflows tổ chức cách code changes đi từ local work tới shared history và production mà vẫn giữ integration feedback, release safety và traceability.
+
+## Topic Overview
+
+Mental map: **Branch / change → Integrate → Validate → Release → Recover / trace**. Workflow tốt giảm thời gian diverge và làm trạng thái release rõ ràng hơn.
+
+## Lessons
+
+<LandingCardGrid>
+  <LandingCard eyebrow="01" title="Git Workflows" description="Git Flow, GitHub Flow, GitLab Flow và Trunk-Based Development theo integration/release constraints." to="./git-workflows.mdx" />
+  <LandingCard eyebrow="02" title="Git History & Change Integration" description="Merge strategy, local history rewrite và safe change recovery." to="./git-history-and-change-integration.mdx" />
+  <LandingCard eyebrow="03" title="Release Safety & Traceability" description="CI/merge queue, production recovery, release metadata và shared-testing mismatch." to="./release-safety-and-traceability.mdx" />
+</LandingCardGrid>
+
+## Recommended Order
+
+Start with workflow selection, then history/change integration, then release safety so branch mechanics stay connected to production consequences.

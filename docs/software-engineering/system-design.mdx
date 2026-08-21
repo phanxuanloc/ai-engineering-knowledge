@@ -1,0 +1,29 @@
+---
+title: System Design
+description: Topic landing page từ fundamentals tới representative production system designs.
+slug: /software-engineering/system-design
+---
+
+import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+
+# System Design
+
+System Design là reasoning process để biến requirements thành architecture có explicit bottlenecks, trade-offs, failure modes và operational boundaries.
+
+## Topic Overview
+
+Mental map: **Requirements → Workload / bottleneck → Building blocks → Trade-offs → Failure & recovery**. Các case studies áp dụng cùng reasoning process vào constraints khác nhau.
+
+## Lessons
+
+<LandingCardGrid>
+  <LandingCard eyebrow="01" title="System Design Fundamentals" description="Canonical reasoning map từ requirements và bottleneck tới building blocks và trade-offs." to="./system-design-fundamentals.mdx" />
+  <LandingCard eyebrow="02" title="URL Shortener" description="Read-heavy redirects, key generation, cache strategy and hot-key skew." to="./url-shortener-system-design.mdx" />
+  <LandingCard eyebrow="03" title="Distributed Rate Limiter" description="Global quota, shared state, atomicity and burst semantics." to="./distributed-rate-limiter-system-design.mdx" />
+  <LandingCard eyebrow="04" title="Notification System" description="Async delivery, retry, acknowledgement, DLQ and idempotency." to="./notification-system-design.mdx" />
+  <LandingCard eyebrow="05" title="Chat System" description="WebSocket delivery, distributed connection routing, durable history and ordering." to="./chat-system-design.mdx" />
+</LandingCardGrid>
+
+## Recommended Order
+
+Học Fundamentals trước; sau đó dùng từng case study để luyện cùng một design loop dưới workload và failure constraints khác nhau.

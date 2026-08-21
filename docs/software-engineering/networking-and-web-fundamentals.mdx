@@ -1,234 +1,63 @@
 ---
 title: Networking & Web Fundamentals
-description: Mental map end-to-end của một web request và learning path cho networking/web fundamentals.
+description: Topic landing page cho web request lifecycle và networking/web learning map.
 tags: [networking, web, http, tcp, dns]
+slug: /software-engineering/networking-and-web-fundamentals
 ---
 
+import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 import {FlowExplainer} from '@site/src/components/VisualExplainer';
-import {ConceptCard, ConceptGrid, TLDR} from '@site/src/components/Learning';
 
 # Networking & Web Fundamentals
 
-## TL;DR
+Networking & Web Fundamentals giúp debug theo **boundary đầu tiên mà request chưa vượt qua**, thay vì gom mọi failure thành “API lỗi”.
 
-<TLDR>
+## Topic Overview
 
-Một web request có thể được debug theo hành trình: **Resolve Destination → Reach Destination → Establish Communication → Process Request → Response**. Mỗi boundary trả lời một câu hỏi khác nhau; xác định request dừng ở đâu giúp tránh debug nhầm layer.
-
-</TLDR>
-
-## Mental Model
-
-### Theo request từ client đến server và quay về
+Mental map: **Resolve Destination → Reach Destination → Establish Communication → Process Request → Response**. Đây là logical lifecycle, không phải topology bắt buộc của mọi hệ thống.
 
 <FlowExplainer
   title="Journey of a web request"
-  description="Play trace hoặc đi từng event để theo dõi request từ lúc client chỉ biết domain cho tới khi nhận HTTP response."
-  stepDurationMs={2600}
-  scenarios={[
-    {
-      id: 'https-request',
-      label: 'HTTPS request',
-      layout: 'compact',
-      nodes: [
-        {id: 'client', label: 'Client', detail: 'api.company.com/users', role: 'client'},
-        {id: 'dns', label: 'DNS', detail: 'domain → destination IP', role: 'network'},
-        {id: 'network', label: 'Network path', detail: 'routing · policy · NAT if needed', role: 'network'},
-        {id: 'server', label: 'Server endpoint', detail: 'destination IP:443', role: 'service'},
-        {id: 'app', label: 'Web application', detail: 'HTTP · proxy/LB · app · data as needed', role: 'service'},
-        {id: 'client-result', label: 'Client', detail: 'receives HTTP result', role: 'client'},
-      ],
-      edges: [
-        {id: 'client-dns', source: 'client', target: 'dns'},
-        {id: 'dns-network', source: 'dns', target: 'network'},
-        {id: 'network-server', source: 'network', target: 'server'},
-        {id: 'server-app', source: 'server', target: 'app'},
-        {id: 'app-result', source: 'app', target: 'client-result'},
-      ],
-      steps: [
-        {
-          title: '1 · Resolve destination',
-          description: 'Client cần biến domain thành destination IP trước khi có thể kết nối tới server.',
-          from: 'client',
-          to: 'dns',
-          message: 'DNS query',
-          active: ['client', 'dns'],
-        },
-        {
-          title: '2 · Destination known',
-          description: 'DNS trả về IP. Kết quả này cho biết đích logic, chưa chứng minh traffic có thể tới IP:port đó.',
-          from: 'dns',
-          to: 'network',
-          message: '203.0.113.20',
-          persistent: ['client', 'dns'],
-        },
-        {
-          title: '3 · Reach destination',
-          description: 'Traffic đi về phía destination theo routing và network policy. Firewall/security policy có thể allow hoặc block; NAT có thể translate address khi kiến trúc yêu cầu.',
-          from: 'network',
-          to: 'server',
-          message: 'TCP :443',
-          persistent: ['client', 'dns', 'network'],
-        },
-        {
-          title: '4 · Establish secure channel',
-          description: 'TCP connection được thiết lập tới endpoint; với HTTPS, TLS handshake tạo secure channel trước khi trao đổi HTTP application data.',
-          active: ['server'],
-          persistent: ['client', 'network'],
-          message: 'TCP + TLS ready',
-        },
-        {
-          title: '5 · Process HTTP request',
-          description: 'HTTP request đi vào server-side processing. Tùy kiến trúc, request có thể qua reverse proxy/load balancer rồi application truy cập cache hoặc data store khi cần.',
-          from: 'server',
-          to: 'app',
-          message: 'GET /users',
-          persistent: ['client', 'server'],
-        },
-        {
-          title: '6 · Return response',
-          description: 'Application tạo HTTP response và kết quả quay về client trên communication path đã thiết lập.',
-          from: 'app',
-          to: 'client-result',
-          message: '200 OK',
-          persistent: ['server', 'app'],
-        },
-      ],
-    },
-  ]}
+  description="Follow the request through the major boundaries without pretending every responsibility is a separate network hop."
+  stepDurationMs={2400}
+  scenarios={[{
+    id: 'request-overview',
+    label: 'HTTPS request',
+    layout: 'compact',
+    nodes: [
+      {id: 'client', label: 'Client', detail: 'domain + request', role: 'client'},
+      {id: 'dns', label: 'Resolve', detail: 'domain → IP', role: 'network'},
+      {id: 'network', label: 'Reach', detail: 'route · policy · NAT if needed', role: 'network'},
+      {id: 'transport', label: 'Connect', detail: 'TCP · TLS', role: 'service'},
+      {id: 'app', label: 'Process', detail: 'HTTP · app · data as needed', role: 'service'},
+      {id: 'result', label: 'Response', detail: 'HTTP result', role: 'client'},
+    ],
+    edges: [
+      {id: 'e1', source: 'client', target: 'dns'},
+      {id: 'e2', source: 'dns', target: 'network'},
+      {id: 'e3', source: 'network', target: 'transport'},
+      {id: 'e4', source: 'transport', target: 'app'},
+      {id: 'e5', source: 'app', target: 'result'},
+    ],
+    steps: [
+      {title: 'Resolve', description: 'Find the destination IP.', from: 'client', to: 'dns', active: ['client','dns']},
+      {title: 'Reach', description: 'Routing and policy allow traffic toward the destination.', from: 'dns', to: 'network', active: ['network']},
+      {title: 'Connect', description: 'Transport and TLS establish the communication channel.', from: 'network', to: 'transport', active: ['transport']},
+      {title: 'Process', description: 'The server-side HTTP/application boundary handles the request.', from: 'transport', to: 'app', active: ['app']},
+      {title: 'Respond', description: 'The result returns to the client.', from: 'app', to: 'result', active: ['result']},
+    ],
+  }]}
 />
 
-Flow trên mô tả **logical request lifecycle**. `Routing`, network policy/firewall và `NAT` là các responsibility trong network path; chúng không mặc định tương ứng với ba physical device nối tiếp. Tương tự, proxy/load balancer, application, cache và database phụ thuộc kiến trúc triển khai cụ thể.
+## Lessons
 
-Bốn boundary chính trả lời bốn câu hỏi debug:
+<LandingCardGrid>
+  <LandingCard eyebrow="01" title="Network Addressing & Routing" description="DNS, IP/port, subnet/CIDR, routing, firewall and NAT responsibilities." to="./network-addressing-and-routing.mdx" />
+  <LandingCard eyebrow="02" title="Transport, TLS & HTTP" description="TCP/UDP, TLS/HTTPS and HTTP request-response semantics." to="./transport-tls-and-http.mdx" />
+  <LandingCard eyebrow="03" title="Proxies, Load Balancing & Client IP" description="Traffic intermediaries, health checks and trusted original-client-IP boundaries." to="./proxies-load-balancing-and-client-ip.mdx" />
+  <LandingCard eyebrow="04" title="CORS, Caching & CDN" description="Browser origin policy plus cache/CDN freshness behavior." to="./cors-caching-and-cdn.mdx" />
+</LandingCardGrid>
 
-<ConceptGrid>
-  <ConceptCard title="1 · Resolve Destination">
-    **Đích là đâu?**
+## Recommended Order
 
-    `api.company.com` → DNS → `203.0.113.20`
-
-    Output là **destination IP**. DNS chưa chứng minh server reachable.
-  </ConceptCard>
-
-  <ConceptCard title="2 · Reach Destination">
-    **Traffic có thể đi tới destination IP:port không?**
-
-    Routing chọn path/next hop. Firewall/security policy có thể allow/block. NAT có thể translate address khi cần.
-  </ConceptCard>
-
-  <ConceptCard title="3 · Establish Communication">
-    **Hai endpoint đã nói chuyện được chưa?**
-
-    TCP thiết lập connection tới `IP:port`; với HTTPS, TLS tạo secure channel.
-  </ConceptCard>
-
-  <ConceptCard title="4 · Process Request">
-    **Web request được xử lý ra sao?**
-
-    HTTP request đi vào server-side boundary, có thể qua proxy/load balancer, application và data layer tùy kiến trúc.
-  </ConceptCard>
-</ConceptGrid>
-
-### Cách dùng flow để debug
-
-Đi theo request lifecycle và dừng ở boundary đầu tiên chưa thành công:
-
-```text
-Domain không resolve?
-→ Resolve: DNS / name resolution
-
-Resolve được nhưng IP:443 timeout?
-→ Reach / Connect: route, firewall, NAT, TCP
-
-TCP được nhưng TLS fail?
-→ Connect: certificate / TLS / protocol boundary
-
-Đã nhận HTTP 401 / 403 / 500?
-→ Process: request đã đi đủ xa để server trả HTTP response
-
-Backend đúng nhưng browser vẫn stale?
-→ kiểm tra cache / CDN / browser behavior phía trên lifecycle cơ bản
-```
-
-Success ở boundary trước chỉ mở đường cho boundary sau. DNS success chưa chứng minh TCP thông; TCP thông chưa chứng minh TLS/authentication đúng; HTTP `200` cũng chưa chứng minh dữ liệu client thấy là fresh.
-
-## Core Concepts
-
-Knowledge đã học được tách thành bốn bài nhỏ để mỗi bài có một mental model rõ ràng:
-
-<ConceptGrid>
-  <ConceptCard title="1 · Network Addressing & Routing">
-    DNS, IP/port, private/public IP, NAT, subnet/CIDR, routing và firewall. Trả lời: **đích ở đâu và đi đường nào?**
-
-    → [Mở bài](./network-addressing-and-routing.mdx)
-  </ConceptCard>
-  <ConceptCard title="2 · Transport, TLS & HTTP">
-    TCP vs UDP, TLS/HTTPS, HTTP request-response, statelessness và debug HTTP status theo layer.
-
-    → [Mở bài](./transport-tls-and-http.mdx)
-  </ConceptCard>
-  <ConceptCard title="3 · Proxies, Load Balancing & Client IP">
-    Forward/reverse proxy, health checks, traffic distribution và original client IP qua trusted proxy boundary.
-
-    → [Mở bài](./proxies-load-balancing-and-client-ip.mdx)
-  </ConceptCard>
-  <ConceptCard title="4 · CORS, Caching & CDN">
-    Browser Same-Origin Policy/CORS, preflight, cache freshness và CDN edge caching.
-
-    → [Mở bài](./cors-caching-and-cdn.mdx)
-  </ConceptCard>
-</ConceptGrid>
-
-## Example
-
-Khi gọi partner API:
-
-```text
-DNS                        ✓
-Route                      ✓
-TCP destination:443        timeout
-Private IP                 10.10.1.15
-Outbound NAT IP            14.1.2.9
-Partner allowlist          14.1.2.3 only
-```
-
-Đừng sửa `/orders` hoặc JSON trước. Request đang fail ở Reach/Connect boundary; outbound IP cũng không khớp allowlist.
-
-## When to Use
-
-- Khi API/service call timeout hoặc connection refused.
-- Khi cần phân biệt DNS/routing/firewall với TLS/HTTP/application failure.
-- Khi browser fail nhưng curl/Postman thành công.
-- Khi thiết kế service sau proxy/load balancer.
-- Khi backend data đúng nhưng client vẫn thấy dữ liệu stale.
-
-## Common Mistakes
-
-- **Hiểu logical flow như physical topology:** responsibility không đồng nghĩa với một thiết bị riêng.
-- **Bung mọi responsibility thành node nối tiếp:** routing/firewall/NAT hoặc proxy/LB/data layer không phải lúc nào cũng có strict ordering/topology giống nhau.
-- **Gọi mọi failure là “API lỗi”:** nhiều failure xảy ra trước HTTP/application.
-- **Debug sai layer:** có `401` mà vẫn bắt đầu từ DNS/firewall, hoặc TCP timeout mà sửa JSON.
-- **Trộn responsibility:** DNS tìm destination; routing đưa traffic về phía destination; TCP tạo connection; TLS bảo vệ channel; HTTP định nghĩa web request/response.
-
-## Related Knowledge
-
-- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — REST/gRPC/GraphQL và API semantics nằm phía trên network/web foundation.
-- [System Design Fundamentals](./system-design-fundamentals.mdx) — load balancing và distributed boundaries dùng các primitive này.
-
-## Self-test
-
-1. DNS trả về `203.0.113.20`. DNS đã cho bạn biết **đường đi** tới IP đó chưa?
-2. Domain resolve đúng nhưng `IP:443` timeout: nên ưu tiên phase nào?
-3. Nhận `HTTP 401`: request đã vượt qua những phase nền tảng nào?
-4. Curl thành công nhưng browser báo CORS: failure thuộc network connectivity hay browser policy?
-
-<details>
-<summary>Answers</summary>
-
-1. Chưa. DNS chỉ resolve destination; routing quyết định path/next hop.
-2. Reach Destination / Establish Communication: routing, network policy và TCP connectivity trước application body.
-3. Resolve/Reach/transport đã tiến đủ xa để nhận HTTP response; ưu tiên authentication/application boundary.
-4. Browser CORS/Same-Origin Policy.
-
-</details>
+Đi theo request lifecycle từ 01 → 04; khi debug, mở bài tương ứng với boundary đầu tiên chưa thành công.

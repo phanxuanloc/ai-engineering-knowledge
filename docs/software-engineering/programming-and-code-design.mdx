@@ -1,14 +1,28 @@
 ---
 title: "Programming & Code Design"
-description: "Các mental model đã học để giảm change impact và giữ code dễ thay đổi."
+description: "Topic landing page cho các mental model giúp giảm change impact và giữ code dễ thay đổi."
 slug: /software-engineering/programming-and-code-design
 ---
 
+import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+
 # Programming & Code Design
 
-Programming & Code Design tập trung vào cách đặt trách nhiệm và dependency để một thay đổi cục bộ không lan ra toàn hệ thống. Các note canonical đã được tách theo mental model và practical purpose:
+Programming & Code Design tập trung vào một câu hỏi: **làm sao để một thay đổi cục bộ không lan thành thay đổi trên toàn hệ thống?**
 
-- [Coupling & Cohesion](./coupling-and-cohesion.mdx) — nhận diện module ôm nhiều trách nhiệm và phụ thuộc trực tiếp vào quá nhiều chi tiết.
-- [Abstraction & Encapsulation](./abstraction-and-encapsulation.mdx) — phân biệt capability được expose với implementation detail được che giấu.
-- [SOLID as Design Lenses](./solid-design-lenses.mdx) — dùng SOLID để reasoning về change impact thay vì áp dụng máy móc.
-- [Composition vs Inheritance](./composition-vs-inheritance.mdx) — chọn `HAS-A` / `USES-A` cho capability có thể thay thế độc lập và giữ inheritance cho quan hệ `IS-A` thật sự.
+## Topic Overview
+
+Mental map: đặt responsibility đúng chỗ, expose capability qua abstraction phù hợp, giữ implementation details encapsulated và chọn dependency structure làm change impact nhỏ nhất.
+
+## Lessons
+
+<LandingCardGrid>
+  <LandingCard eyebrow="01" title="Coupling & Cohesion" description="Reasoning về responsibility, dependency và blast radius của thay đổi." to="./coupling-and-cohesion.mdx" />
+  <LandingCard eyebrow="02" title="Abstraction & Encapsulation" description="Phân biệt capability WHAT với implementation HOW và boundary che giấu chi tiết." to="./abstraction-and-encapsulation.mdx" />
+  <LandingCard eyebrow="03" title="SOLID as Design Lenses" description="Dùng SOLID để reasoning về change impact thay vì áp dụng máy móc." to="./solid-design-lenses.mdx" />
+  <LandingCard eyebrow="04" title="Composition vs Inheritance" description="Chọn HAS-A / USES-A hay IS-A theo khả năng thay thế và subtype semantics." to="./composition-vs-inheritance.mdx" />
+</LandingCardGrid>
+
+## Recommended Order
+
+Bắt đầu với Coupling & Cohesion, sau đó Abstraction & Encapsulation; dùng SOLID và Composition vs Inheritance như các design lenses khi review concrete code.

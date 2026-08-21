@@ -5,15 +5,21 @@ sidebar_position: 1
 slug: /ai-fundamentals
 ---
 
+import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+
 # AI Fundamentals
 
-## Published Knowledge
+AI Fundamentals tập trung vào những nền tảng giúp reasoning về chất lượng và hành vi của AI systems trước khi tối ưu implementation.
 
-### Evaluation
+## Learning Areas
 
-- [Evaluation Fundamentals](./evaluation-fundamentals.mdx) — canonical entry point từ task success tới decision workflow.
-- [Evaluation Methods & Evaluators](./evaluation-methods-and-evaluators.mdx) — pointwise, pairwise, deterministic checks, LLM-as-a-Judge và human review.
-- [Evaluation Dataset & Test Cases](./evaluation-dataset-and-test-cases.mdx) — production, curated và synthetic cases cùng meaningful slices.
-- [Evaluation Metrics & Aggregation](./evaluation-metrics-and-aggregation.mdx) — metric theo quality dimension, macro aggregation và hard gates.
-- [Evaluation Reliability & Statistical Confidence](./evaluation-reliability-and-statistical-confidence.mdx) — uncertainty, sample size và practical significance.
-- [Regression Gates & Production Workflow](./evaluation-regression-gates-and-production-workflow.mdx) — biến production failures thành regression cases và deployment decisions.
+<LandingCardGrid>
+  <LandingCard
+    eyebrow="Quality & measurement"
+    title="Evaluation"
+    description="Thiết kế evaluation từ task success, evaluators và datasets tới metrics, reliability và production regression gates."
+    to="./evaluation.mdx"
+  />
+</LandingCardGrid>
+
+Mở topic phù hợp để xem mental map và các Level-3 lessons; trang domain này chỉ giữ vai trò orientation và navigation.

@@ -5,73 +5,27 @@ sidebar_position: 3
 slug: /software-engineering
 ---
 
+import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+
 # Software Engineering
+
+Software Engineering cung cấp các nền tảng để thiết kế, tích hợp, kiểm thử, bảo mật và vận hành production systems — bao gồm cả systems có AI components.
 
 ## Learning Areas
 
-### Programming & Code Design
+<LandingCardGrid>
+  <LandingCard title="Programming & Code Design" description="Giảm change impact bằng responsibility boundaries, abstraction, SOLID lenses và composition." to="./programming-and-code-design.mdx" />
+  <LandingCard title="Algorithms & Data Structures" description="Mental models cho lookup, hashing, linear data structures và graph traversal." to="./algorithms-and-data-structures.mdx" />
+  <LandingCard title="Databases" description="Model persistent state, indexes và transactional correctness từ business facts và access patterns." to="./databases.mdx" />
+  <LandingCard title="Networking & Web Fundamentals" description="Theo dõi web request qua destination, connectivity, transport, HTTP và browser/cache boundaries." to="./networking-and-web-fundamentals.mdx" />
+  <LandingCard title="API & Integration" description="Chọn communication boundary và API style phù hợp với contract, latency và coupling constraints." to="./api-and-integration.mdx" />
+  <LandingCard title="Testing & Quality Engineering" description="Tổ chức feedback từ unit tới integration và end-to-end để phát hiện failure ở đúng boundary." to="./testing-and-quality-engineering.mdx" />
+  <LandingCard title="Security Engineering" description="Reasoning từ assets và threats tới trust boundaries, controls và residual risk." to="./security-engineering.mdx" />
+  <LandingCard title="System Design" description="Đi từ requirements và bottlenecks tới building blocks, trade-offs và production failure modes." to="./system-design.mdx" />
+  <LandingCard title="Development Workflows" description="Tích hợp, kiểm thử, release và truy vết software changes an toàn qua team workflows." to="./development-workflows.mdx" />
+  <LandingCard title="DevOps, Cloud & Infrastructure" description="Operational foundation cho delivery, runtime infrastructure và cloud environments." to="./devops-cloud-and-infrastructure.mdx" />
+  <LandingCard title="Observability & Reliability" description="Hiểu production behavior bằng telemetry và giữ user-visible outcomes trong reliability targets." to="./observability-and-reliability.mdx" />
+  <LandingCard title="Operating Systems & Concurrency" description="Reasoning về execution, shared state, waiting, memory và CPU scheduling." to="./operating-systems-and-concurrency.mdx" />
+</LandingCardGrid>
 
-- [Coupling & Cohesion](./coupling-and-cohesion.mdx) — reasoning về responsibility, dependency và blast radius của thay đổi.
-- [Abstraction & Encapsulation](./abstraction-and-encapsulation.mdx) — phân biệt capability WHAT với implementation HOW.
-- [SOLID as Design Lenses](./solid-design-lenses.mdx) — năm lens giảm change impact mà không áp dụng máy móc.
-- [Composition vs Inheritance](./composition-vs-inheritance.mdx) — chọn giữa subtype `IS-A` và capability `HAS-A / USES-A`.
-
-### Algorithms & Data Structures
-
-- [Search & Ranking Fundamentals](./search-and-ranking-fundamentals.mdx) — phân biệt Linear Search, Binary Search, Retrieval, Ranking và Top-K trong lookup, RAG và production search.
-
-### Databases
-
-- [Database Design Foundations](./database-design-foundations.mdx) — relational modeling, normalization, index design, transactions, concurrency và isolation từ business facts và access patterns.
-
-### Networking & Web Fundamentals
-
-- [Networking & Web Fundamentals](./networking-and-web-fundamentals.mdx) — canonical request lifecycle từ DNS, routing và TCP/TLS tới HTTP, proxy, CORS và caching.
-- [Network Addressing & Routing](./network-addressing-and-routing.mdx) — destination, subnet, route, firewall và NAT.
-- [Transport, TLS & HTTP](./transport-tls-and-http.mdx) — transport reliability, secure channel và application protocol.
-- [Proxies, Load Balancing & Client IP](./proxies-load-balancing-and-client-ip.mdx) — traffic intermediaries, health checks và trusted client-IP boundary.
-- [CORS, Caching & CDN](./cors-caching-and-cdn.mdx) — browser security boundary và freshness trên các cache layer.
-
-### API & Integration
-
-- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — mental model và trade-off cốt lõi để chọn REST, gRPC hoặc GraphQL theo từng communication boundary.
-
-### Testing & Quality Engineering
-
-Learning notes sẽ được bổ sung sau khi learner thực sự học và checkpoint topic này.
-
-### Security Engineering
-
-Learning notes sẽ được bổ sung sau khi learner thực sự học và checkpoint topic này.
-
-### System Design
-
-- [System Design Fundamentals](./system-design-fundamentals.mdx) — canonical map để reasoning từ requirements và bottleneck tới building block cùng trade-off.
-- [URL Shortener System Design](./url-shortener-system-design.mdx) — read-heavy redirect path, key generation, cache và hot-key skew.
-- [Distributed Rate Limiter System Design](./distributed-rate-limiter-system-design.mdx) — global quota, shared state, atomicity và burst semantics.
-- [Notification System Design](./notification-system-design.mdx) — async delivery, retry, acknowledgement, DLQ và idempotency.
-- [Chat System Design](./chat-system-design.mdx) — WebSocket delivery, distributed connection routing, durable history và conversation ordering.
-
-### Development Workflows
-
-- [Git Workflows](./git-workflows.mdx) — chọn Git Flow, GitHub Flow, GitLab Flow hoặc Trunk-Based Development theo integration và release constraints.
-- [Git History & Change Integration](./git-history-and-change-integration.mdx) — merge strategy, rewrite local history và phục hồi thay đổi an toàn.
-- [Release Safety & Traceability](./release-safety-and-traceability.mdx) — CI/merge queue, production recovery, release metadata và shared testing mismatch.
-
-### DevOps, Cloud & Infrastructure
-
-Learning notes sẽ được bổ sung sau khi learner thực sự học và checkpoint topic này.
-
-### Observability & Reliability
-
-- [Observability & Reliability](./observability-and-reliability.mdx) — broad-topic map cho production visibility và operational reliability.
-- [Observability & Reliability Fundamentals](./observability-and-reliability-fundamentals.mdx) — checkpoint nền tảng về telemetry, Monitoring vs Observability, SLI/SLO/SLA và reliability theo user-visible outcome.
-
-### Operating Systems & Concurrency
-
-- [Operating Systems & Concurrency](./operating-systems-and-concurrency.mdx) — canonical map cho execution, shared-state correctness, waiting, memory và compute capacity.
-- [Process, Thread & Concurrency](./process-thread-and-concurrency.mdx) — execution boundary, interleaving và race condition.
-- [Synchronization & Deadlocks](./synchronization-and-deadlocks.mdx) — critical section, contention và circular waiting.
-- [Async I/O & Event Loop](./async-io-and-event-loop.mdx) — non-blocking waiting và bounded concurrency.
-- [Memory Management](./memory-management.mdx) — stack, heap, virtual memory, leak và OOM.
-- [CPU Scheduling & Context Switching](./cpu-scheduling-and-context-switching.mdx) — runnable work, scheduling overhead và worker sizing.
+Mỗi Level-2 topic là một learning map ngắn; detailed learning content nằm ở Level 3.

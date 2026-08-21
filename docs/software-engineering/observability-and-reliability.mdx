@@ -1,15 +1,21 @@
 ---
 title: "Observability & Reliability"
-description: "Learning map cho Observability & Reliability trong production systems."
+description: "Topic landing page cho production visibility và user-visible reliability."
 slug: /software-engineering/observability-and-reliability
 ---
 
+import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+
 # Observability & Reliability
 
-Observability & Reliability là một broad topic về cách hiểu production behavior và giữ hệ thống cung cấp outcome đáng tin cậy cho user.
+Observability & Reliability connects **understanding production behavior** with **keeping user-visible outcomes dependable** under real failures and changing load.
 
-## Learning Map
+## Topic Overview
 
-- [Observability & Reliability Fundamentals](./observability-and-reliability-fundamentals.mdx) — mental model nền tảng về Monitoring vs Observability, Logs/Metrics/Traces, SLI/SLO/SLA và Availability vs Reliability.
+Mental map: telemetry provides evidence about system behavior; SLI/SLO turn user-visible outcomes into reliability targets; incidents and failures feed improvements back into the system.
 
-Các deep dive khác chỉ được thêm khi learner thực sự học và checkpoint chúng; landing page này không pre-populate kiến thức chưa học.
+## Lessons
+
+<LandingCardGrid>
+  <LandingCard title="Observability & Reliability Fundamentals" description="Monitoring vs Observability, Logs/Metrics/Traces, SLI/SLO/SLA and Availability vs Reliability." to="./observability-and-reliability-fundamentals.mdx" />
+</LandingCardGrid>

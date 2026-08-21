@@ -1,46 +1,35 @@
 ---
-title: Context Engineering Map
-description: Canonical map để recall Context Engineering, theo dõi lifecycle và đi tới đúng deep dive mà không phải đọc một bài monolith.
+title: Context Engineering
+description: Topic landing page để recall Context Engineering lifecycle và đi tới đúng deep dive.
 tags: [context-engineering, learning-map, ai-agent]
 sidebar_position: 2
 ---
 
+import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 
-# Context Engineering Map
+# Context Engineering
 
-Trang này là **entry point + canonical lifecycle** của Context Engineering. Nó không lặp lại toàn bộ chi tiết; mục tiêu là giúp recall mental model trong khoảng 30 giây rồi đi tới đúng deep dive.
+Context Engineering là việc quyết định **information nào cần xuất hiện cho current decision, ở dạng nào và trong invocation nào** — không phải chỉ tăng prompt hoặc context window.
 
-## One Mental Model
+## Topic Overview
 
-> **Context Window là cái bàn. Context là những thứ đặt trên bàn. Context Engineering là quyết định đúng thứ cần đặt lên bàn cho current decision.**
-
-Nguyên tắc xuyên suốt: **Relevant context > More context**. Window lớn hơn tăng capacity nhưng không tự làm retrieval, selection, quality, freshness hay trust tốt hơn.
-
-## Canonical Lifecycle
+**Mental model:** Context Window là cái bàn; Context là những thứ đặt trên bàn; Context Engineering là chọn đúng thứ cần đặt lên bàn cho quyết định hiện tại.
 
 <ReactFlowDiagram
-  ariaLabel="Canonical Context Engineering lifecycle"
+  ariaLabel="Context Engineering lifecycle overview"
   direction="TB"
   kind="lifecycle"
   layout="primary-path"
-  primaryPath={[
-    'sources',
-    'retrieve',
-    'select',
-    'prepare',
-    'window',
-    'llm',
-    'refresh',
-  ]}
+  primaryPath={['sources','retrieve','select','prepare','window','llm','refresh']}
   nodes={[
-    {id: 'sources', eyebrow: 'Available', label: 'Sources', detail: 'Code · Memory · Docs · Tools · State', role: 'source', size: 'wide'},
-    {id: 'retrieve', eyebrow: 'Find', label: 'Retrieve Candidates', detail: 'Tìm information có thể hữu ích', role: 'process', size: 'wide'},
-    {id: 'select', eyebrow: 'Decide', label: 'Select', detail: 'Useful cho current decision?', role: 'process', size: 'standard'},
-    {id: 'prepare', eyebrow: 'Prepare', label: 'Optimize & Assemble', detail: 'Quality · Budget · Role · Order', role: 'process', size: 'wide'},
-    {id: 'window', eyebrow: 'Capacity', label: 'Context Window', detail: 'Selected context của invocation', role: 'constraint', emphasis: true, size: 'standard'},
-    {id: 'llm', eyebrow: 'Decision', label: 'Reason / Act', detail: 'LLM tạo answer hoặc tool/action', role: 'model', size: 'standard'},
-    {id: 'refresh', eyebrow: 'Observe & Preserve', label: 'Update State & Refresh', detail: 'Giữ findings; bỏ stale/duplicate context', role: 'state', size: 'wide'},
+    {id: 'sources', label: 'Sources', detail: 'Code · Memory · Docs · Tools · State', role: 'source', size: 'wide'},
+    {id: 'retrieve', label: 'Retrieve', detail: 'Find candidates', role: 'process'},
+    {id: 'select', label: 'Select', detail: 'Useful for current decision?', role: 'process'},
+    {id: 'prepare', label: 'Optimize & Assemble', detail: 'Quality · Budget · Role · Order', role: 'process', size: 'wide'},
+    {id: 'window', label: 'Context Window', detail: 'Limited invocation capacity', role: 'constraint', emphasis: true},
+    {id: 'llm', label: 'Reason / Act', detail: 'Answer or tool action', role: 'model'},
+    {id: 'refresh', label: 'Update State', detail: 'Preserve findings · refresh stale context', role: 'state', size: 'wide'},
   ]}
   edges={[
     {source: 'sources', target: 'retrieve'},
@@ -50,68 +39,18 @@ Nguyên tắc xuyên suốt: **Relevant context > More context**. Window lớn h
     {source: 'window', target: 'llm'},
     {source: 'llm', target: 'refresh'},
   ]}
-  caption="Canonical flow: retrieve tạo candidates, selection chọn theo current decision, context được optimize/assemble trước invocation, rồi outcome cập nhật state cho decision tiếp theo."
+  caption="The lifecycle selects and prepares evidence for one decision, then preserves useful state for the next invocation."
 />
 
-**Feedback loop:** sau `Update State & Refresh`, agent quay lại `Sources / Retrieve` cho **next decision**. Working State giữ goal, constraints và verified findings; stale hoặc duplicate evidence được evict. Loop được giải thích bằng prose để primary lifecycle vẫn dễ đọc.
+## Lessons
 
-## Four Layers
+<LandingCardGrid>
+  <LandingCard eyebrow="01 · Foundations" title="Foundations & Lifecycle" description="Context vs Context Window, Retrieve vs Select và Working State qua nhiều invocations." to="./context-engineering.mdx" />
+  <LandingCard eyebrow="02 · Quality" title="Context Optimization" description="Quality signals, budgeting, compression và assembly của selected context." to="./context-optimization.mdx" />
+  <LandingCard eyebrow="03 · Operations" title="Context Operations" description="Trace, metrics, freshness, provenance và trust boundaries của context lifecycle." to="./context-operations.mdx" />
+  <LandingCard eyebrow="04 · Application" title="Practical Context Manager" description="Context Items, pinned/working/evictable state và lifecycle implementation." to="./practical-context-manager.mdx" />
+</LandingCardGrid>
 
-### 1. Foundations & Lifecycle
+## Recommended Order
 
-**Question:** model cần information nào và nó đến từ đâu?
-
-- Context ≠ Context Window.
-- Prompt chỉ là một phần của context.
-- Sources tạo khả năng; Retrieve tạo candidates; Select tiêu context capacity.
-- Selection phải dựa trên current decision.
-- Useful cho toàn task không có nghĩa simultaneous trong một invocation.
-- Working State giữ goal/constraints/verified findings qua các invocation.
-
-→ [Context Engineering: Foundations & Lifecycle](./context-engineering.mdx)
-
-### 2. Context Optimization
-
-**Question:** selected context đã đủ tốt và được đóng gói hiệu quả chưa?
-
-- `Good Context = Relevant + Sufficient + Low Noise + Low Redundancy + Fresh + Correct`.
-- Budget là ceiling, không phải quota.
-- Compression giữ meaning cần thiết với representation cost thấp hơn.
-- Assembly tách authority, task, state và evidence rõ ràng.
-- Raw evidence phải phân biệt với model interpretation.
-
-→ [Context Optimization](./context-optimization.mdx)
-
-### 3. Context Operations
-
-**Question:** làm sao biết context lifecycle đang hoạt động đúng và an toàn?
-
-- Trace retrieval/selection/budget/freshness/outcome thay vì chỉ nhìn final answer.
-- Metrics phải gắn với stage và task outcome, không tối ưu vanity score.
-- Freshness/version giúp phát hiện stale evidence.
-- Provenance + trust boundaries ngăn untrusted context trở thành high-authority instruction.
-- Observability phải cân bằng privacy và redaction.
-
-→ [Context Operations](./context-operations.mdx)
-
-### 4. Practical Context Manager
-
-**Question:** application/agent layer thực thi các quyết định trên thế nào?
-
-- Context Item + metadata/signals.
-- pinned / working / evictable context.
-- selection, budget và compact Working State.
-- raw evidence vs interpretation.
-- eviction và lifecycle qua nhiều model invocation.
-- lifecycle simulator + controlled raw-context vs managed-context comparison.
-
-→ [Practical Context Manager](./practical-context-manager.mdx)
-
-## The Distinctions to Remember
-
-1. **Context ≠ Context Window** — information khác capacity.
-2. **Context Manager ≠ Context Window** — application decision logic khác model capacity.
-3. **Retrieve ≠ Select** — retrieval tạo options; selection quyết định thứ đáng chiếm capacity.
-4. **Select ≠ Budget ≠ Compress** — chọn cái gì; phân bao nhiêu capacity; biểu diễn với ít token hơn.
-5. **Evidence ≠ Interpretation** — raw fact khác hypothesis/summary.
-6. **Useful ≠ Simultaneous** — useful cho task không đồng nghĩa phải tồn tại cùng lúc.
+Học Foundations trước; sau đó Optimization → Operations → Practical Context Manager. Khi áp dụng thực tế, dùng lifecycle ở trên để xác định layer cần mở lại.

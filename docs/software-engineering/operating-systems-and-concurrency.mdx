@@ -1,124 +1,43 @@
 ---
 title: Operating Systems & Concurrency
-description: Learning map hai tầng cho process/thread, synchronization, async I/O, memory và CPU scheduling trong production systems.
+description: Topic landing page cho execution, shared-state correctness, waiting, memory và CPU scheduling.
 slug: /software-engineering/operating-systems-and-concurrency
 ---
 
-import {ConceptCard, ConceptGrid, Principle, TLDR} from '@site/src/components/Learning';
+import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 
 # Operating Systems & Concurrency
 
-## TL;DR
+Operating Systems & Concurrency explains **where work executes, what it shares, what it waits for and which finite resource limits throughput or correctness**.
 
-<TLDR>
-Operating Systems & Concurrency giải thích **execution chạy ở đâu, chia sẻ resource thế nào, chờ cái gì và vì sao correctness/performance có thể hỏng khi nhiều work cùng tồn tại**. Mental map hiện tại gồm process/thread, synchronization, async I/O, memory management và CPU scheduling.
-</TLDR>
+## Topic Overview
 
-<Principle label="Mental map">Shared state → correctness. Waiting → async/concurrency. Compute → CPU parallelism. Memory → capacity. Scheduler → ai thực sự nhận CPU time.</Principle>
-
-## Mental Model
-
-Hãy bắt đầu từ **work đang execute trong boundary nào**, rồi tách vấn đề thành bốn lens độc lập. Bốn lens này có thể xuất hiện cùng lúc; chúng là các hướng chẩn đoán, không phải các bước chạy nối tiếp.
+After identifying the execution boundary, use four diagnostic lenses: **shared state, waiting, memory and CPU**. They are independent lenses, not a mandatory runtime sequence.
 
 <ReactFlowDiagram
-  ariaLabel="Operating Systems and Concurrency learning map"
+  ariaLabel="Operating Systems and Concurrency topic overview"
   direction="TB"
   interactive={false}
   kind="relationship"
-  rankSpacing={48}
   nodes={[
-    {id: 'os', label: 'OS & Concurrency', detail: 'execution + finite resources', role: 'group', emphasis: true},
-    {id: 'execution', label: 'Execution boundary', detail: 'process · thread · concurrent work', role: 'process'},
-    {
-      id: 'lenses',
-      label: '4 diagnostic lenses',
-      detail: 'independent, có thể cùng xuất hiện',
-      items: ['Shared state', 'Waiting', 'Memory', 'CPU'],
-      role: 'group',
-      size: 'wide',
-    },
+    {id: 'execution', label: 'Execution Boundary', detail: 'process · thread · concurrent work', role: 'process', emphasis: true},
+    {id: 'lenses', label: 'Diagnostic Lenses', detail: 'shared state · waiting · memory · CPU', role: 'group', size: 'wide'},
   ]}
-  edges={[
-    {source: 'os', target: 'execution', type: 'straight'},
-    {source: 'execution', target: 'lenses', type: 'straight'},
-  ]}
-  caption="Sau khi xác định execution boundary, hỏi lần lượt: shared state có an toàn không, work đang chờ gì, memory có đủ không, và CPU time đang được chia thế nào."
+  edges={[{source: 'execution', target: 'lenses', type: 'straight'}]}
+  caption="First locate the execution boundary; then diagnose correctness and capacity through the relevant resource lens."
 />
 
-<ConceptGrid>
-  <ConceptCard title="Execution boundary">Process tạo isolation/resource boundary; thread tạo execution path bên trong process.</ConceptCard>
-  <ConceptCard title="Shared-state correctness">Race condition xuất hiện khi logical operations bị interleave trên shared mutable state.</ConceptCard>
-  <ConceptCard title="Waiting model">Async I/O tận dụng thời gian task chờ network/database/LLM.</ConceptCard>
-  <ConceptCard title="Capacity model">Memory và CPU đều hữu hạn; concurrency phải được bounded theo resource thật sự bị giới hạn.</ConceptCard>
-</ConceptGrid>
+## Lessons
 
-## Core Concepts
+<LandingCardGrid>
+  <LandingCard eyebrow="01" title="Process, Thread & Concurrency" description="Execution boundaries, concurrency vs parallelism, interleaving and race conditions." to="./process-thread-and-concurrency.mdx" />
+  <LandingCard eyebrow="02" title="Synchronization & Deadlocks" description="Critical sections, mutexes, lock contention, deadlock and lock ordering." to="./synchronization-and-deadlocks.mdx" />
+  <LandingCard eyebrow="03" title="Async I/O & Event Loop" description="Blocking vs non-blocking waiting, event loops, async/await and bounded concurrency." to="./async-io-and-event-loop.mdx" />
+  <LandingCard eyebrow="04" title="Memory Management" description="Stack, heap, virtual memory, leaks, stack overflow and OOM." to="./memory-management.mdx" />
+  <LandingCard eyebrow="05" title="CPU Scheduling & Context Switching" description="Runnable work, scheduler behavior, context-switch cost and worker sizing." to="./cpu-scheduling-and-context-switching.mdx" />
+</LandingCardGrid>
 
-### 1. Process, Thread & Concurrency
-[Process, Thread & Concurrency](./process-thread-and-concurrency.mdx) xây foundation: process vs thread, concurrency vs parallelism, shared mutable state, interleaving và race condition.
+## Recommended Order
 
-### 2. Synchronization & Deadlocks
-[Synchronization & Deadlocks](./synchronization-and-deadlocks.mdx) giải thích critical section, mutex, lock contention, deadlock và consistent lock ordering.
-
-### 3. Async I/O & Event Loop
-[Async I/O & Event Loop](./async-io-and-event-loop.mdx) phân biệt blocking/non-blocking waiting, event loop, `async/await`, thread pool và bounded concurrency.
-
-### 4. Memory Management
-[Memory Management](./memory-management.mdx) phân biệt stack, heap, virtual memory, memory leak, stack overflow và OOM.
-
-### 5. CPU Scheduling & Context Switching
-[CPU Scheduling & Context Switching](./cpu-scheduling-and-context-switching.mdx) giải thích runnable vs running, scheduler, context-switch cost và worker sizing.
-
-## Example
-
-<ReactFlowDiagram
-  ariaLabel="AI service production diagnosis map"
-  direction="TB"
-  interactive={false}
-  kind="workflow"
-  nodes={[
-    {id: 'service', label: 'AI Service', detail: 'requests + tools + preprocessing', role: 'source'},
-    {id: 'state', label: 'Shared state', detail: 'race / synchronization?', role: 'constraint'},
-    {id: 'io', label: 'LLM / DB waits', detail: 'async I/O?', role: 'state'},
-    {id: 'memory', label: 'Working set', detail: 'pressure / leak / OOM?', role: 'storage'},
-    {id: 'cpu', label: 'CPU-heavy work', detail: 'worker sizing / scheduling?', role: 'process'},
-  ]}
-  edges={[
-    {source: 'service', target: 'state'},
-    {source: 'service', target: 'io'},
-    {source: 'service', target: 'memory'},
-    {source: 'service', target: 'cpu'},
-  ]}
-  caption="Đừng bắt đầu bằng ‘thêm thread hay thêm CPU?’. Trước hết xác định work đang chờ gì, state nằm ở đâu và resource nào đang saturated."
-/>
-
-## When to Use
-- Debug API/worker latency khi chưa rõ CPU-bound, I/O-bound hay lock-bound.
-- Debug race condition, deadlock, OOM hoặc high peak working set.
-- Thiết kế bounded concurrency và worker pools cho AI systems.
-
-## Common Mistakes
-- **Một concurrency model cho mọi workload:** CPU-bound và I/O-bound cần strategy khác nhau.
-- **Race → thêm lock ngay:** phải tìm shared invariant và synchronization boundary trước.
-- **OOM = leak:** peak concurrency cũng có thể vượt memory limit.
-- **CPU thấp = khỏe:** system có thể đang chờ lock/I/O/downstream.
-
-## Related Knowledge
-- [Database Design Foundations](./database-design-foundations.mdx) — persistent shared state, transaction và isolation.
-- [System Design Fundamentals](./system-design-fundamentals.mdx) — queues, workers và capacity boundaries.
-- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — network calls là nguồn I/O-bound waiting phổ biến.
-
-## Self-test
-1. Shared state, waiting, memory và CPU saturation dẫn tới những câu hỏi debugging nào?
-2. Vì sao concurrency không đồng nghĩa parallelism?
-3. CPU thấp nhưng latency cao thì điều tra gì trước khi scale CPU?
-
-<details>
-<summary>Answers</summary>
-
-1. Atomicity; I/O/locks/downstream; working set/leak/OOM; runnable work/scheduling.
-2. Scheduler có thể interleave nhiều tasks trên ít cores; parallelism cần simultaneous compute.
-3. I/O wait, lock contention, blocked workers và downstream latency.
-
-</details>
+Go from execution boundaries → synchronization → waiting model → memory → CPU scheduling. In production debugging, jump directly to the lens matching the observed bottleneck.

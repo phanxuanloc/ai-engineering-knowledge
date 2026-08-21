@@ -17,9 +17,20 @@ Treat `DESIGN.md` as the canonical visual specification. Read it completely befo
 6. Route educational visual changes through `docs-diagram` and the selected renderer skill. UI styling must not change diagram semantics.
 7. Recompose at mobile breakpoints; do not merely shrink desktop UI. Keep touch targets, menu scrolling, and visible focus states.
 
+## Canonical landing-page hierarchy
+
+- **Level 1 = Domain Landing Page.** Use a short positioning statement followed by `## Learning Areas` and the shared landing-card grid linking to Level-2 topics. Do not turn the domain page into a long article or a bullet-list directory.
+- **Level 2 = Topic Landing Page / Learning Map.** Use a short scope statement, `## Topic Overview`, canonical lesson cards under `## Lessons`, and `## Recommended Order` only when order adds real guidance. A concise mental-model or lifecycle visual is allowed only when it improves orientation.
+- **Level 3 = Learning Content.** Detailed explanations, examples, mistakes, self-tests, experiments and checkpointed knowledge belong here.
+- Level 1 and Level 2 must use explicit MDX docs. **Never use Docusaurus `generated-index` for Level 1 or Level 2.**
+- Use `LandingCardGrid` + `LandingCard` as the canonical navigation pattern for Level-1 topics and Level-2 lessons. Do not invent page-specific navigation patterns when the shared landing components are sufficient.
+- Landing cards contain a title, one concise description and a link; avoid paragraphs, nested lists or decorative metadata inside cards.
+- Do not duplicate Level-3 teaching content on landing pages. Keep only enough mental map to answer: what is this topic, what are its parts, how are they related, and what should I open next?
+- Topic-specific variation is limited to truthful orientation visuals or a genuinely useful recommended order. Skeleton, spacing and navigation language stay consistent.
+
 ## Acceptance
 
-- Inspect at least one representative article, one visual-heavy article, one category page, and the homepage.
+- Inspect all Level-1 pages affected by a landing-system change and representative Level-2 pages spanning navigation-only and visual-orientation topics.
 - Test light and dark themes plus desktop and mobile widths.
 - Verify domain categories stay expanded, level-2 groups remain visible, level-3 article lists collapse/expand predictably, and long sidebars remain usable.
 - Check text/background contrast, inline code, links, active navigation, TOC, cards, code blocks, and diagram surfaces.

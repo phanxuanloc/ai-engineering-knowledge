@@ -3,6 +3,7 @@ export * from './Cards';
 export * from './Diagrams';
 export * from './ExperimentCard';
 export * from './KnowledgeMap';
+export * from './Landing';
 export * from './ResponsiveRubric';
 export * from './SelfTest';
 export * from './TopicPath';

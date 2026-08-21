@@ -1,0 +1,93 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin: 1.15rem 0 1.9rem;
+}
+
+.gridThree {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.card {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  background: var(--learning-surface);
+  border: 1px solid var(--learning-border);
+  border-radius: var(--learning-radius);
+  box-shadow: var(--learning-shadow);
+  transition: border-color 140ms ease, transform 140ms ease, background 140ms ease;
+}
+
+.card:hover {
+  color: inherit;
+  text-decoration: none;
+  border-color: var(--learning-active-border);
+  background: var(--learning-hover);
+  transform: translateY(-1px);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--learning-active);
+  outline-offset: 2px;
+}
+
+.card article {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  padding: 1rem 1.05rem;
+}
+
+.eyebrow {
+  margin-bottom: 0.25rem;
+  color: var(--learning-active);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.card h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.description {
+  flex: 1;
+  color: var(--ifm-font-color-secondary);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.action {
+  margin-top: 0.8rem;
+  color: var(--learning-active);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .gridThree {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .grid,
+  .gridThree {
+    grid-template-columns: 1fr;
+  }
+
+  .card article {
+    padding: 0.95rem 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}

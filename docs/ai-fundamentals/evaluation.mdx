@@ -1,0 +1,30 @@
+---
+title: Evaluation
+description: Learning map từ task success tới evaluators, datasets, metrics, reliability và production regression gates.
+slug: /ai-fundamentals/evaluation
+---
+
+import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+
+# Evaluation
+
+Evaluation biến câu hỏi mơ hồ “model có tốt không?” thành một decision system: định nghĩa success, tạo evidence phù hợp, đo đúng dimensions và dùng kết quả để quyết định release hoặc cải thiện.
+
+## Topic Overview
+
+Mental map: **Task success → Evaluation method → Test cases → Metrics → Reliability → Regression gate**. Mỗi layer trả lời một câu hỏi khác nhau; landing page này chỉ giúp định hướng giữa các layers.
+
+## Lessons
+
+<LandingCardGrid>
+  <LandingCard eyebrow="01" title="Evaluation Fundamentals" description="Task success, quality dimensions và evaluation workflow nền tảng." to="./evaluation-fundamentals.mdx" />
+  <LandingCard eyebrow="02" title="Methods & Evaluators" description="Pointwise, pairwise, deterministic checks, LLM-as-a-Judge và human review." to="./evaluation-methods-and-evaluators.mdx" />
+  <LandingCard eyebrow="03" title="Dataset & Test Cases" description="Production, curated, synthetic cases và meaningful slices." to="./evaluation-dataset-and-test-cases.mdx" />
+  <LandingCard eyebrow="04" title="Metrics & Aggregation" description="Metrics theo quality dimension, aggregation và hard gates." to="./evaluation-metrics-and-aggregation.mdx" />
+  <LandingCard eyebrow="05" title="Reliability & Statistical Confidence" description="Uncertainty, sample size và practical significance của evaluation results." to="./evaluation-reliability-and-statistical-confidence.mdx" />
+  <LandingCard eyebrow="06" title="Regression Gates & Production Workflow" description="Biến production failures thành regression cases và deployment decisions." to="./evaluation-regression-gates-and-production-workflow.mdx" />
+</LandingCardGrid>
+
+## Recommended Order
+
+Đi theo thứ tự 01 → 06 khi học lần đầu; khi debug một evaluation system, mở thẳng layer tương ứng với decision đang thiếu evidence.

@@ -13,12 +13,7 @@ const sidebars: SidebarsConfig = {
           label: 'Evaluation',
           collapsible: true,
           collapsed: true,
-          link: {
-            type: 'generated-index',
-            title: 'Evaluation',
-            description: 'Learning path về cách thiết kế evaluation, dataset, metrics, reliability và production regression gates cho AI systems.',
-            slug: '/ai-fundamentals/evaluation',
-          },
+          link: {type: 'doc', id: 'ai-fundamentals/evaluation'},
           items: [
             'ai-fundamentals/evaluation-fundamentals',
             'ai-fundamentals/evaluation-methods-and-evaluators',
@@ -75,7 +70,7 @@ const sidebars: SidebarsConfig = {
           label: 'Algorithms & Data Structures',
           collapsible: true,
           collapsed: true,
-          link: {type: 'generated-index', title: 'Algorithms & Data Structures', description: 'Các mental model và kỹ thuật nền tảng để tổ chức, tìm kiếm và xử lý dữ liệu hiệu quả.', slug: '/software-engineering/algorithms-and-data-structures'},
+          link: {type: 'doc', id: 'software-engineering/algorithms-and-data-structures'},
           items: [
             'software-engineering/search-and-ranking-fundamentals',
             'software-engineering/hashing-and-hash-table-fundamentals',
@@ -85,7 +80,7 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category', label: 'Databases', collapsible: true, collapsed: true,
-          link: {type: 'generated-index', title: 'Databases', description: 'Data modeling, indexing, transactions và các cơ chế giữ correctness cho persistent state.', slug: '/software-engineering/databases'},
+          link: {type: 'doc', id: 'software-engineering/databases'},
           items: ['software-engineering/database-design-foundations'],
         },
         {
@@ -95,7 +90,7 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category', label: 'API & Integration', collapsible: true, collapsed: true,
-          link: {type: 'generated-index', title: 'API & Integration', description: 'Cách các client và services giao tiếp qua những communication boundary khác nhau.', slug: '/software-engineering/api-and-integration'},
+          link: {type: 'doc', id: 'software-engineering/api-and-integration'},
           items: ['software-engineering/api-communication-fundamentals'],
         },
         {type: 'category', label: 'Testing & Quality Engineering', collapsible: true, collapsed: true, link: {type: 'doc', id: 'software-engineering/testing-and-quality-engineering'}, items: []},
@@ -106,12 +101,12 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category', label: 'System Design', collapsible: true, collapsed: true,
-          link: {type: 'generated-index', title: 'System Design', description: 'Learning path từ fundamentals tới các design chuyên sâu đã được checkpoint.', slug: '/software-engineering/system-design'},
+          link: {type: 'doc', id: 'software-engineering/system-design'},
           items: ['software-engineering/system-design-fundamentals','software-engineering/url-shortener-system-design','software-engineering/distributed-rate-limiter-system-design','software-engineering/notification-system-design','software-engineering/chat-system-design'],
         },
         {
           type: 'category', label: 'Development Workflows', collapsible: true, collapsed: true,
-          link: {type: 'generated-index', title: 'Development Workflows', description: 'Các workflow giúp team tích hợp, kiểm thử và release software an toàn.', slug: '/software-engineering/development-workflows'},
+          link: {type: 'doc', id: 'software-engineering/development-workflows'},
           items: ['software-engineering/git-workflows','software-engineering/git-history-and-change-integration','software-engineering/release-safety-and-traceability'],
         },
         {type: 'category', label: 'DevOps, Cloud & Infrastructure', collapsible: true, collapsed: true, link: {type: 'doc', id: 'software-engineering/devops-cloud-and-infrastructure'}, items: []},
