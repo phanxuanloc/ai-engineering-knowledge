@@ -2,7 +2,7 @@
 
 A personal, practical knowledge base for learning AI engineering. It captures concise mental models, working examples, experiments, mistakes, and self-tests instead of collecting disconnected links.
 
-> **Knowledge learned: 11** — The repository contains knowledge captured from real learning sessions, alongside its infrastructure, category structure, and reusable template. This count is validated against `learning-progress.yaml` by `npm run docs:check`.
+> **Knowledge learned: 12** — The repository contains knowledge captured from real learning sessions, alongside its infrastructure, category structure, and reusable template. This count is validated against `learning-progress.yaml` by `npm run docs:check`.
 
 The site is built with [Docusaurus](https://docusaurus.io/) and TypeScript and is published to GitHub Pages at `https://phanxuanloc.github.io/ai-engineering-knowledge/`.
 

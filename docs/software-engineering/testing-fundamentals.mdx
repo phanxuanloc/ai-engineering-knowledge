@@ -1,0 +1,103 @@
+---
+title: Testing Fundamentals
+description: Chọn Unit, Integration hay End-to-End test theo boundary và risk cần chứng minh.
+tags: [testing, quality-engineering, software-engineering]
+---
+
+# Testing Fundamentals
+
+## TL;DR
+
+Testing tạo **confidence khi hệ thống thay đổi**. Chọn test boundary nhỏ nhất vẫn đủ chứng minh behavior và risk quan trọng: logic thuần thường là Unit, boundary thật thường là Integration, còn critical user journey mới cần E2E.
+
+## Mental Model
+
+Mental model cốt lõi:
+
+**Production behavior → Risk → Test boundary → Confidence**
+
+| Risk nằm ở đâu? | Test ưu tiên | Vì sao |
+| --- | --- | --- |
+| Logic bên trong một component | **Unit** | Nhanh, deterministic, dễ isolate |
+| DB, transaction, JSON, schema, service contract | **Integration** | Cần chứng minh behavior qua boundary thật |
+| User journey xuyên hệ thống | **E2E** | Cần confidence rằng whole flow hoạt động |
+
+Không có test level nào “cao cấp hơn” test level khác. Mỗi level trả lời một câu hỏi khác nhau.
+
+## Core Concepts
+
+### Unit Test
+
+Unit test kiểm tra một đơn vị logic nhỏ, thường không cần network, database thật hoặc external service. Nó phù hợp với business rules, validation, transformation, algorithms và edge cases.
+
+Ví dụ: `amount <= 0` phải bị reject hoặc `calculateDiscount()` phải trả đúng discount là Unit Test điển hình.
+
+### Integration Test
+
+Integration test kiểm tra nhiều thành phần có tương tác đúng qua boundary thật hay không. Đây là layer quan trọng khi risk nằm ở transaction, SQL/schema, serialization, framework mapping hoặc service contract.
+
+Nếu cần chứng minh transaction thực sự rollback, column `NOT NULL` thực sự được enforce, hoặc request JSON thực sự map đủ field `currency`, mock không cung cấp đủ confidence.
+
+### End-to-End Test
+
+E2E kiểm tra một critical user journey xuyên qua phần lớn hệ thống, ví dụ user thanh toán từ frontend rồi thấy trạng thái `SUCCESS`.
+
+E2E cho confidence rộng nhưng thường chậm hơn, setup phức tạp hơn, dễ flaky hơn và failure khó debug hơn. Vì vậy không nên dùng E2E để thay thế mọi test nhỏ hơn.
+
+### Test Pyramid là trade-off, không phải quota
+
+Test Pyramid không yêu cầu một tỷ lệ cố định. Ý chính là giữ phần lớn checks ở boundary nhỏ, nhanh và deterministic; bổ sung Integration tests cho boundary quan trọng; giữ E2E cho các business flow thật sự đáng bảo vệ xuyên hệ thống.
+
+### Coverage không đồng nghĩa confidence
+
+100% code coverage vẫn có thể bỏ sót behavior quan trọng. Coverage trả lời “đoạn code nào đã được execute bởi test?”, không trả lời “risk quan trọng đã được chứng minh đủ chưa?”.
+
+## Example
+
+Giả sử payment service có bốn requirement:
+
+| Requirement | Test phù hợp |
+| --- | --- |
+| `amount <= 0` phải bị reject | **Unit** |
+| Ghi `payment` và `ledger entry` phải cùng transaction | **Integration** |
+| Request JSON không được làm mất field `currency` | **Integration** |
+| User thanh toán và thấy trạng thái `SUCCESS` | **E2E** |
+
+Một feature có thể cần cả ba layer. Không cần chọn một test type duy nhất cho toàn feature.
+
+## When to Use
+
+- Chọn **Unit** khi risk nằm trong business logic nội bộ và dependency thật không cần thiết để chứng minh behavior.
+- Chọn **Integration** khi bug có thể chỉ xuất hiện ở database, transaction, serialization, configuration hoặc service boundary.
+- Chọn **E2E** khi cần bảo vệ critical user journey xuyên hệ thống.
+- Bắt đầu từ câu hỏi “cái gì có thể hỏng?” thay vì bắt đầu từ framework test đang có.
+
+## Common Mistakes
+
+- **Dùng E2E cho mọi business rule:** làm suite chậm và khó debug mà không tăng confidence tương xứng.
+- **Mock database khi database chính là risk:** test sẽ loại bỏ behavior cần kiểm chứng.
+- **Đánh đồng coverage cao với quality cao:** execution coverage không đảm bảo behavioral coverage.
+- **Chọn test type theo tên class:** test level phụ thuộc boundary thực sự được exercise, không phụ thuộc tên file hoặc framework.
+
+## Related Knowledge
+
+- [Test Doubles & Mocking](./test-doubles-and-mocking)
+- [Database Design](./database-design-foundations)
+- [API Communication](./api-communication-fundamentals)
+
+## Self-test
+
+1. Logic discount tính sai nhưng không liên quan network/DB nên ưu tiên test nào?
+2. Transaction lưu order không rollback khi update inventory fail nên ưu tiên test nào?
+3. Vì sao 100% coverage không chứng minh hệ thống được test tốt?
+4. Khi nào E2E đáng dùng dù chi phí cao hơn?
+
+<details>
+<summary>Answers</summary>
+
+1. Unit Test.
+2. Integration Test với database boundary đủ thật để chứng minh transaction behavior.
+3. Coverage chỉ cho biết code được execute; nó không chứng minh các behavior/risk quan trọng đã được kiểm tra đúng.
+4. Khi cần bảo vệ critical user journey xuyên qua nhiều layer của hệ thống.
+
+</details>

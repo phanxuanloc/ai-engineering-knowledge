@@ -540,3 +540,40 @@ topics:
       - system-design
       - evaluation
       - api-communication
+  testing-and-quality-engineering:
+    title: Testing & Quality Engineering
+    category: Software Engineering
+    status: learning
+    note: docs/software-engineering/testing-fundamentals.mdx
+    learned_at: 2026-08-21
+    last_reviewed: null
+    confidence: 3
+    checkpoints:
+      - testing-fundamentals
+      - test-doubles-and-mocking
+    checkpoint_progress:
+      testing-fundamentals:
+        status: understood
+        note: docs/software-engineering/testing-fundamentals.mdx
+        learned_at: 2026-08-21
+        evidence:
+          - distinguished-unit-integration-and-end-to-end-tests-by-risk-boundary-after-clarification
+          - selected-unit-testing-for-pure-discount-business-logic
+          - selected-integration-testing-for-database-transaction-schema-and-json-boundary-risks
+          - mapped-payment-validation-transaction-json-mapping-and-user-success-flow-to-appropriate-test-levels
+      test-doubles-and-mocking:
+        status: understood
+        note: docs/software-engineering/test-doubles-and-mocking.mdx
+        learned_at: 2026-08-21
+        evidence:
+          - distinguished-stub-as-controlled-dependency-output-from-mock-as-interaction-verification
+          - selected-payment-gateway-stub-and-email-service-mock-for-payment-failure-behavior
+          - independently-mapped-inventory-and-payment-to-stubs-and-order-repository-and-email-service-to-mocks
+          - recognized-that-mocking-away-the-database-cannot-prove-real-transaction-or-schema-behavior
+    next_checkpoint: test-design-and-coverage
+    experiments: []
+    prerequisites: []
+    related:
+      - database-design
+      - api-communication
+      - observability-and-reliability

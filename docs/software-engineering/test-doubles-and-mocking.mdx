@@ -1,0 +1,101 @@
+---
+title: Test Doubles & Mocking
+description: Phân biệt Stub, Mock và Fake theo mục đích kiểm soát dependency và quan sát behavior trong test.
+tags: [testing, mocking, test-doubles, software-engineering]
+---
+
+# Test Doubles & Mocking
+
+## TL;DR
+
+Test double thay dependency thật trong test để kiểm soát scenario hoặc quan sát behavior mà không kéo toàn bộ production system vào test. Mental model ngắn: **Stub tạo scenario, Mock kiểm tra interaction, Fake cung cấp implementation đơn giản có behavior/state thật**.
+
+## Mental Model
+
+| Câu hỏi của test | Test double phù hợp |
+| --- | --- |
+| “Dependency phải trả về X để tạo scenario này” | **Stub** |
+| “Interaction/side effect này có xảy ra không?” | **Mock** |
+| “Cần một implementation nhẹ nhưng chạy thật” | **Fake** |
+
+Tên gọi giữa framework có thể khác nhau. Điều quan trọng là vai trò mà test double đang đảm nhiệm.
+
+## Core Concepts
+
+### Stub — control output
+
+Stub chủ yếu trả về dữ liệu được định trước để ép code vào một scenario cụ thể.
+
+Ví dụ: `PaymentGateway.charge()` luôn trả `PAYMENT_FAILED`, hoặc `InventoryService.getStock()` trả `0`. Test dùng output này như phần **Given** của scenario.
+
+### Mock — verify interaction
+
+Mock phù hợp khi interaction hoặc side effect chính là behavior cần kiểm chứng.
+
+Ví dụ payment fail thì `EmailService.send()` không được gọi, hoặc order không được persist. Khi đó test có thể verify số lần gọi hoặc việc interaction không xảy ra.
+
+Không nên verify mọi internal method call. Nếu implementation refactor nhưng observable behavior vẫn đúng mà hàng loạt tests vỡ, suite có thể đang coupled quá chặt với implementation details.
+
+### Fake — lightweight working implementation
+
+Fake là implementation đơn giản nhưng có behavior thật, thường giữ state trong memory.
+
+Ví dụ `FakeOrderRepository` có thể implement `save()` và `findById()` bằng một `Map`. Nó không chứng minh PostgreSQL behavior, nhưng hữu ích khi test cần stateful collaborator mà không cần infrastructure thật.
+
+### Một dependency không có test-double type cố định
+
+Cùng một `OrderRepository` có thể là Mock trong test chỉ cần verify `save()` không được gọi, hoặc là Fake trong test muốn kiểm tra repository state sau operation. Chọn theo câu hỏi test cần trả lời, không theo loại dependency.
+
+### Đừng mock away chính risk
+
+Nếu requirement là chứng minh PostgreSQL transaction thực sự rollback, mock repository sẽ loại bỏ chính behavior cần kiểm chứng. Khi risk nằm ở infrastructure boundary thật, chuyển lên Integration Test thay vì cố mock mọi thứ.
+
+## Example
+
+Scenario: inventory còn hàng nhưng payment thất bại, vì vậy order không được lưu và email không được gửi.
+
+| Dependency | Test double | Vai trò |
+| --- | --- | --- |
+| `InventoryService` | **Stub** | Trả `IN_STOCK` để tạo scenario |
+| `PaymentGateway` | **Stub** | Trả `PAYMENT_FAILED` |
+| `OrderRepository` | **Mock** | Verify `save()` không được gọi |
+| `EmailService` | **Mock** | Verify `send()` không được gọi |
+
+Nếu thay `OrderRepository` bằng một Fake có state, test cũng có thể assert repository vẫn rỗng. Cả hai cách đều có thể hợp lý nếu chúng trả lời đúng câu hỏi của test.
+
+## When to Use
+
+- Dùng **Stub** để tạo deterministic scenario từ dependency.
+- Dùng **Mock** khi interaction hoặc side effect mang business meaning cần bảo vệ.
+- Dùng **Fake** khi cần behavior/state thật nhưng production dependency quá nặng cho test boundary hiện tại.
+- Mock external systems như payment provider, email provider hoặc LLM API khi mục tiêu test là logic orchestration bên trong service.
+
+## Common Mistakes
+
+- **Mock mọi dependency theo thói quen:** làm test bám implementation hơn behavior.
+- **Verify mọi method call:** tạo brittle tests khi refactor nội bộ.
+- **Dùng mock DB để chứng minh DB behavior:** mock không chứng minh schema, transaction hay SQL thật.
+- **Nghĩ mỗi dependency chỉ có một test-double type:** cùng dependency có thể đóng vai Stub, Mock hoặc Fake tùy câu hỏi test.
+
+## Related Knowledge
+
+- [Testing Fundamentals](./testing-fundamentals)
+- [Database Design](./database-design-foundations)
+- [API Communication](./api-communication-fundamentals)
+
+## Self-test
+
+1. Muốn `PaymentGateway` luôn trả `PAYMENT_FAILED` để tạo scenario thì dùng gì?
+2. Muốn kiểm tra `EmailService.send()` không được gọi thì dùng gì?
+3. Fake khác Stub ở điểm cốt lõi nào?
+4. Vì sao không nên mock repository khi chính transaction rollback là risk cần chứng minh?
+
+<details>
+<summary>Answers</summary>
+
+1. Stub.
+2. Mock.
+3. Fake có implementation/state hoạt động thực sự; Stub chủ yếu cung cấp output được định trước.
+4. Vì mock loại bỏ database behavior khỏi test, nên không thể chứng minh transaction thật sự rollback.
+
+</details>

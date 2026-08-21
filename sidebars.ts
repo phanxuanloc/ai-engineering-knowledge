@@ -93,7 +93,17 @@ const sidebars: SidebarsConfig = {
           link: {type: 'doc', id: 'software-engineering/api-and-integration'},
           items: ['software-engineering/api-communication-fundamentals'],
         },
-        {type: 'category', label: 'Testing & Quality Engineering', collapsible: true, collapsed: true, link: {type: 'doc', id: 'software-engineering/testing-and-quality-engineering'}, items: []},
+        {
+          type: 'category',
+          label: 'Testing & Quality Engineering',
+          collapsible: true,
+          collapsed: true,
+          link: {type: 'doc', id: 'software-engineering/testing-and-quality-engineering'},
+          items: [
+            'software-engineering/testing-fundamentals',
+            'software-engineering/test-doubles-and-mocking',
+          ],
+        },
         {
           type: 'category', label: 'Security Engineering', collapsible: true, collapsed: true,
           link: {type: 'doc', id: 'software-engineering/security-engineering'},
