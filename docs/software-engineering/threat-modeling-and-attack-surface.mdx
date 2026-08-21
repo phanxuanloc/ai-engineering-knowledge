@@ -1,0 +1,113 @@
+---
+title: Threat Modeling & Attack Surface
+description: Cách nhìn architecture để tìm entry points, privilege boundaries, attack paths và ưu tiên threats theo risk.
+tags: [security, threat-modeling, attack-surface, attack-path, trust-boundary]
+---
+
+import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
+import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+
+# Threat Modeling & Attack Surface
+
+## TL;DR
+
+<TLDR>
+
+Threat Modeling là phân tích architecture trước incident để tìm **assets, entry points, trust/privilege boundaries và attack paths** có impact đáng kể. Thay vì đoán mọi kiểu tấn công, hãy ưu tiên đường đi **Untrusted Input → Privileged Capability → Valuable Asset** và đặt controls để phá đường đó hoặc giảm blast radius.
+
+</TLDR>
+
+## Mental Model
+
+<ReactFlowDiagram
+  ariaLabel="Threat modeling attack path from untrusted entry point to valuable asset"
+  direction="LR"
+  kind="flow"
+  interactive={false}
+  nodes={[
+    {id: 'entry', label: 'Untrusted Entry Point', role: 'source', emphasis: true},
+    {id: 'component', label: 'System Component', role: 'process'},
+    {id: 'privilege', label: 'Privileged Capability', role: 'process'},
+    {id: 'asset', label: 'Valuable Asset / Impact', role: 'state'},
+  ]}
+  edges={[
+    {source: 'entry', target: 'component'},
+    {source: 'component', target: 'privilege'},
+    {source: 'privilege', target: 'asset'},
+  ]}
+/>
+
+Threat modeling hỏi: **đường này tồn tại không, weakness nào làm nó khả thi, và control nào có thể cắt nó trước asset?**
+
+## Core Concepts
+
+### Attack Surface
+
+Attack Surface là tổng các điểm mà attacker hoặc untrusted input có thể tương tác với system: public API, uploaded files, webhooks, external content, repository issues, network ports hoặc third-party integrations. Thêm feature/integration thường đồng thời mở rộng attack surface.
+
+### Entry Point khác Asset
+
+<Comparison
+  label="Hai vai trò trong attack path"
+  items={[
+    {eyebrow: 'Where interaction starts', title: 'Entry Point', description: 'Nơi untrusted actor/input đi vào system, ví dụ public API hoặc uploaded file.'},
+    {eyebrow: 'What matters', title: 'Asset', description: 'Thứ có giá trị cần bảo vệ, ví dụ customer data, production credential hoặc service availability.'},
+  ]}
+/>
+
+### Privilege Boundary
+
+Một component trở nên đặc biệt nhạy cảm khi nó có capability mà nguồn input không có. Public user chỉ được tạo issue nhưng Coding Agent lại có thể push code hoặc chạy terminal: agent trở thành một **privilege bridge** nếu untrusted input có thể điều khiển privileged action.
+
+### Threat, Vulnerability và Risk
+
+- **Threat:** điều xấu có thể xảy ra, ví dụ attacker khiến agent deploy malicious code.
+- **Vulnerability:** weakness cho phép threat, ví dụ agent có broad deployment permission và thiếu approval gate.
+- **Risk:** hậu quả và likelihood của threat trong context thực tế.
+
+### Break the Attack Path
+
+Threat không cần biến mất hoàn toàn để architecture an toàn hơn. Nếu agent chỉ được create PR, còn CI + human review + branch protection kiểm soát merge/deploy, prompt injection vẫn có thể xảy ra nhưng đường tới production đã bị giới hạn.
+
+<Principle label="Threat vẫn còn, blast radius nhỏ hơn">Security control tốt có thể làm attack path khó hoặc không thể hoàn tất ngay cả khi upstream component bị manipulate.</Principle>
+
+## Example
+
+Support Agent nhận Customer Message, đọc Orders DB và gọi Refund API. Customer Message là entry point. Threat là attacker manipulate agent để refund trái phép. Nếu Refund API tự enforce `amount <= $100`, control nằm ở authorization/policy boundary thay vì phụ thuộc vào reasoning của model; prompt injection thành công vẫn không tạo capability refund `$10,000`.
+
+## When to Use
+
+- Trước khi expose endpoint, integration hoặc privileged automation mới.
+- Khi một service/agent nối untrusted input với database, shell, CI/CD hoặc cloud APIs.
+- Khi review architecture và cần ưu tiên security work theo attack path có impact lớn.
+- Sau incident để tìm boundary/control đã thiếu thay vì chỉ patch symptom.
+
+## Common Mistakes
+
+- **Liệt kê vulnerability không gắn architecture:** threat model phải chỉ ra entry point, path và asset/impact.
+- **Threat = vulnerability:** threat là điều có thể xảy ra; vulnerability là weakness cho phép nó.
+- **Cố loại bỏ mọi threat:** thực tế thường cần ưu tiên risk và phá các attack path quan trọng nhất.
+- **Model/AI quyết định security:** privileged API phải enforce invariant quan trọng độc lập với model output.
+
+## Related Knowledge
+
+- [Security Engineering Fundamentals](./security-engineering.mdx)
+- [Secrets & Credential Security](./secrets-and-credential-security.mdx)
+- [System Design Fundamentals](./system-design-fundamentals.mdx)
+
+## Self-test
+
+1. Entry Point khác Asset như thế nào?
+2. Vì sao component có privilege cao hơn nguồn input là điểm cần chú ý?
+3. Prompt injection biến mất chưa nếu agent chỉ được create PR?
+4. Refund API enforce maximum amount đang phá attack path ở đâu?
+
+<details>
+<summary>Answers</summary>
+
+1. Entry Point là nơi interaction bắt đầu; Asset là thứ có giá trị cần bảo vệ.
+2. Nó có thể trở thành privilege bridge nếu input manipulate được privileged capability.
+3. Chưa; threat vẫn tồn tại nhưng blast radius và đường tới production bị giới hạn.
+4. Ở privileged API boundary: request vượt policy bị reject bất kể agent reasoning thế nào.
+
+</details>
