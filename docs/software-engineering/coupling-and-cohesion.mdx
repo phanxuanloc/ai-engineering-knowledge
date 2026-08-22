@@ -46,11 +46,52 @@ import {ExcalidrawDiagram} from '@site/src/components/Diagrams';
 
 ## Example
 
-Checkout không nên thêm nhánh PayPal trực tiếp cạnh Stripe cho mỗi provider mới:
+Ban đầu hệ thống chỉ hỗ trợ Stripe, nên `CheckoutService` gọi trực tiếp Stripe:
+
+```ts
+class CheckoutService {
+  async checkout(input: ChargeInput) {
+    const stripe = new StripeClient();
+    return stripe.charge(input);
+  }
+}
+```
+
+Khi cần thêm PayPal, cách nhanh nhưng coupling cao là đưa luôn provider-specific branching vào core checkout:
+
+```ts
+class CheckoutService {
+  async checkout(provider: 'stripe' | 'paypal', input: ChargeInput) {
+    if (provider === 'stripe') {
+      const stripe = new StripeClient();
+      return stripe.charge(input);
+    }
+
+    const paypal = new PayPalClient();
+    return paypal.charge(input);
+  }
+}
+```
+
+Lúc này `CheckoutService` vừa orchestration checkout vừa biết Stripe SDK, PayPal SDK và cách chọn từng provider. Mỗi provider mới lại tạo thêm một reason to change cho core service.
+
+Tách capability thanh toán sau một boundary chung giúp checkout chỉ phụ thuộc vào hành vi nó thực sự cần:
 
 ```ts
 interface PaymentGateway {
   charge(input: ChargeInput): Promise<ChargeResult>;
+}
+
+class StripePaymentGateway implements PaymentGateway {
+  charge(input: ChargeInput) {
+    return new StripeClient().charge(input);
+  }
+}
+
+class PayPalPaymentGateway implements PaymentGateway {
+  charge(input: ChargeInput) {
+    return new PayPalClient().charge(input);
+  }
 }
 
 class CheckoutService {
@@ -62,7 +103,7 @@ class CheckoutService {
 }
 ```
 
-`CheckoutService` giữ cohesion quanh checkout; Stripe hoặc PayPal adapter sở hữu provider detail. Thêm provider không buộc core checkout biết từng SDK.
+`CheckoutService` giữ cohesion quanh checkout; `StripePaymentGateway` và `PayPalPaymentGateway` sở hữu provider detail. Thêm provider mới không buộc core checkout biết thêm SDK hoặc thêm nhánh `if/else` theo provider.
 
 ## When to Use
 
