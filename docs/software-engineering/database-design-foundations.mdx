@@ -1,6 +1,6 @@
 ---
 title: Database Design Foundations
-description: Nền tảng thực dụng để mô hình hóa relational data, thiết kế index và giữ correctness qua transaction, concurrency và isolation.
+description: Nền tảng thực dụng để biến business facts thành relational schema, access paths và concurrency guarantees đúng với production requirements.
 tags: [database-design, relational-modeling, indexing, transactions, concurrency]
 sidebar_position: 4
 ---
@@ -14,28 +14,69 @@ import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 <TLDR>
 
-Database Design nối business facts với schema và access patterns: mô hình đúng entities/relationships, giữ mỗi fact ở một source of truth rõ ràng, rồi thêm constraints, indexes và transaction boundaries phù hợp. Khi có concurrency, correctness không đến từ một lần `READ` rồi quyết định trong application; nó cần atomic operation, locking, optimistic check hoặc isolation guarantee phù hợp.
+Database Design không bắt đầu từ `CREATE TABLE`; nó bắt đầu từ **business facts, invariants và access patterns**. Schema quyết định facts nào tồn tại và liên hệ ra sao; constraints bảo vệ correctness; indexes tối ưu đường truy cập; transactions giữ một business operation không bị hoàn thành nửa chừng; concurrency control và isolation bảo vệ state khi nhiều actor cùng thao tác.
+
+Một design tốt không phải schema “normalize tối đa” hay database có thật nhiều index. Nó là design khiến **current truth rõ ràng, historical truth không bị viết lại, query quan trọng có access path phù hợp và concurrent operations vẫn giữ được invariants**.
 
 </TLDR>
 
+## Why It Matters
+
+Một database có thể chạy đúng khi hệ thống còn nhỏ nhưng bắt đầu lỗi khi requirements tăng:
+
+- thêm relationship mới làm schema phải duplicate dữ liệu;
+- update một business fact nhưng một bản copy khác không được cập nhật;
+- dashboard chậm dần vì query phải scan và sort quá nhiều rows;
+- một workflow ghi được `Order` nhưng fail trước khi ghi `OrderItem`;
+- hai workers cùng đọc `PENDING` rồi cùng claim một task;
+- hai transactions cùng đúng khi chạy riêng lẻ nhưng tạo kết quả sai khi chạy đồng thời.
+
+Những lỗi này nhìn khác nhau, nhưng cùng bắt nguồn từ một câu hỏi lớn hơn:
+
+> Database đang lưu **fact nào**, bảo vệ **invariant nào**, phục vụ **access pattern nào**, và cho phép **concurrent change** đến mức nào?
+
+Nếu chỉ nghĩ database là nơi lưu rows, ta thường sửa từng symptom bằng thêm column, thêm index hoặc thêm lock. Database Design giúp reasoning từ business semantics trước, rồi mới chọn schema và mechanism.
+
 ## Mental Model
 
-`Business Requirement → Entities → Relationships → Tables + PK/FK → Constraints`
+Hãy coi database như một hệ thống bảo vệ **truth** của application.
 
-Schema trả lời **facts nào tồn tại và liên hệ ra sao**. Index trả lời **query nào cần đường truy cập nhanh**. Transaction trả lời **những DB operations nào tạo thành một business operation**; Isolation trả lời **các transaction chạy đồng thời được phép quan sát và tác động lẫn nhau như thế nào**.
+`Business facts → Relationships → Invariants → Schema + Constraints`
 
-<Principle label="Source of truth">{'Một business fact nên có một source of truth rõ ràng; hai giá trị giống nhau chỉ là duplication khi chúng đại diện cho cùng một fact.'}</Principle>
+Sau đó production requirements bổ sung thêm hai lớp:
+
+`Access patterns → Indexes`
+
+`Business operations + Concurrency → Transactions + Isolation / Atomic operations`
+
+<Principle label="Source of truth">{'Một business fact nên có một source of truth rõ ràng. Hai values giống nhau không nhất thiết là duplication nếu chúng đại diện cho hai facts khác nhau, ví dụ current price và historical price-at-run.'}</Principle>
+
+Bốn câu hỏi giúp định hướng phần lớn quyết định database design:
+
+1. **Fact:** hệ thống cần nhớ điều gì?
+2. **Relationship:** fact đó thuộc về hoặc liên hệ với entity nào?
+3. **Access:** application sẽ đọc/update fact đó theo pattern nào?
+4. **Invariant:** điều gì phải luôn đúng kể cả khi có failure hoặc concurrency?
 
 ## Core Concepts
 
-### Relational data modeling
+### Relational modeling: từ business fact tới schema
 
-- **Entity** là đối tượng hoặc khái niệm có identity riêng, như `User`, `Agent`, `Tool`; **attribute** mô tả entity, như tên hoặc trạng thái.
-- **Primary Key (PK)** định danh duy nhất một record. **Foreign Key (FK)** biểu diễn relationship và giúp database enforce referential integrity.
-- Với relationship **1:N**, FK thường nằm ở phía many. `User 1:N Agent` có thể được biểu diễn bằng `Agent.user_id → User.id`.
-- Với relationship **N:N**, junction/association table biến relationship thành một entity có hai FK. Attribute mô tả chính relationship phải nằm trên junction entity.
+Một relational schema tốt phản ánh domain đủ rõ để database có thể giúp enforce correctness.
 
-Ví dụ `Agent N:N Tool`:
+- **Entity** là đối tượng hoặc khái niệm có identity riêng, như `User`, `Agent`, `Tool`, `AgentRun`.
+- **Attribute** mô tả một entity hoặc relationship, như `Agent.name` hay permission của một Agent đối với một Tool.
+- **Primary Key (PK)** định danh duy nhất một record.
+- **Foreign Key (FK)** biểu diễn relationship và giúp database enforce referential integrity.
+- **Constraint** diễn đạt invariant mà database có thể bảo vệ, như `NOT NULL`, `UNIQUE`, `CHECK`, PK hoặc FK.
+
+Với relationship **1:N**, FK thường nằm ở phía many:
+
+`User 1:N Agent → Agent.user_id → User.id`
+
+Mỗi `Agent` thuộc một `User`, nên row ở phía many giữ identity của parent.
+
+Với relationship **N:N**, junction/association table biến relationship thành một entity có identity riêng từ hai phía:
 
 ```sql
 CREATE TABLE AgentTool (
@@ -47,32 +88,68 @@ CREATE TABLE AgentTool (
 );
 ```
 
-`enabled` và `permission_level` không mô tả riêng `Agent` hay `Tool`; chúng mô tả việc một Agent được dùng một Tool như thế nào.
+`enabled` và `permission_level` không phải thuộc tính cố hữu của `Agent` hay `Tool`; chúng mô tả **relationship giữa hai entity**.
 
-Tương tự, `User N:N Organization` có thể dùng `OrganizationMember(user_id, organization_id, role)`. Constraint `UNIQUE(user_id, organization_id)` ngăn cùng một membership bị tạo lặp.
+Đây là distinction quan trọng: nếu một attribute chỉ có nghĩa khi hai entity được đặt cạnh nhau, nó thường thuộc relationship hơn là một phía riêng lẻ.
 
-### Normalization fundamentals
+### Normalization: bảo vệ current truth
 
-Mental model thực dụng là: **một business fact → một source of truth rõ ràng**.
+Normalization nên được hiểu như một cách giảm tình trạng **một current business fact có nhiều nơi cùng tuyên bố là source of truth**.
 
-- **1NF:** mỗi field giữ một giá trị atomic theo schema thay vì một danh sách khó query và constrain.
-- **2NF:** trong table có composite key, non-key attribute phải phụ thuộc vào toàn bộ key, không chỉ một phần.
+Ví dụ một schema ban đầu lưu:
+
+```text
+AgentRun(
+  id,
+  model_id,
+  model_name,
+  model_provider,
+  ...
+)
+```
+
+Nếu `model_name` và `model_provider` là current metadata của `Model`, mọi `AgentRun` đang copy cùng một fact. Đổi tên model có thể khiến một số rows được update, một số rows không, tạo update anomaly.
+
+Một design rõ hơn là:
+
+```text
+Model(id, name, provider)
+AgentRun(id, model_id, ...)
+```
+
+`Model` trở thành source of truth cho current metadata.
+
+Ba normal forms thường gặp cung cấp vocabulary để reasoning:
+
+- **1NF:** mỗi field giữ một giá trị atomic theo schema thay vì collection khó query/constrain.
+- **2NF:** với composite key, non-key attribute phải phụ thuộc vào toàn bộ key, không chỉ một phần.
 - **3NF:** non-key attribute nên phụ thuộc vào key, không phụ thuộc gián tiếp qua một non-key attribute khác.
 
-Mục đích không phải đạt “schema thuần khiết” bằng mọi giá, mà là giảm update anomaly và tránh nhiều nơi cùng tuyên bố là current truth.
+Nhưng mục tiêu không phải “normalize càng nhiều càng tốt”. Điều phải bảo vệ là **meaning của fact**.
 
-Normalization không được xóa historical snapshot có chủ đích:
+### Historical snapshot không phải duplication sai
 
-- `Model.current_price` là **giá hiện tại**.
-- `AgentRun.price_per_token_at_run` là **giá đã được dùng cho lần chạy lịch sử**.
+Giả sử:
 
-Hai field có thể cùng một giá trị lúc record được tạo, nhưng chúng đại diện cho hai facts khác nhau. Nếu chỉ tham chiếu `current_price`, một lần đổi giá sẽ làm sai ý nghĩa lịch sử của chi phí đã phát sinh.
+- `Model.current_price` là giá hiện tại;
+- `AgentRun.price_per_token_at_run` là giá được áp dụng cho một run trong quá khứ.
 
-### Index design fundamentals
+Hai fields có thể cùng value lúc run được tạo, nhưng chúng là **hai facts khác nhau**.
 
-Index là auxiliary data structure giúp database tránh full-table scan không cần thiết. Nó đổi thêm storage và write-maintenance cost để lấy read performance tốt hơn, nên phải được thiết kế từ **query/access pattern**, không phải bằng cách index mù mọi column.
+Nếu chỉ lưu FK tới `Model.current_price`, việc đổi giá hôm nay sẽ khiến historical cost của run hôm qua bị diễn giải lại. Vì vậy snapshot value tại thời điểm business event xảy ra là duplication **có chủ đích**.
 
-Với query:
+Distinction cần nhớ:
+
+- duplicated **current truth** dễ gây inconsistency;
+- duplicated **historical fact** có thể là cách giữ history chính xác.
+
+### Index design: thiết kế từ access pattern
+
+Schema trả lời “data có hình dạng gì”; index trả lời “application sẽ đi tới data đó bằng đường nào”.
+
+Một index là auxiliary data structure đổi thêm storage và write-maintenance cost để lấy read performance tốt hơn. Vì vậy đừng bắt đầu bằng câu hỏi “column nào nên index?”, mà hãy bắt đầu bằng **query quan trọng chạy như thế nào**.
+
+Dashboard cần lấy 20 runs mới nhất của một Agent:
 
 ```sql
 SELECT *
@@ -82,33 +159,70 @@ ORDER BY created_at DESC
 LIMIT 20;
 ```
 
-index phù hợp là:
+Một candidate hợp lý:
 
 ```sql
 CREATE INDEX idx_agent_run_agent_created
 ON AgentRun (agent_id, created_at DESC);
 ```
 
-Database có thể thu hẹp entries theo `agent_id`, rồi đọc chúng theo ordering của `created_at` để lấy 20 record đầu. Đây là trực giác của **leftmost prefix**: composite index `(agent_id, created_at)` hỗ trợ tốt access pattern bắt đầu từ `agent_id`; đổi thứ tự column có thể phục vụ một query khác.
+Query bắt đầu bằng equality trên `agent_id`, rồi cần ordering theo `created_at`. Composite index này phù hợp với shape đó.
 
-**Selectivity** cũng quan trọng: column có rất ít giá trị khác nhau thường thu hẹp ít rows khi đứng một mình. Ngoài ra, PK/FK constraint và performance index có trách nhiệm khác nhau: constraint bảo vệ identity/integrity; index tạo access path. Việc database tự tạo index nào cho constraint, đặc biệt FK, phụ thuộc engine và không nên được giả định là universal.
+Đây là trực giác của **leftmost prefix**: order của columns trong composite index ảnh hưởng trực tiếp access patterns mà index phục vụ tốt.
 
-### Transactions và ACID
+Một vài yếu tố phải cân nhắc cùng nhau:
 
-Transaction gom nhiều DB operations thành một business operation: **commit cùng nhau hoặc rollback**.
+- **filter columns** và thứ tự predicate;
+- **sort/order requirement**;
+- **selectivity** — predicate thu hẹp được bao nhiêu rows;
+- **covering potential** nếu engine hỗ trợ và workload đáng để tối ưu;
+- **write cost** vì insert/update/delete phải duy trì index;
+- **storage cost** và cache pressure.
 
-- **Atomicity:** tránh trạng thái chỉ hoàn thành một phần DB mutations.
-- **Consistency:** transaction hợp lệ giữ các invariants mà schema và database enforce.
-- **Isolation:** kiểm soát interaction giữa các transaction concurrent.
-- **Durability:** commit đã được acknowledge vẫn tồn tại sau failure theo guarantee của database.
+Constraint và index cũng không phải một khái niệm. Constraint bảo vệ integrity; index tối ưu access path. Database engine có thể tự tạo một số indexes cho PK/UNIQUE, nhưng behavior quanh FK và các constraint khác không nên được giả định là universal.
 
-Khi tạo order, `Order`, `OrderItems`, inventory mutation và `PaymentRecord` có thể thuộc cùng một DB transaction ngắn. External email/network call không nên bị giữ bên trong một transaction dài vì latency và failure của remote system kéo dài lock/resource lifetime.
+### Transactions: giữ một business operation nguyên vẹn
 
-Commit DB state và phát external side effect một cách atomic là một reliability problem riêng. **Transactional Outbox** là một pattern có thể giải quyết boundary đó, nhưng cần một bài học riêng để hiểu delivery, retry và idempotency đầy đủ.
+Transaction gom nhiều DB operations thành một logical unit: **commit cùng nhau hoặc rollback**.
 
-### Concurrency: tránh check-then-act race
+Ví dụ tạo order có thể gồm:
 
-Chuỗi `READ → application decision → WRITE` mở một race window: operation khác có thể thay đổi state sau READ nhưng trước WRITE.
+```text
+Create Order
+→ Create OrderItems
+→ Decrease Inventory
+→ Create PaymentRecord
+```
+
+Nếu operation fail sau bước thứ hai nhưng hai bước đầu đã permanent, database rơi vào partial state mà business không chấp nhận.
+
+ACID cung cấp vocabulary cho guarantees:
+
+- **Atomicity:** tránh partial commit của một transaction.
+- **Consistency:** transaction hợp lệ giữ các invariants mà database/schema enforce.
+- **Isolation:** kiểm soát cách concurrent transactions quan sát/tác động lẫn nhau.
+- **Durability:** commit đã được acknowledge vẫn tồn tại theo guarantee của database sau failure.
+
+Transaction boundary nên giữ **ngắn và tập trung vào database state cần atomic**. Network call, email, payment API hoặc remote service call thường không nên nằm trong một transaction dài vì latency/failure của remote system kéo dài lock/resource lifetime.
+
+Việc commit DB state và phát external side effect một cách đáng tin cậy là một distributed reliability problem riêng. Transactional Outbox là một pattern thường dùng cho boundary đó, nhưng nó không biến remote side effect thành cùng một ACID transaction với database.
+
+### Concurrency: correctness thay đổi khi có nhiều actor
+
+Một operation có thể hoàn toàn đúng khi chạy một mình nhưng sai khi chạy đồng thời.
+
+Giả sử task có state `PENDING` và hai workers cùng chạy logic:
+
+```text
+READ status
+IF PENDING
+  process task
+  UPDATE status = RUNNING
+```
+
+Nếu Worker A và Worker B cùng đọc trước khi bất kỳ ai write, cả hai đều thấy `PENDING` và cùng quyết định mình được phép xử lý task.
+
+Đó là **check-then-act race**: condition được kiểm tra ở một thời điểm, mutation xảy ra ở thời điểm khác, và state có thể thay đổi trong khoảng giữa.
 
 <FlowExplainer
   title="Hai Workers cùng claim một task"
@@ -131,13 +245,13 @@ Chuỗi `READ → application decision → WRITE` mở một race window: operat
       ],
       steps: [
         {title: '1 · Worker A reads', edgeId: 'a-task', from: 'worker-a', to: 'task', message: 'READ PENDING', description: 'Worker A đọc state nhưng chưa thay đổi row.'},
-        {title: '2 · Worker B reads stale state', edgeId: 'b-task', from: 'worker-b', to: 'task', message: 'READ PENDING', description: 'Trước khi A ghi, Worker B cũng quan sát cùng state PENDING.'},
-        {title: '3 · Both act', edgeId: 'task-conflict', from: 'task', to: 'conflict', message: 'two claims', description: 'Hai application decisions cùng dựa trên state cũ nên task có thể bị xử lý hai lần.'},
+        {title: '2 · Worker B reads same state', edgeId: 'b-task', from: 'worker-b', to: 'task', message: 'READ PENDING', description: 'Trước khi A write, Worker B cũng quan sát PENDING.'},
+        {title: '3 · Both act', edgeId: 'task-conflict', from: 'task', to: 'conflict', message: 'two claims', description: 'Hai decisions cùng dựa trên state cũ nên task có thể bị xử lý hai lần.'},
       ],
     },
     {
       id: 'atomic-conditional-update',
-      label: 'Safe: atomic update',
+      label: 'Safe: atomic condition + write',
       layout: 'compact',
       nodes: [
         {id: 'worker-a', label: 'Worker A', detail: 'Conditional UPDATE', role: 'client'},
@@ -151,30 +265,14 @@ Chuỗi `READ → application decision → WRITE` mở một race window: operat
         {id: 'db-result', source: 'database', target: 'result'},
       ],
       steps: [
-        {title: '1 · Competing conditional writes', transitions: [{edgeId: 'a-db', from: 'worker-a', to: 'database', message: 'UPDATE … WHERE PENDING'}, {edgeId: 'b-db', from: 'worker-b', to: 'database', message: 'UPDATE … WHERE PENDING'}], active: ['database'], description: 'Cả hai Workers gửi cùng conditional UPDATE; database serialize conflict theo atomicity guarantee của operation.'},
-        {title: '2 · One update wins', edgeId: 'db-result', from: 'database', to: 'result', message: '1 winner', description: 'Chỉ operation đầu tiên đổi PENDING thành RUNNING và nhận affected_rows = 1; operation còn lại nhận 0.'},
+        {title: '1 · Competing conditional writes', transitions: [{edgeId: 'a-db', from: 'worker-a', to: 'database', message: 'UPDATE … WHERE PENDING'}, {edgeId: 'b-db', from: 'worker-b', to: 'database', message: 'UPDATE … WHERE PENDING'}], active: ['database'], description: 'Hai Workers gửi cùng conditional UPDATE; condition và mutation được đánh giá như một database operation.'},
+        {title: '2 · One update wins', edgeId: 'db-result', from: 'database', to: 'result', message: '1 winner', description: 'Operation đầu tiên đổi PENDING thành RUNNING nhận affected_rows = 1; operation còn lại nhận 0.'},
       ],
     },
   ]}
 />
 
-<Comparison
-  label="Conflict strategy"
-  items={[
-    {
-      eyebrow: 'Lock first',
-      title: 'Pessimistic locking',
-      description: 'Kỳ vọng conflict có thể xảy ra và khóa resource trước khi thay đổi.',
-    },
-    {
-      eyebrow: 'Detect on write',
-      title: 'Optimistic concurrency',
-      description: 'Giả định conflict hiếm, rồi dùng version hoặc condition để phát hiện stale write.',
-    },
-  ]}
-/>
-
-Atomic conditional operation thường làm reasoning đơn giản hơn. Để chỉ một Worker claim task:
+Một design đơn giản hơn là gộp condition và mutation:
 
 ```sql
 UPDATE tasks
@@ -182,85 +280,197 @@ SET status = 'RUNNING'
 WHERE id = ? AND status = 'PENDING';
 ```
 
-Chỉ Worker nhận `affected_rows = 1` thắng; Worker còn lại nhận `0`. Condition và mutation diễn ra trong một database operation, nên không còn separate read/check/write window.
+Worker có `affected_rows = 1` thắng. Worker nhận `0` biết state không còn phù hợp.
 
-### Isolation fundamentals
+<Comparison
+  label="Conflict strategy"
+  items={[
+    {
+      eyebrow: 'Lock first',
+      title: 'Pessimistic locking',
+      description: 'Giữ lock trước khi thay đổi khi conflict có xác suất hoặc cost đủ cao để coordination upfront là hợp lý.',
+    },
+    {
+      eyebrow: 'Detect conflict',
+      title: 'Optimistic concurrency',
+      description: 'Cho phép competing work xảy ra rồi dùng version/condition để phát hiện stale write và retry/reject.',
+    },
+  ]}
+/>
 
-- **Transaction boundary:** DB operations nào là một logical unit.
-- **Isolation:** concurrent transactions được quan sát/tác động lẫn nhau ra sao.
-- **Locking, MVCC và optimistic checks:** các mechanism database hoặc application dùng để implement hay bổ sung concurrency guarantees.
+Atomic conditional write, pessimistic locking và optimistic concurrency không phải “level tốt hơn/kém hơn”; chúng là strategies khác nhau cho conflict profile khác nhau.
 
-Ba anomaly cơ bản:
+### Isolation: transaction khác được phép thấy gì?
+
+Transaction boundary và isolation trả lời hai câu hỏi khác nhau:
+
+- **Transaction boundary:** operations nào tạo thành một logical unit?
+- **Isolation:** concurrent transactions được phép quan sát và tác động lẫn nhau như thế nào?
+
+Các mechanism như locking, MVCC và optimistic checks là cách database/application implement hoặc bổ sung concurrency guarantees.
+
+Ba anomalies cơ bản:
 
 - **Dirty Read:** đọc data của transaction khác chưa commit.
-- **Non-repeatable Read:** đọc cùng một row hai lần nhưng thấy version khác vì transaction khác đã commit update ở giữa.
-- **Phantom Read:** chạy lại một predicate query và thấy tập rows thay đổi do transaction khác insert/delete matching rows.
+- **Non-repeatable Read:** đọc cùng một row hai lần nhưng thấy version khác vì transaction khác commit update ở giữa.
+- **Phantom Read:** chạy lại predicate query và thấy tập rows thay đổi do transaction khác insert/delete matching rows.
 
-Các isolation level cung cấp mental model thực dụng:
+Mental model thực dụng cho isolation levels:
 
-- **Read Committed** ngăn đọc uncommitted data, nhưng không đảm bảo một stable view cho toàn transaction. Vì vậy nó không đủ nếu hai lần đọc cùng một row bắt buộc thấy cùng version sau khi transaction khác commit update.
-- **Repeatable Read** tăng stability cho repeated reads, nhưng precise behavior—đặc biệt với predicates, phantoms và locking—phụ thuộc database engine.
-- **Serializable** hướng tới kết quả concurrent tương đương một serial ordering hợp lệ, thường đổi lại nhiều coordination, blocking, abort hoặc retry hơn.
+- **Read Committed:** chặn dirty read, nhưng không tạo stable snapshot cho toàn transaction trong mọi engine/operation.
+- **Repeatable Read:** tăng stability cho repeated reads, nhưng precise behavior với predicates, phantoms và locking phụ thuộc engine.
+- **Serializable:** hướng tới kết quả concurrent tương đương một serial ordering hợp lệ, thường đổi lại blocking, abort, retry hoặc coordination cost cao hơn.
 
-Tên isolation level không đủ để suy ra mọi behavior giống nhau trên PostgreSQL, MySQL, SQL Server hay engine khác; luôn kiểm tra documentation và test trên engine đang dùng.
+Tên isolation level không đủ để suy ra toàn bộ runtime behavior. PostgreSQL, MySQL, SQL Server và các engines khác có implementation details khác nhau, nên correctness-sensitive code phải kiểm tra documentation và test trên engine thực tế.
 
 ## Example
 
-Một AI Agent platform có thể bắt đầu từ requirements sau:
+### Starting Point: một AI Agent platform đơn giản
 
-1. `User 1:N Agent` → đặt `user_id` trên `Agent`.
-2. `Agent N:N Tool`, mỗi mapping có permission riêng → tạo `AgentTool` với composite identity và relationship attributes.
-3. Dashboard lấy 20 runs mới nhất của một Agent → thiết kế index `(agent_id, created_at DESC)` từ access pattern.
-4. Một run phải lưu đúng giá đã tính → snapshot `price_per_token_at_run`, không đọc ngược từ current price.
-5. Chỉ một Worker được claim một task → dùng conditional `UPDATE` và kiểm tra `affected_rows`.
-6. Một workflow cần repeated-read stability → chọn isolation theo guarantee thực tế của database engine, không chỉ dựa vào tên level.
+Giả sử hệ thống bắt đầu với ba requirements:
 
-Các quyết định cùng xuất phát từ business facts và invariants, nhưng giải quyết các lớp khác nhau: schema, history, read path và concurrent correctness.
+- một `User` có nhiều `Agent`;
+- một `Agent` có thể dùng nhiều `Tool`;
+- mỗi `AgentRun` thuộc một Agent và một Model.
+
+Một schema ban đầu hợp lý có thể là:
+
+```text
+User 1 ─── N Agent
+Agent N ─── N Tool
+Agent 1 ─── N AgentRun
+Model 1 ─── N AgentRun
+```
+
+`AgentTool(agent_id, tool_id, permission_level, enabled)` sở hữu attributes của relationship.
+
+Ở giai đoạn này, không cần tạo thêm abstraction hay duplicate bảng chỉ để “future-proof”. Schema chỉ cần phản ánh đúng current facts và constraints.
+
+### Requirement Changes: production pressure xuất hiện
+
+Sau một thời gian, requirements tăng:
+
+1. Model price có thể thay đổi, nhưng cost của run cũ phải giữ nguyên.
+2. Dashboard cần 20 runs mới nhất của một Agent với latency ổn định khi bảng lớn.
+3. Tạo run gồm nhiều DB writes và không được để partial state.
+4. Nhiều workers cùng claim pending tasks.
+5. Một reporting workflow cần repeated-read semantics rõ ràng khi transactions khác đang update data.
+
+Bây giờ mỗi requirement gây một loại pressure khác nhau.
+
+### Root Cause: không phải mọi vấn đề database đều là “schema problem”
+
+- Giá lịch sử là **fact semantics problem**.
+- Dashboard chậm là **access path problem**.
+- Partial run creation là **transaction boundary problem**.
+- Duplicate claim là **concurrency race problem**.
+- Inconsistent repeated read là **isolation problem**.
+
+Nếu gom tất cả thành “thêm index” hoặc “tăng isolation”, ta đang dùng một mechanism để giải sai lớp vấn đề.
+
+### Better Design
+
+Áp dụng đúng mechanism cho đúng pressure:
+
+1. `AgentRun.price_per_token_at_run` snapshot historical price; `Model.current_price` giữ current price.
+2. `(agent_id, created_at DESC)` phục vụ dashboard query thực tế.
+3. Những DB mutations tạo một run hợp lệ nằm trong transaction ngắn.
+4. Task claim dùng conditional `UPDATE ... WHERE status = 'PENDING'` hoặc conflict strategy phù hợp.
+5. Reporting workflow chọn isolation từ anomaly cần ngăn và behavior của engine.
+
+### Why It Works
+
+Mỗi quyết định giữ một responsibility rõ ràng:
+
+- **schema/constraints** bảo vệ shape và integrity của truth;
+- **snapshot semantics** bảo vệ historical truth;
+- **index** tối ưu access path mà không thay đổi business meaning;
+- **transaction** bảo vệ atomic business state transition;
+- **concurrency strategy** bảo vệ invariant khi nhiều actors cùng write;
+- **isolation** kiểm soát visibility giữa concurrent transactions.
+
+Design tốt không phải có nhiều mechanism hơn. Nó là việc **đặt đúng guarantee ở đúng boundary**.
 
 ## When to Use
 
 - Bắt đầu từ entities, relationships và constraints khi chuyển business requirements thành relational schema.
-- Normalize khi duplicated current facts có thể gây update anomaly; giữ snapshot khi historical fact phải bất biến theo thời điểm.
-- Thêm index khi một access pattern quan trọng cần tránh scan/sort thừa và read benefit đáng đổi lấy write/storage cost.
-- Dùng transaction cho nhiều DB mutations cùng tạo thành một business operation; giữ boundary ngắn và không ôm remote calls tùy tiện.
-- Dùng atomic conditional update, locking hoặc optimistic check khi nhiều actor có thể tranh cùng state.
-- Chọn isolation level từ anomaly cần ngăn và semantics thực tế của engine.
+- Normalize khi một current fact bị copy qua nhiều nơi và có nguy cơ update anomaly.
+- Giữ snapshot khi business cần historical fact bất biến theo thời điểm event xảy ra.
+- Thiết kế index từ query/access pattern quan trọng, không từ danh sách columns.
+- Dùng transaction khi nhiều DB mutations cùng tạo thành một business operation không được phép partial commit.
+- Dùng atomic conditional write, locking hoặc optimistic checks khi nhiều actors có thể tranh cùng state.
+- Chọn isolation từ anomaly/invariant cần bảo vệ và semantics thực tế của database engine.
 
 ## Common Mistakes
 
-- **Đặt FK sai phía trong 1:N:** làm relationship khó enforce hoặc buộc lưu collections trong một field.
-- **Đẩy relationship attributes vào một entity:** `permission_level` của Agent–Tool không phải thuộc tính cố hữu của Agent hay Tool.
-- **Normalize mù historical snapshot:** biến dữ liệu lịch sử thành giá trị thay đổi theo current state.
-- **Index từng column theo cảm tính:** bỏ qua query shape, composite order, selectivity và write cost.
-- **Đồng nhất constraint với performance index:** integrity và access-path optimization là hai trách nhiệm khác nhau.
-- **Giữ network call trong transaction dài:** tăng contention và khiến remote failure giữ DB resources lâu hơn.
-- **Check rồi mới act trong application:** tạo race window mà một atomic conditional write có thể loại bỏ.
-- **Đồng nhất Transaction với Isolation:** logical boundary không tự quyết định transaction khác được nhìn thấy gì.
-- **Coi tên isolation level là portable guarantee:** precise semantics thay đổi theo database engine.
+- **Thiết kế schema từ UI fields:** màn hình hiện tại không phải canonical model của business facts.
+- **Đặt FK sai phía trong 1:N:** làm relationship khó enforce hoặc buộc encode collection trong một field.
+- **Đẩy relationship attributes vào một entity:** permission của Agent–Tool không phải thuộc tính cố hữu của riêng Agent hay Tool.
+- **Normalize mù historical snapshots:** biến dữ liệu lịch sử thành giá trị thay đổi theo current state.
+- **Denormalize mà không xác định owner:** tạo nhiều current sources of truth nhưng không có synchronization contract.
+- **Index từng column theo cảm tính:** bỏ qua query shape, composite order, selectivity và write/storage cost.
+- **Đồng nhất constraint với performance index:** integrity và access-path optimization là hai responsibilities khác nhau.
+- **Giữ remote calls trong transaction dài:** tăng contention và giữ DB resources trong thời gian phụ thuộc network.
+- **Check rồi mới act trong application:** mở race window mà atomic conditional operation có thể loại bỏ.
+- **Đồng nhất Transaction với Isolation:** logical boundary không tự quyết định concurrent visibility.
+- **Tăng isolation level như thuốc chữa mọi race:** có thể tăng contention nhưng vẫn không thay thế việc xác định đúng invariant và operation semantics.
+- **Coi tên isolation level là portable guarantee:** precise behavior khác nhau theo engine.
 
-## Related Knowledge
+## Decision Guide
 
-- [System Design Fundamentals](./system-design-fundamentals.mdx) — đặt atomic database operation vào bức tranh lớn hơn: Queue giải quyết capacity, còn source-of-truth consistency mới bảo vệ correctness.
+Khi gặp một database design decision, đi theo thứ tự này:
+
+1. **Fact nào đang được lưu?** Current state, historical snapshot hay derived value?
+2. **Owner/source of truth ở đâu?** Có nhiều nơi cùng đại diện một current fact không?
+3. **Invariant nào phải luôn đúng?** Database có thể enforce bằng PK/FK/UNIQUE/CHECK hay cần transaction/concurrency logic?
+4. **Query nào thực sự quan trọng?** Filter, sort, join, limit và cardinality ra sao?
+5. **Có concurrency không?** Hai actors cùng chạy operation này có thể cùng quyết định dựa trên stale state không?
+6. **Transaction cần nhìn thấy gì?** Có yêu cầu repeated reads, predicate stability hoặc serializable behavior không?
+7. **Cost của guarantee là gì?** Extra storage, slower writes, blocking, retries, complexity hay operational coupling?
+
+Một rule of thumb hữu ích:
+
+> Chọn **minimum guarantee đủ để giữ invariant**, thay vì maximum mechanism mà database cung cấp.
+
+## Practical Takeaway
+
+Khi review database design, đừng chỉ hỏi “schema này normalize chưa?” hoặc “query này có index chưa?”. Hãy hỏi:
+
+- Business fact nào đang được modeled?
+- Current truth và historical truth đã được phân biệt chưa?
+- Relationship và invariant có được database enforce ở nơi hợp lý không?
+- Index có xuất phát từ access pattern thật không?
+- Transaction boundary có đúng với business operation không?
+- Concurrent executions có thể phá invariant nào?
+- Isolation guarantee đang được chọn dựa trên requirement hay chỉ dựa trên default?
+
+Nếu trả lời được các câu hỏi đó, bạn đang design database từ **semantics và guarantees**, không chỉ từ tables và SQL syntax.
 
 ## Self-test
 
 1. Trong relationship 1:N, FK thường nằm ở đâu và vì sao?
 2. Vì sao `price_per_token_at_run` không phải duplication sai của `current_price`?
-3. Query lọc theo `agent_id` rồi lấy runs mới nhất gợi ý composite index nào?
-4. Vì sao email call không nên nằm trong một DB transaction dài?
-5. Conditional `UPDATE ... WHERE status = 'PENDING'` loại bỏ race window nào?
-6. Transaction, Isolation và locking/MVCC khác nhau ở trách nhiệm nào?
-7. Read Committed có đảm bảo hai lần đọc cùng row luôn thấy cùng version không?
+3. Vì sao index `(agent_id, created_at DESC)` hợp với query lấy runs mới nhất của một Agent?
+4. Constraint và index khác nhau về responsibility như thế nào?
+5. Vì sao network call thường không nên nằm trong một DB transaction dài?
+6. Conditional `UPDATE ... WHERE status = 'PENDING'` loại bỏ race window nào?
+7. Transaction boundary và Isolation khác nhau ở câu hỏi mà chúng trả lời như thế nào?
+8. Vì sao không nên chọn isolation level chỉ dựa vào tên `Repeatable Read` hay `Serializable`?
 
 <details>
 <summary>Answers</summary>
 
-1. FK thường nằm ở phía many, ví dụ `Agent.user_id`, để mỗi child tham chiếu đúng parent và database enforce integrity.
-2. Một field là current fact, field kia là historical fact tại thời điểm run; thay đổi giá hiện tại không được viết lại lịch sử.
-3. `(agent_id, created_at DESC)` vì access pattern bắt đầu bằng equality trên `agent_id`, rồi cần ordering theo `created_at`.
-4. Remote latency/failure kéo dài transaction, giữ lock và DB resources; atomic DB-to-external coordination là reliability problem riêng.
-5. Nó gộp condition check và state change vào một atomic database operation; chỉ caller có `affected_rows = 1` claim thành công.
-6. Transaction chọn logical unit; Isolation quy định concurrent interaction; locking/MVCC/optimistic checks là mechanisms tạo hoặc bổ sung guarantees.
-7. Không. Read Committed chặn dirty reads nhưng transaction khác có thể commit update giữa hai lần đọc; exact behavior vẫn phải kiểm tra theo engine.
+1. FK thường nằm ở phía many, ví dụ `Agent.user_id`, vì mỗi child row tham chiếu một parent và database có thể enforce referential integrity trực tiếp.
+2. Một field là current fact, field kia là historical fact tại thời điểm run; đổi current price không được viết lại lịch sử.
+3. Query filter bằng equality trên `agent_id` rồi cần rows theo `created_at DESC`; composite index có cùng leading key và ordering phù hợp access pattern đó.
+4. Constraint bảo vệ integrity/invariant; index tạo access path để query/write lookup hiệu quả hơn. Một implementation có thể dùng index để enforce một số constraints, nhưng hai concepts vẫn có responsibilities khác nhau.
+5. Remote latency/failure kéo dài transaction, lock và DB resource lifetime; coordination giữa DB commit và external side effect là reliability problem riêng.
+6. Nó gộp condition check và state mutation vào một database operation, nên hai workers không còn cùng đọc state cũ rồi cùng quyết định thắng.
+7. Transaction boundary chọn operations nào commit/rollback như một unit; Isolation quyết định concurrent transactions được phép nhìn thấy và ảnh hưởng lẫn nhau như thế nào.
+8. Vì precise semantics phụ thuộc engine và implementation details; correctness-sensitive behavior phải được kiểm tra theo database thực tế.
 
 </details>
+
+## Related Knowledge
+
+- [System Design Fundamentals](./system-design-fundamentals.mdx) — đặt database correctness vào bức tranh lớn hơn của state, queues, caching và distributed system trade-offs.
