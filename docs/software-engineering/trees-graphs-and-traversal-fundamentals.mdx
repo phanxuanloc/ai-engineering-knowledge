@@ -1,6 +1,6 @@
 ---
 title: Trees, Graphs & Traversal Fundamentals
-description: Mental model cho Tree, Graph, BFS, DFS và visited set trong dependency traversal.
+description: Mental model cho Tree, Graph, BFS, DFS, frontier và visited set trong dependency traversal và path finding.
 tags: [algorithms, data-structures, trees, graphs, bfs, dfs]
 sidebar_position: 6
 ---
@@ -14,11 +14,31 @@ import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 
 <TLDR>
 
-**Tree** là graph có cấu trúc hierarchy chặt hơn; **Graph** mô tả các node và relationship tổng quát hơn, có thể có nhiều incoming edge hoặc cycle. **BFS + Queue** khám phá gần trước, còn **DFS + Stack** đi sâu một nhánh trước; cả hai thường kết hợp với `HashSet visited` để tránh xử lý lặp.
+**Tree** là graph có topology hierarchy chặt hơn; **Graph** mô tả relationship tổng quát, có thể many-to-many và có cycle. **BFS + Queue** khám phá theo layer và phù hợp với shortest path theo số hop trong unweighted graph; **DFS + Stack/recursion** đi sâu một branch rồi backtrack. `visited` thường là HashSet để tránh revisit, duplicate work và cycle vô hạn.
 
 </TLDR>
 
+## Why It Matters
+
+Rất nhiều cấu trúc trong Software Engineering không còn là list phẳng: file system, AST, DOM, dependency graph, service topology, workflow, social graph và knowledge graph đều có relationship giữa các nodes.
+
+Khi dữ liệu có relationship, câu hỏi chuyển từ “item nằm ở index nào?” sang:
+
+- node nào kết nối với node nào?
+- nên khám phá gần trước hay sâu trước?
+- làm sao tránh đi vòng trong cycle?
+- nếu cần path ngắn nhất theo hop, traversal order nào đảm bảo điều đó?
+
+Không hiểu distinction giữa Tree, Graph, BFS và DFS dễ dẫn tới algorithm chạy đúng trên toy example nhưng sai requirement hoặc loop trên production topology.
+
 ## Mental Model
+
+Hãy xem traversal như việc quản lý hai state:
+
+- **Frontier**: nodes đã biết tới nhưng chưa process;
+- **Visited**: nodes đã process/đánh dấu để không làm lại.
+
+Queue hay Stack quyết định **node nào trong frontier đi tiếp**. HashSet quyết định **node nào không nên quay lại**.
 
 <ReactFlowDiagram
   ariaLabel="Dependency graph used to compare BFS and DFS"
@@ -45,96 +65,165 @@ import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 <Comparison
   label="Traversal strategy"
   items={[
-    {eyebrow: 'Queue · FIFO', title: 'BFS', description: 'Explore gần → xa, theo từng layer. Phù hợp với shortest path theo số hop trong unweighted graph.'},
+    {eyebrow: 'Queue · FIFO', title: 'BFS', description: 'Explore gần → xa theo layer. Phù hợp với shortest path theo số hop trong unweighted graph.'},
     {eyebrow: 'Stack · LIFO', title: 'DFS', description: 'Chọn một branch, đi sâu tới khi hết đường rồi quay lại chỗ rẽ gần nhất.'},
   ]}
 />
 
 ## Core Concepts
 
-### Tree và Graph
+### Tree: hierarchy có constraint chặt
 
-Tree biểu diễn hierarchy như file-system structure, DOM hoặc AST. Một node non-root thường có một parent và không tạo cycle quay về ancestor.
+Tree là một dạng graph đặc biệt. Trong rooted tree, mỗi node non-root thường có một parent, có một path duy nhất từ root tới node và không có cycle quay về ancestor.
 
-Graph tổng quát hơn: `Node + Edge`. Dependency graph của repository là ví dụ điển hình vì một module có thể được nhiều module khác dùng và graph có thể xuất hiện cycle.
+Các ví dụ tự nhiên: directory tree, DOM tree, AST, organization hierarchy.
+
+Tree constraints tạo ra nhiều simplification. Nếu bạn đi từ root xuống children trong một tree chuẩn, thường không cần `visited` chỉ để chống cycle vì topology đã loại cycle theo definition.
+
+### Graph: relationship tổng quát hơn
+
+Graph gồm **vertices/nodes** và **edges**. Edge có thể directed/undirected, weighted/unweighted tùy domain.
+
+Dependency graph của repository là ví dụ điển hình: một package có thể được nhiều packages khác import; package A có thể transitively dẫn tới B; và dependency cycle có thể xuất hiện.
+
+Graph không mặc định là hierarchy. Layout trên màn hình cũng không làm nó thành Tree.
 
 ### BFS — Breadth-First Search
 
-BFS dùng **Queue**. Vì FIFO xử lý node được discover trước, traversal hoàn thành các node gần source trước khi đi sang layer xa hơn. Trong unweighted graph, property này làm BFS phù hợp để tìm path có **ít edge/hop nhất**.
+BFS dùng Queue để giữ frontier. Vì FIFO process node được discover trước, mọi node ở distance `d` được xử lý trước các node ở distance `d + 1`.
+
+Property này cho BFS một guarantee quan trọng: trong **unweighted graph**, lần đầu target được reach theo BFS cho path có số edge/hop nhỏ nhất, giả sử traversal/visited được implement đúng.
+
+BFS không có nghĩa “nhanh hơn DFS” nói chung. Nếu phải visit toàn graph, cả hai thường có time complexity `O(V + E)`.
 
 ### DFS — Depth-First Search
 
-DFS dùng **Stack** hoặc recursion dựa trên call stack. Mental model là: chọn một branch, đi sâu tới khi không còn neighbor chưa xử lý, sau đó quay lại **chỗ rẽ gần nhất** và thử branch khác.
+DFS dùng explicit Stack hoặc recursion dựa trên call stack. Nó ưu tiên neighbor mới discover gần nhất, nên đi sâu một branch trước khi backtrack.
 
-<Principle label="Không phải hai bước nối tiếp">BFS và DFS là hai traversal strategy khác nhau. Chọn strategy từ requirement; không mặc định chạy BFS để tìm path rồi chạy DFS sau đó.</Principle>
+DFS phù hợp với recursive structures, exhaustive branch exploration và là nền cho nhiều algorithms như cycle detection, topological reasoning, connected components hoặc search có pruning.
 
-### `visited` giải quyết cycle và duplicate work
+<Principle label="Không phải pipeline mặc định">BFS và DFS là hai traversal strategies thay thế nhau theo requirement; không mặc định chạy BFS trước rồi DFS sau.</Principle>
 
-Graph có thể dẫn trở lại node cũ. `HashSet visited` trả lời nhanh “node này đã xử lý chưa?”, nhờ đó traversal không chạy lặp vô hạn và không làm lại cùng work.
+### `visited`: correctness state, không chỉ optimization
 
-Mental model ghép lại:
+Trong graph có cycle hoặc nhiều paths dẫn tới cùng node, thiếu `visited` có thể tạo duplicate work hoặc loop vô hạn.
 
-- Queue/Stack quyết định **đi đâu tiếp**.
-- HashSet quyết định **đã đi qua đâu rồi**.
+`HashSet` thường phù hợp vì operation lặp lại là membership check: “node này đã seen chưa?”.
+
+Một nuance quan trọng là **thời điểm mark visited**. Với BFS, thường mark khi enqueue để tránh cùng node bị enqueue nhiều lần từ nhiều parents. Mark quá muộn vẫn có thể correct trong vài implementation nhưng tạo duplicate frontier work đáng kể.
+
+### Path reconstruction khác traversal order
+
+Nếu chỉ cần biết target có reachable không, frontier + visited có thể đủ. Nếu cần trả về **path**, algorithm phải giữ thêm predecessor/parent information hoặc path state.
+
+Traversal order giúp tìm đúng target theo property mong muốn; nó không tự lưu route đã đi qua.
 
 ## Example
 
-Một Coding Agent cần tìm dependency chain có ít hop nhất từ `App` tới `vulnerable-lib`:
+### Starting Point: Coding Agent cần tìm dependency
+
+Coding Agent bắt đầu từ `App` và cần biết module `vulnerable-lib` có reachable qua dependencies không. Nếu chỉ cần “có hay không”, BFS hoặc DFS đều có thể trả lời.
+
+### Requirement Changes: cần dependency chain ít hop nhất
+
+Giờ output cần chain ngắn nhất để engineer hiểu blast radius nhanh nhất. Requirement đã đổi từ reachability sang **shortest path by hop count**.
+
+DFS không còn guarantee phù hợp: nó có thể lao vào một branch rất sâu và gặp target qua 8 hops trước khi khám phá path 3 hops ở branch khác.
+
+### Better Choice: BFS + Queue + visited + predecessor
 
 ```ts
-const queue = [{node: 'App', path: ['App']}];
-const visited = new Set<string>();
+const queue = ['App'];
+const visited = new Set<string>(['App']);
+const parent = new Map<string, string | null>([['App', null]]);
 
 while (queue.length > 0) {
-  const current = queue.shift()!;
-  if (visited.has(current.node)) continue;
-  visited.add(current.node);
+  const node = queue.shift()!;
 
-  if (current.node === 'vulnerable-lib') return current.path;
+  if (node === 'vulnerable-lib') break;
 
-  for (const dependency of dependenciesOf(current.node)) {
-    queue.push({node: dependency, path: [...current.path, dependency]});
+  for (const dependency of dependenciesOf(node)) {
+    if (visited.has(dependency)) continue;
+
+    visited.add(dependency);
+    parent.set(dependency, node);
+    queue.push(dependency);
   }
 }
 ```
 
-BFS được chọn vì requirement là **ít dependency hops nhất**; HashSet chỉ hỗ trợ tránh revisit, không quyết định traversal order.
+Sau khi reach target, `parent` cho phép reconstruct path ngược từ `vulnerable-lib` về `App`.
+
+### Why It Works
+
+- Queue giữ frontier theo distance layer.
+- `visited` ngăn duplicate work/cycle.
+- `parent` giữ provenance để reconstruct path.
+- BFS được chọn vì requirement là **minimum number of dependency edges**, không phải vì BFS luôn tốt hơn DFS.
+
+Nếu edges có weights khác nhau như latency/cost, BFS thường không còn đủ; lúc đó cần weighted shortest-path algorithm phù hợp.
 
 ## When to Use
 
-- Dùng Tree mental model khi dữ liệu thực sự có hierarchy rõ ràng như AST hoặc directory structure.
+- Dùng Tree mental model khi data thực sự có parent-child hierarchy và topology không có cross-link/cycle theo contract.
 - Dùng Graph khi relationship có thể many-to-many, cross-link hoặc cycle.
-- Dùng BFS khi cần khám phá theo layer hoặc shortest path theo số hop trong unweighted graph.
-- Dùng DFS khi muốn đi sâu từng branch, xử lý recursive structure hoặc làm nền cho các algorithm sâu hơn.
-- Với BFS/DFS trên graph thực tế, cân nhắc `visited` ngay khi node có thể được reach từ nhiều path hoặc có cycle.
+- Dùng BFS khi cần layer-by-layer exploration hoặc shortest path theo hop trong unweighted graph.
+- Dùng DFS khi muốn explore sâu branch, xử lý recursive structure, backtracking hoặc làm nền cho graph algorithms khác.
+- Dùng `visited` khi node có thể được reach từ nhiều paths hoặc graph có cycle.
+- Giữ predecessor/parent nếu output cần path, không chỉ reachability.
 
 ## Common Mistakes
 
-- **Nghĩ BFS luôn nhanh hơn DFS:** cả hai thường traverse `O(V + E)` khi cần thăm toàn graph; strategy khác nhau ở thứ tự khám phá.
-- **Dùng DFS cho shortest path theo hop mà không có lý do khác:** DFS có thể gặp một path dài trước path ngắn.
-- **Quên visited:** cycle có thể gây loop vô hạn hoặc duplicate work.
-- **Nghĩ BFS → DFS là pipeline mặc định:** hãy chọn một traversal strategy theo requirement.
-- **Nhầm Tree với Graph tổng quát:** Tree là một dạng graph bị giới hạn topology chặt hơn.
+- **Nghĩ mọi hierarchy-looking diagram là Tree:** topology/data constraints mới quyết định, không phải cách vẽ.
+- **Nghĩ BFS luôn nhanh hơn DFS:** cả hai thường là `O(V + E)` khi visit toàn graph.
+- **Dùng DFS cho shortest path theo hop:** DFS có thể gặp path dài trước path ngắn.
+- **Quên visited trong cyclic graph:** có thể loop hoặc process lặp.
+- **Mark visited quá muộn:** cùng node có thể được thêm vào frontier nhiều lần.
+- **Nghĩ BFS → DFS là pipeline mặc định:** chọn strategy trực tiếp từ property cần guarantee.
+- **Dùng BFS cho weighted shortest path:** số hop ít nhất không đồng nghĩa total cost nhỏ nhất.
+- **Không lưu predecessor nhưng lại cần path:** biết target reachable không đủ để reconstruct route.
 
-## Related Knowledge
+## Decision Guide
 
-- [Stack & Queue Fundamentals](./stack-and-queue-fundamentals.mdx) — nền tảng LIFO/FIFO đứng sau DFS/BFS.
-- [Hashing & Hash Table Fundamentals](./hashing-and-hash-table-fundamentals.mdx) — HashSet là lựa chọn tự nhiên cho `visited`.
-- [Search & Ranking Fundamentals](./search-and-ranking-fundamentals.mdx) — phân biệt traversal/search strategy với retrieval/ranking ở systems lớn hơn.
+Khi gặp relationship data, hỏi:
+
+1. **Topology có thật sự là Tree không?** Nếu có multiple parents/cross-links/cycles, dùng Graph mental model.
+2. **Cần reachability hay shortest path?** Reachability có thể dùng BFS/DFS; shortest hop path ưu tiên BFS.
+3. **Edges có weight không?** Nếu có, shortest-path requirement cần algorithm khác BFS cơ bản.
+4. **Muốn gần trước hay sâu trước?** Gần trước → Queue/BFS; sâu trước → Stack/DFS.
+5. **Có cycle hoặc shared child không?** Nếu có, cần visited discipline.
+6. **Có cần trả actual path không?** Nếu có, lưu predecessor/parent.
+7. **Graph có thể rất sâu không?** Recursive DFS có thể chạm call-stack limit; explicit Stack có thể an toàn/kiểm soát hơn.
+
+## Practical Takeaway
+
+<Principle label="Review heuristic">Traversal = Frontier policy + Visited policy + Output state. Chọn mỗi phần từ requirement, không từ thói quen.</Principle>
+
+Khi debug graph algorithm, tách ba câu hỏi: **frontier chứa gì**, **node nào được lấy tiếp**, và **khi nào node được đánh dấu visited**. Phần lớn bug BFS/DFS cơ bản có thể truy về một trong ba điểm này.
 
 ## Self-test
 
-1. BFS và DFS khác nhau chủ yếu ở điểm nào?
+1. Tree khác Graph tổng quát ở constraint nào quan trọng?
 2. Vì sao BFS tìm được shortest path theo số hop trong unweighted graph?
 3. DFS “quay lại chỗ rẽ gần nhất” liên quan tới Stack thế nào?
 4. `HashSet visited` giải quyết vấn đề gì?
+5. Vì sao BFS cơ bản không đủ cho weighted shortest path?
+6. Nếu cần trả actual dependency path, ngoài Queue và visited còn cần state gì?
 
 <details>
 <summary>Answers</summary>
 
-1. Thứ tự khám phá: BFS đi theo layer bằng Queue; DFS đi sâu branch bằng Stack/recursion.
-2. FIFO làm mọi node ở khoảng cách `d` được xử lý trước các node ở khoảng cách `d + 1`, nên lần đầu reach target có số hop tối thiểu.
-3. Chỗ rẽ gần nhất được ghi nhớ sau cùng và cần quay lại trước, đúng LIFO.
-4. Tránh revisit node, duplicate work và loop vô hạn khi graph có cycle.
+1. Tree có hierarchy constraint chặt hơn: thường một parent cho non-root, path từ root duy nhất và không cycle; Graph có relationship tổng quát hơn.
+2. FIFO khiến mọi node ở distance `d` được xử lý trước distance `d + 1`, nên lần đầu reach target có số hop tối thiểu.
+3. Chỗ rẽ gần nhất được lưu sau cùng và cần quay lại trước, đúng LIFO.
+4. Tránh revisit, duplicate work và loop vô hạn trong graph có cycle/shared paths.
+5. BFS tối thiểu hóa số edge khi mọi edge có cost tương đương; weighted graph cần tối ưu tổng weight thay vì hop count.
+6. Predecessor/parent mapping hoặc path state để reconstruct route.
 
 </details>
+
+## Related Knowledge
+
+- [Stack & Queue Fundamentals](./stack-and-queue-fundamentals.mdx) — nền tảng LIFO/FIFO đứng sau DFS/BFS frontier.
+- [Hashing & Hash Table Fundamentals](./hashing-and-hash-table-fundamentals.mdx) — HashSet là lựa chọn tự nhiên cho `visited`, HashMap cho predecessor.
+- [Search & Ranking Fundamentals](./search-and-ranking-fundamentals.mdx) — phân biệt traversal/search strategy với retrieval/ranking trong systems lớn hơn.

@@ -1,6 +1,6 @@
 ---
 title: Stack & Queue Fundamentals
-description: Mental model LIFO/FIFO cho Stack, Queue và các use case như Undo, job processing, BFS và DFS.
+description: Mental model LIFO/FIFO cho Stack, Queue và cách chọn đúng processing order cho Undo, jobs, DFS và BFS.
 tags: [algorithms, data-structures, stack, queue]
 sidebar_position: 5
 ---
@@ -13,47 +13,90 @@ import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
 
 <TLDR>
 
-**Stack = LIFO**: item vào sau được lấy ra trước. **Queue = FIFO**: item vào trước được xử lý trước. Hai data structure này đơn giản nhưng là nền cho Undo/call stack, job processing, DFS và BFS.
+**Stack = LIFO**: item vào sau được lấy ra trước. **Queue = FIFO**: item vào trước được xử lý trước. Điều quan trọng không phải tên data structure mà là **processing order mà requirement cần**. Stack phù hợp Undo/backtracking/DFS; Queue phù hợp arrival-order processing/BFS. Production message queue chỉ chia sẻ một phần mental model với Queue trong memory và có thêm durability, retry, acknowledgment, partitioning và concurrency semantics.
 
 </TLDR>
+
+## Why It Matters
+
+Stack và Queue nhìn rất đơn giản, nhưng processing order của chúng xuất hiện khắp Software Engineering: undo history, parser/call stack, task scheduling, graph traversal, event buffering và distributed job systems.
+
+Chọn sai order có thể làm behavior sai dù code vẫn chạy. Undo theo FIFO sẽ hoàn tác thay đổi cũ trước thay đổi mới. Shortest-path traversal dùng DFS có thể gặp một path dài trước path ngắn. Một worker system có nhiều consumers có thể không còn strict global FIFO dù API vẫn gọi là “queue”.
+
+Vì vậy câu hỏi đúng là: **item nào phải được xử lý tiếp theo, và vì sao?**
 
 ## Mental Model
 
 <Comparison
   label="Thứ tự xử lý"
   items={[
-    {eyebrow: 'LIFO', title: 'Stack', description: 'Last In, First Out — cái mới nhất được lấy ra trước. Hợp với Undo và đi sâu rồi quay lại.'},
-    {eyebrow: 'FIFO', title: 'Queue', description: 'First In, First Out — cái đến trước được xử lý trước. Hợp với hàng đợi và traversal theo tầng.'},
+    {eyebrow: 'LIFO', title: 'Stack', description: 'Last In, First Out — item mới nhất được lấy ra trước. Hợp với Undo, nested work và đi sâu rồi quay lại.'},
+    {eyebrow: 'FIFO', title: 'Queue', description: 'First In, First Out — item đến trước được xử lý trước. Hợp với arrival order và traversal theo tầng.'},
   ]}
 />
 
-<Principle label="Decision rule">Nếu requirement nói “mới nhất trước”, nghĩ Stack. Nếu requirement nói “đến trước xử lý trước”, nghĩ Queue.</Principle>
+<Principle label="Decision rule">Đừng chọn Stack/Queue từ tên use case. Viết ra processing order trước: “mới nhất trước” hay “đến trước trước”.</Principle>
 
 ## Core Concepts
 
-### Stack
+### Stack: giữ frontier theo LIFO
 
-Operations cốt lõi là `push()` để thêm lên top và `pop()` để lấy item trên cùng. Với chuỗi thao tác `A → B → C`, các lần `pop()` trả `C → B → A`.
+Stack có hai operation cốt lõi:
 
-Undo là ví dụ tự nhiên: nếu Coding Agent vừa create file, modify file rồi delete file, thao tác delete là thay đổi gần nhất nên phải được undo trước.
+- `push(item)` — thêm item lên top;
+- `pop()` — lấy item trên top.
 
-### Queue
+Nếu push `A → B → C`, các lần pop trả `C → B → A`.
 
-Operations cốt lõi là `enqueue()` để thêm vào cuối hàng và `dequeue()` để lấy item ở đầu. Với các job đến theo thứ tự `A → B → C`, FIFO xử lý `A → B → C`.
+LIFO phù hợp khi work mới nhất đại diện cho context gần nhất cần quay lại. Đây là lý do Stack xuất hiện trong Undo, nested function calls, parser states và depth-first traversal.
 
-Queue data structure trong memory không đồng nghĩa với production message queue như Kafka, SQS hay RabbitMQ. Các hệ thống đó thêm persistence, acknowledgment, retry và distributed consumption, dù vẫn mang queue-like ordering semantics.
+### Queue: giữ frontier theo FIFO
+
+Queue có hai operation cốt lõi:
+
+- `enqueue(item)` — thêm vào cuối hàng;
+- `dequeue()` — lấy item ở đầu hàng.
+
+Nếu enqueue `A → B → C`, processing order là `A → B → C`.
+
+FIFO phù hợp khi thời điểm arrival/discovery tạo ra thứ tự ưu tiên tự nhiên, ví dụ request buffer đơn giản hoặc breadth-first traversal.
+
+### Processing order khác storage implementation
+
+Stack/Queue là **behavioral abstraction**. Implementation có thể dùng array, linked list, deque hoặc structure khác.
+
+Đừng giả định mọi operation đều `O(1)` chỉ vì abstraction nghe đơn giản. Ví dụ trong JavaScript, `Array.shift()` có thể cần dịch các phần tử còn lại; một queue hiệu quả có thể dùng head index hoặc deque implementation thay vì `shift()` liên tục trên array lớn.
+
+### Queue trong memory khác production message queue
+
+Một Queue trong process chủ yếu quản lý order và item access. Kafka, SQS, RabbitMQ và các messaging systems còn phải xử lý persistence, delivery semantics, retry, acknowledgment, visibility, partitioning, backpressure và multiple consumers.
+
+“FIFO” trong distributed messaging cũng cần đọc đúng scope. Một hệ thống có thể preserve order trong một partition/group nhưng không guarantee strict global order khi có parallelism.
 
 ### Connection tới graph traversal
 
-Queue và Stack quyết định **node nào được xử lý tiếp theo**:
+Queue và Stack thường giữ **frontier** — tập node đã discover nhưng chưa process:
 
-- `Queue + FIFO` làm các node được discover trước đi trước, tạo mental model của BFS theo từng tầng.
-- `Stack + LIFO` ưu tiên node mới discover gần nhất, tạo mental model của DFS đi sâu một nhánh.
+- BFS dùng Queue để node discover sớm hơn được process trước;
+- DFS dùng Stack/recursion để node discover gần nhất được process trước.
+
+Data structure không tự tạo ra algorithm hoàn chỉnh, nhưng nó quyết định traversal order cốt lõi.
 
 ## Example
 
+### Starting Point: Undo trong Coding Agent
+
+Một Coding Agent thực hiện ba changes:
+
+1. create `user.ts`;
+2. modify `app.ts`;
+3. delete `old-auth.ts`.
+
+Nếu user bấm Undo một lần, change cần hoàn tác là **delete `old-auth.ts`**, vì đó là change mới nhất.
+
 ```ts
 const undoStack: Operation[] = [];
+
 undoStack.push(createUserFile);
 undoStack.push(modifyAppFile);
 undoStack.push(deleteOldAuth);
@@ -61,38 +104,82 @@ undoStack.push(deleteOldAuth);
 const latestChange = undoStack.pop(); // deleteOldAuth
 ```
 
-Với job queue, requirement lại ngược lại: job đến trước nên được xử lý trước.
+Stack đúng vì requirement là reverse chronological order.
+
+### Requirement Changes: xử lý background jobs
+
+Giờ service nhận jobs `A`, `B`, `C`, và business rule mặc định là job đến trước nên được nhận xử lý trước. Processing order cần FIFO, nên Queue phù hợp hơn:
+
+```ts
+const queue = new JobQueue();
+queue.enqueue(jobA);
+queue.enqueue(jobB);
+queue.enqueue(jobC);
+
+const next = queue.dequeue(); // jobA
+```
+
+### Production Pressure
+
+Khi jobs phải survive process restart, retry sau failure và chạy trên nhiều workers, in-memory Queue không còn đủ. Lúc này cần messaging infrastructure phù hợp.
+
+Điểm chuyển đổi không phải vì “Queue sai”, mà vì requirement đã thêm **durability và distributed coordination** ngoài scope của data structure cơ bản.
 
 ## When to Use
 
-- Dùng Stack cho Undo, backtracking, call-stack-like processing hoặc DFS-style traversal.
-- Dùng Queue khi cần FIFO, work scheduling đơn giản hoặc BFS-style traversal.
-- Với production jobs dài, dùng durable messaging infrastructure khi cần persistence/retry/distributed workers; đừng nhầm với một Queue trong process memory.
+- Dùng Stack cho Undo, backtracking, nested processing, DFS-style traversal hoặc explicit state thay cho recursion.
+- Dùng Queue khi cần FIFO, buffering đơn giản, work scheduling hoặc BFS-style traversal.
+- Dùng Deque khi cần thêm/lấy hiệu quả ở cả hai đầu hoặc cần triển khai Stack/Queue trên cùng một primitive.
+- Dùng durable messaging khi jobs cần survive restart, retry, acknowledgments hoặc distributed consumers.
+- Dùng priority queue khi “đến trước” không phải priority thật; item có score/deadline/importance cao hơn cần đi trước.
 
 ## Common Mistakes
 
-- **Đảo LIFO và FIFO:** Stack lấy item mới nhất; Queue lấy item cũ nhất trong hàng.
-- **Nghĩ mọi queue đều strict FIFO:** production messaging có thể thay đổi ordering tùy partitioning, concurrency và product semantics.
-- **Chọn Stack/Queue chỉ theo tên use case:** hãy nhìn operation order thật sự mà requirement cần.
+- **Đảo LIFO và FIFO:** Stack lấy item mới nhất; Queue lấy item cũ nhất đang chờ.
+- **Dùng Queue khi requirement thực ra là priority:** FIFO không giải quyết urgency/deadline.
+- **Nghĩ mọi queue đều strict global FIFO:** distributed concurrency/partitioning có thể thay đổi scope của ordering guarantee.
+- **Dùng `Array.shift()` cho queue lớn mà không kiểm tra cost:** abstraction đúng nhưng implementation có thể không phù hợp workload.
+- **Nhầm Stack với recursion:** recursion thường dùng call stack, nhưng DFS cũng có thể dùng explicit Stack để kiểm soát state/limit tốt hơn.
+- **Nhầm in-memory Queue với message broker:** persistence và delivery semantics là một lớp requirement khác.
 
-## Related Knowledge
+## Decision Guide
 
-- [Trees, Graphs & Traversal Fundamentals](./trees-graphs-and-traversal-fundamentals.mdx) — nối Queue với BFS và Stack với DFS.
-- [Operating Systems & Concurrency](./operating-systems-and-concurrency.mdx) — liên hệ với execution, workers và concurrency boundaries.
+Khi cần chọn structure cho pending work, hỏi:
+
+1. **Item nào phải đi trước?** Mới nhất → Stack; cũ nhất → Queue; highest priority → Priority Queue.
+2. **Có cần backtracking không?** Stack thường phù hợp vì context gần nhất được restore trước.
+3. **Có cần process theo layer/distance không?** Queue thường là primitive của BFS.
+4. **Có cần survive restart không?** Nếu có, in-memory structure là chưa đủ.
+5. **Có multiple workers không?** Xác định ordering guarantee mong muốn ở global, partition hay per-key scope.
+6. **Operation trên implementation có đúng complexity kỳ vọng không?** Đừng để API tiện lợi che đi cost thật.
+
+## Practical Takeaway
+
+<Principle label="Review heuristic">Processing order là requirement. Stack/Queue chỉ là cách encode requirement đó thành data structure.</Principle>
+
+Khi đọc code có Stack hoặc Queue, hãy thử viết một chuỗi ba item `A, B, C` và hỏi item nào được lấy ra trước. Nếu câu trả lời không khớp business/algorithm requirement, structure đang sai dù tên biến có vẻ hợp lý.
 
 ## Self-test
 
 1. Undo nên dùng Stack hay Queue? Vì sao?
 2. Job đến trước phải xử lý trước thì dùng cấu trúc nào?
-3. Vì sao Queue liên hệ tự nhiên với BFS?
-4. Message Queue production khác Queue trong memory ở điểm nào?
+3. Nếu jobs có priority khác nhau, FIFO Queue còn đủ không?
+4. Vì sao Queue liên hệ tự nhiên với BFS?
+5. Khi nào một in-memory Queue nên được thay bằng messaging infrastructure?
 
 <details>
 <summary>Answers</summary>
 
 1. Stack vì Undo cần LIFO: thay đổi gần nhất được hoàn tác trước.
-2. Queue vì cần FIFO.
-3. FIFO làm các node được discover sớm hơn được xử lý trước, nên traversal tiến theo từng tầng.
-4. Messaging infrastructure còn có persistence, retry, acknowledgment, distributed consumers và các delivery semantics khác.
+2. Queue vì requirement là FIFO.
+3. Không nhất thiết; Priority Queue hoặc scheduler có policy phù hợp hơn nếu priority mới là ordering rule.
+4. FIFO làm các node được discover sớm hơn được xử lý trước, nên traversal tiến theo layer.
+5. Khi cần durability, retry, acknowledgment, cross-process/distributed workers hoặc delivery guarantees ngoài scope của memory structure.
 
 </details>
+
+## Related Knowledge
+
+- [Trees, Graphs & Traversal Fundamentals](./trees-graphs-and-traversal-fundamentals.mdx) — nối Queue với BFS và Stack với DFS.
+- [Search & Ranking Fundamentals](./search-and-ranking-fundamentals.mdx) — Top-K/Priority Queue là bước tiếp theo khi order phụ thuộc score thay vì arrival time.
+- [Operating Systems & Concurrency](./operating-systems-and-concurrency.mdx) — execution, scheduling, workers và concurrency boundaries.

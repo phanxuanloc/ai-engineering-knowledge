@@ -1,6 +1,6 @@
 ---
 title: Hashing & Hash Table Fundamentals
-description: Mental model thực dụng cho HashMap, HashSet, hash function, collision và lookup trung bình O(1).
+description: Mental model thực dụng cho hash function, bucket, collision, HashMap, HashSet và lookup trung bình O(1).
 tags: [algorithms, data-structures, hashing, hash-table]
 sidebar_position: 4
 ---
@@ -14,17 +14,25 @@ import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 <TLDR>
 
-Hash Table dùng **key để tính ra khu vực cần lưu hoặc tìm**, thay vì scan toàn bộ collection. `HashMap` phù hợp với `key → value`, còn `HashSet` phù hợp với membership/uniqueness; lookup thường gần `O(1)` ở average case nhưng collision vẫn có thể làm chậm.
+Hash Table dùng **key để xác định nơi cần tìm** thay vì scan toàn bộ collection. `HashMap` trả lời `key → value`; `HashSet` trả lời membership/uniqueness. Lookup thường gần `O(1)` average khi hash distribution tốt, nhưng collision, resize, memory overhead và ordering requirement vẫn là trade-off thật.
 
 </TLDR>
 
+## Why It Matters
+
+Nhiều bài toán production không cần “search” theo nghĩa ranking; chúng chỉ cần trả lời rất nhanh một câu hỏi exact: user này là ai, request ID này đã xử lý chưa, file path này có cache chưa, node này đã visited chưa.
+
+Nếu mỗi lần đều scan một List, cost tăng theo collection size. Hash Table đổi bài toán từ **“duyệt qua mọi item để tìm key”** thành **“tính vị trí có khả năng chứa key rồi kiểm tra ở đó”**.
+
+Nhưng `O(1)` không phải phép màu. Hiểu hash function, collision và semantics của Map/Set giúp tránh chọn cấu trúc chỉ vì một Big-O đẹp trên giấy.
+
 ## Mental Model
 
-Thay vì hỏi “item nằm ở đâu?” bằng cách quét lần lượt, Hash Table biến key thành một hash rồi dùng hash đó để đi tới bucket phù hợp.
+Hãy hình dung một kho có nhiều ngăn. Thay vì đi qua từng ngăn để tìm `user_888`, bạn dùng cùng một quy tắc từ key để xác định khu vực cần kiểm tra.
 
 <FlowExplainer
   title="Lookup bằng key thay vì scan"
-  description="Cùng một key đi qua cùng hash function để xác định bucket cần kiểm tra."
+  description="Cùng một key đi qua cùng hash function để xác định bucket cần kiểm tra; key thật vẫn được dùng để xác nhận kết quả."
   scenarios={[
     {
       id: 'hash-lookup',
@@ -37,39 +45,88 @@ Thay vì hỏi “item nằm ở đâu?” bằng cách quét lần lượt, Has
         {id: 'value', label: 'Value', detail: 'User(...)', role: 'data'},
       ],
       steps: [
-        {title: '1 · Hash key', from: 'key', to: 'hash', message: 'user_888', description: 'Hash function biến key thành một giá trị dùng để xác định bucket.'},
-        {title: '2 · Locate bucket', from: 'hash', to: 'bucket', message: 'bucket index', description: 'Hash Table đi tới bucket tương ứng thay vì scan toàn bộ collection.'},
-        {title: '3 · Resolve key', from: 'bucket', to: 'value', message: 'match key', description: 'Trong bucket, implementation vẫn kiểm tra key thật để lấy đúng value.'},
+        {title: '1 · Hash key', from: 'key', to: 'hash', message: 'user_888', description: 'Hash function biến key thành hash value.'},
+        {title: '2 · Locate bucket', from: 'hash', to: 'bucket', message: 'bucket index', description: 'Hash Table đi tới bucket tương ứng thay vì scan toàn collection.'},
+        {title: '3 · Resolve real key', from: 'bucket', to: 'value', message: 'key match', description: 'Implementation vẫn so sánh key thật vì nhiều key có thể rơi vào cùng bucket.'},
       ],
     },
   ]}
 />
 
-<Principle label="Mental model">HashMap không search toàn bộ dữ liệu; nó dùng key để xác định nơi cần tìm.</Principle>
+<Principle label="Mental model">Hash Table không biết value nằm ở đâu bằng phép đoán; nó dùng key để thu hẹp nơi cần kiểm tra.</Principle>
 
 ## Core Concepts
+
+### Hash function
+
+Hash function biến key thành một hash value có kích thước hữu hạn. Hash Table dùng giá trị đó, thường kết hợp với table capacity, để xác định bucket/index.
+
+Một hash function hữu ích cho Hash Table cần hai property thực dụng:
+
+- cùng một key phải cho kết quả ổn định trong phạm vi operation cần dùng;
+- key nên được phân bố đủ đều để tránh quá nhiều item dồn vào một số ít bucket.
+
+Hash function dùng cho data structure **không đồng nghĩa cryptographic hash**. HashMap ưu tiên distribution và performance; password hashing/signature integrity có threat model hoàn toàn khác.
 
 ### HashMap và HashSet
 
 <Comparison
-  label="Chọn theo operation cần trả lời"
+  label="Chọn theo câu hỏi cần trả lời"
   items={[
-    {eyebrow: 'Key → Value', title: 'HashMap', description: 'Dùng khi cần lookup một value bằng key, ví dụ filePath → fileContent.'},
+    {eyebrow: 'Key → Value', title: 'HashMap', description: 'Dùng khi key dẫn tới một value, ví dụ filePath → fileContent.'},
     {eyebrow: 'Exists?', title: 'HashSet', description: 'Dùng khi chỉ cần membership hoặc uniqueness, ví dụ filePath đã được process chưa.'},
   ]}
 />
 
+Nhiều implementation của Set có thể được xây trên cơ chế tương tự Map, nhưng API khác nhau vì **intent khác nhau**. Nếu code chỉ hỏi `has(key)`, Set diễn đạt domain tốt hơn một Map chứa value giả.
+
 ### Collision
 
-Hai key khác nhau có thể rơi vào cùng bucket. Đây là **hash collision**. Hash Table phải giữ và phân biệt các key thật trong bucket; hash không phải unique ID và collision không đồng nghĩa value mới tự động ghi đè value cũ.
+Hash space/bucket space hữu hạn, còn tập key có thể rất lớn. Vì vậy hai key khác nhau có thể rơi vào cùng bucket: đó là **collision**.
 
-### Vì sao chỉ là `O(1)` average?
+Collision không có nghĩa value mới tự động overwrite value cũ. Hash Table phải resolve collision bằng strategy của implementation, chẳng hạn chaining hoặc probing, và cuối cùng vẫn so sánh key thật.
 
-Khi hash phân bố key tốt, mỗi lookup chỉ cần đi tới một bucket nhỏ nên thường gần `O(1)`. Nếu rất nhiều key collision vào cùng khu vực, lookup phải kiểm tra nhiều key hơn và có thể degrade đáng kể; về lý thuyết worst case có thể tới `O(n)` tùy implementation.
+Điều cần nhớ: **hash không phải unique identity**.
+
+### Vì sao `O(1)` chỉ là average-case intuition?
+
+Nếu hash distribution tốt và load factor được kiểm soát, bucket cần kiểm tra thường nhỏ, nên lookup/insert/delete có expected cost gần constant time.
+
+Nếu nhiều keys collision hoặc table quá đầy, một bucket/probe sequence có thể dài hơn đáng kể. Worst case lý thuyết có thể degrade tới `O(n)` tùy implementation.
+
+### Capacity, load factor và resize
+
+Hash Table thường giữ extra capacity để collision không tăng quá nhanh. Khi load factor vượt threshold, implementation có thể allocate table lớn hơn và rehash/move entries.
+
+Vì vậy một insert riêng lẻ đôi khi đắt, dù **amortized** cost của nhiều inserts vẫn tốt. Đổi lại, Hash Table thường dùng nhiều memory hơn một compact array/list.
 
 ## Example
 
-Một Coding Agent khám phá repository lớn cần hai cấu trúc khác nhau:
+### Starting Point: Coding Agent scan repository
+
+Một Coding Agent đi qua dependency graph. Ban đầu code giữ `visitedFiles` trong array:
+
+```ts
+const visitedFiles: string[] = [];
+
+if (!visitedFiles.includes(path)) {
+  visitedFiles.push(path);
+  inspect(path);
+}
+```
+
+Với ít files, cách này đơn giản và hoàn toàn chấp nhận được.
+
+### Requirement Changes: repository lớn và lookup lặp lại
+
+Khi traversal lên hàng chục nghìn nodes, `includes()` scan lại array cho mỗi membership check. Cùng lúc agent cần cache file content theo path.
+
+Hai requirement khác nhau xuất hiện:
+
+- “path này đã visited chưa?” → membership;
+- “content của path này là gì?” → key-to-value lookup.
+
+### Better Design
 
 ```ts
 const visitedFiles = new Set<string>();
@@ -77,45 +134,75 @@ const fileCache = new Map<string, string>();
 
 if (!visitedFiles.has(path)) {
   visitedFiles.add(path);
-  const content = readFile(path);
+
+  const content = fileCache.get(path) ?? readFile(path);
   fileCache.set(path, content);
+
+  inspect(content);
 }
 ```
 
-`visitedFiles` chỉ trả lời “đã xử lý chưa?”, còn `fileCache` giữ mapping `filePath → fileContent`.
+### Why It Works
+
+`Set` và `Map` encode đúng operation mà algorithm lặp lại. Agent không cần scan toàn bộ visited history để hỏi membership, và không cần một parallel array để tìm content tương ứng với path.
+
+Lợi ích không chỉ là Big-O; intent của code cũng rõ hơn: một structure dành cho **membership state**, một structure dành cho **mapping state**.
 
 ## When to Use
 
-- Dùng `HashMap` khi operation chính là exact lookup theo key.
+- Dùng `HashMap` khi operation chính là exact lookup/update theo key.
 - Dùng `HashSet` khi operation chính là membership, deduplication hoặc uniqueness.
-- Dùng List/Array khi ordering và traversal tuần tự mới là requirement chính.
-- Không chọn Hash Table chỉ vì thấy `O(1)`; memory overhead, ordering và access pattern vẫn là trade-off thực tế.
+- Dùng HashSet cho `visited` trong graph traversal khi node có thể được reach nhiều lần.
+- Dùng List/Array khi ordering, compact storage hoặc sequential traversal mới là requirement chính.
+- Cân nhắc ordered map/tree/sorted structure nếu cần range query hoặc ordered iteration có guarantee rõ ràng.
 
 ## Common Mistakes
 
-- **Nghĩ hash là unique ID:** hai key khác nhau vẫn có thể collision.
-- **Nghĩ Hash Table luôn O(1):** `O(1)` là average-case intuition, không phải guarantee tuyệt đối.
-- **Dùng HashMap khi chỉ cần membership:** HashSet diễn đạt intent trực tiếp hơn.
-- **Dùng HashSet/HashMap khi requirement chính là ordering:** cấu trúc cần chọn theo operation thực sự, không theo Big-O riêng lẻ.
+- **Nghĩ hash là unique ID:** collision là property bình thường cần được implementation xử lý.
+- **Nghĩ Hash Table luôn `O(1)`:** đó là average/expected behavior dưới assumptions phù hợp.
+- **Dùng HashMap khi chỉ cần membership:** Set diễn đạt intent trực tiếp hơn.
+- **Dùng Hash Table khi cần range query:** hashing phá locality/order nên không tự nhiên cho “mọi key từ A đến B”.
+- **Dựa vào iteration order ngoài contract của language/runtime:** một số implementation giữ insertion order, một số không; phải theo guarantee cụ thể.
+- **Nhầm non-cryptographic hashing với security hashing:** cùng chữ “hash” nhưng mục tiêu và threat model khác nhau.
 
-## Related Knowledge
+## Decision Guide
 
-- [Search & Ranking Fundamentals](./search-and-ranking-fundamentals.mdx) — so sánh lookup bằng scan/order với lookup theo key.
-- [Trees, Graphs & Traversal Fundamentals](./trees-graphs-and-traversal-fundamentals.mdx) — HashSet thường giữ `visited` trong BFS/DFS.
+Hỏi các câu sau trước khi chọn Hash Table:
+
+1. **Operation chính có phải exact lookup/membership không?** Nếu có, Map/Set là candidate mạnh.
+2. **Có cần value đi cùng key không?** Có → Map; không → Set.
+3. **Có cần sorted/range traversal không?** Nếu có, tree/sorted structure có thể phù hợp hơn.
+4. **Memory overhead có đáng kể không?** Với dataset cực lớn, extra capacity/object overhead có thể quan trọng.
+5. **Key có hash/equality semantics ổn định không?** Mutable key hoặc equality sai có thể làm lookup khó hiểu.
+6. **Workload có adversarial/untrusted keys không?** Implementation/runtime strategy có thể ảnh hưởng resilience trước collision patterns xấu.
+
+## Practical Takeaway
+
+<Principle label="Review heuristic">Chọn data structure từ operation lặp lại nhiều nhất: `get by key`, `contains`, `iterate in order`, hay `range query`.</Principle>
+
+Hash Table là default mạnh cho exact lookup, nhưng không phải “data structure nhanh nhất”. Nó mua lookup average-case tốt bằng hashing, extra capacity và việc từ bỏ một số ordering/range properties.
 
 ## Self-test
 
 1. Khi nào nên dùng HashSet thay vì HashMap?
 2. Collision là gì và vì sao hash không phải unique ID?
-3. Vì sao Hash Table thường được mô tả là `O(1) average`?
-4. Coding Agent cần `filePath → fileContent`; cấu trúc nào phù hợp?
+3. Vì sao Hash Table được mô tả là `O(1) average` chứ không phải guarantee tuyệt đối?
+4. Vì sao Hash Table không tự nhiên cho range query?
+5. Coding Agent cần `filePath → fileContent`; cấu trúc nào phù hợp?
 
 <details>
 <summary>Answers</summary>
 
-1. Khi chỉ cần biết key có tồn tại hoặc cần deduplicate, không cần value đi kèm.
+1. Khi chỉ cần membership/uniqueness, không cần value đi kèm.
 2. Collision xảy ra khi hai key khác nhau rơi vào cùng bucket; implementation vẫn phải phân biệt key thật.
-3. Phân bố hash tốt giữ bucket nhỏ, nhưng collision xấu có thể làm lookup phải kiểm tra nhiều item hơn.
-4. HashMap vì requirement là mapping từ key sang value.
+3. Distribution tốt giữ bucket/probe ngắn, nhưng collision/load xấu có thể làm lookup phải kiểm tra nhiều entries hơn.
+4. Hashing phân tán keys theo hash thay vì giữ thứ tự key, nên các key liên tiếp về giá trị không nhất thiết nằm gần nhau.
+5. HashMap/Map vì requirement là mapping từ key sang value.
 
 </details>
+
+## Related Knowledge
+
+- [Search & Ranking Fundamentals](./search-and-ranking-fundamentals.mdx) — đối chiếu exact lookup theo key với scan, retrieval và ranking.
+- [Trees, Graphs & Traversal Fundamentals](./trees-graphs-and-traversal-fundamentals.mdx) — HashSet thường giữ `visited` trong BFS/DFS.
+- [Security Engineering](./security-engineering.mdx) — security hashing có mục tiêu khác hashing dùng để tổ chức Hash Table.
