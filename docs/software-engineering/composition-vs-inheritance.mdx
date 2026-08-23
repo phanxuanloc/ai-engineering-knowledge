@@ -1,6 +1,6 @@
 ---
 title: Composition vs Inheritance
-description: Chọn IS-A cho subtype thật và HAS-A hoặc USES-A cho capability có thể thay thế.
+description: Chọn composition hay inheritance dựa trên identity, replaceable capability và change pressure thực tế.
 tags: [programming, code-design, composition, inheritance]
 ---
 
@@ -13,20 +13,144 @@ import {ExcalidrawDiagram} from '@site/src/components/Diagrams';
 
 <TLDR>
 
-Inheritance phù hợp khi subtype có quan hệ **IS-A** thật sự và giữ đúng behavioral contract. Composition phù hợp với **HAS-A / USES-A**: object được lắp từ các capability có thể thay thế độc lập. Không nên dùng inheritance chỉ để reuse code.
+Inheritance phù hợp khi subtype thật sự có quan hệ **IS-A** ổn định và giữ đúng behavioral contract của parent. Composition phù hợp khi object được lắp từ các **replaceable capabilities** theo quan hệ **HAS-A / USES-A**. Heuristic "favor composition over inheritance" giúp tránh hierarchy encode feature combinations, nhưng inheritance không phải anti-pattern và composition cũng không tự động tạo low coupling.
 
 </TLDR>
+
+## Khi hierarchy bắt đầu encode feature combinations
+
+Giả sử hệ thống xử lý document ban đầu chỉ cần parse PDF:
+
+```ts
+class DocumentProcessor {
+  process(file: File): Promise<Document> {
+    // shared processing flow
+  }
+}
+
+class PdfProcessor extends DocumentProcessor {
+  process(file: File): Promise<Document> {
+    // parse PDF
+  }
+}
+```
+
+Với requirement hiện tại, hierarchy này có thể trông hợp lý.
+
+Sau đó product yêu cầu OCR cho scanned PDF. Developer thêm:
+
+```ts
+class OcrPdfProcessor extends PdfProcessor {
+  // parse PDF + OCR
+}
+```
+
+Tiếp theo cần embeddings:
+
+```ts
+class EmbeddingOcrPdfProcessor extends OcrPdfProcessor {
+  // parse + OCR + embed
+}
+```
+
+Sau đó requirement tiếp tục mở rộng:
+
+- một số PDF cần OCR, một số không;
+- DOCX dùng parser khác;
+- embeddings có nhiều provider;
+- vector store có thể là Pinecone, Qdrant hoặc pgvector;
+- OCR có thể bật/tắt theo tenant;
+- một pipeline chỉ parse + index, pipeline khác parse + OCR + embed + index.
+
+Hierarchy bắt đầu phải biểu diễn **mọi tổ hợp feature**.
+
+```text
+DocumentProcessor
+├─ PdfProcessor
+│  ├─ OcrPdfProcessor
+│  │  ├─ EmbeddingOcrPdfProcessor
+│  │  └─ QdrantEmbeddingOcrPdfProcessor
+│  └─ EmbeddingPdfProcessor
+└─ DocxProcessor
+   └─ EmbeddingDocxProcessor
+```
+
+Đây là signal quan trọng: inheritance tree đang model configuration combinations thay vì stable subtype identity.
 
 ## Mental Model
 
 <Comparison
   items={[
     {title: 'Inheritance · IS-A', description: 'Subtype nhận contract và coupling từ parent; cần substitutability thật.'},
-    {title: 'Composition · HAS-A / USES-A', description: 'Object cộng tác với capability được inject; mỗi phần có thể thay thế riêng.'},
+    {title: 'Composition · HAS-A / USES-A', description: 'Object cộng tác với capability được inject; từng capability có thể thay thế độc lập.'},
   ]}
 />
 
-<Principle label="Default question">Behavior này là identity ổn định của subtype, hay chỉ là capability mà object đang sử dụng?</Principle>
+<Principle label="Default question">Behavior này là identity ổn định của subtype, hay chỉ là capability/configuration mà object đang sử dụng?</Principle>
+
+Nếu câu trả lời là "object này dùng parser/OCR/embedder/vector store", composition thường phản ánh domain tốt hơn.
+
+Nếu câu trả lời là "object này thực sự là một subtype của parent và caller có thể thay nó vào mà không cần special-case", inheritance có thể hợp lý.
+
+## Root cause: capability bị đóng cứng vào type hierarchy
+
+Với hierarchy ở trên, các concern như OCR, embedding hay vector store không phải identity của `DocumentProcessor`.
+
+Chúng là capabilities có lifecycle và variability riêng.
+
+Khi inheritance encode các capability đó vào class name/type tree, mỗi combination mới có xu hướng sinh thêm subclass.
+
+Hậu quả thường gồm:
+
+- số subclass tăng nhanh;
+- behavior bị phân tán qua nhiều parent/child layers;
+- thay parent có blast radius xuống toàn bộ descendants;
+- khó test riêng từng capability;
+- khó cấu hình runtime;
+- việc trace "processor này thực sự làm gì" cần đọc cả hierarchy.
+
+## Composition tách identity khỏi capability
+
+Thay vì encode mọi feature vào subtype tree, `DocumentProcessor` có thể giữ orchestration ổn định và dùng collaborators:
+
+```ts
+class DocumentProcessor {
+  constructor(
+    private readonly parser: Parser,
+    private readonly ocr: OcrEngine | null,
+    private readonly embedder: Embedder | null,
+    private readonly vectorStore: VectorStore,
+  ) {}
+
+  async process(file: File) {
+    let document = await this.parser.parse(file);
+
+    if (this.ocr) {
+      document = await this.ocr.enrich(document);
+    }
+
+    const embedding = this.embedder
+      ? await this.embedder.embed(document)
+      : null;
+
+    await this.vectorStore.save(document, embedding);
+  }
+}
+```
+
+Bây giờ relationship trở thành:
+
+```text
+DocumentProcessor
+  USES Parser
+  USES OcrEngine
+  USES Embedder
+  USES VectorStore
+```
+
+Không cần tạo một subclass mới chỉ vì thay OCR provider hoặc vector store.
+
+## Visualizing the change pressure
 
 <ExcalidrawDiagram
   aspectRatio={1056.3521179293102 / 545.25}
@@ -34,25 +158,157 @@ Inheritance phù hợp khi subtype có quan hệ **IS-A** thật sự và giữ 
   mobileSrc="/img/diagrams/excalidraw/composition-vs-inheritance-mobile.svg"
   mobileAspectRatio={466.68 / 1007.25}
   alt="Deep inheritance staircase tạo subclass mới cho từng tổ hợp feature; composition giữ DocumentProcessor ổn định và cho phép thay Parser, OCR, Embedder hoặc VectorStore độc lập."
-  caption="Inheritance gắn behavior vào subtype tree; composition biến Parser, OCR, Embedder và VectorStore thành các capability có thể thay riêng."
+  caption="Khi feature combinations bắt đầu làm hierarchy phình ra, composition giữ processor ổn định và biến từng feature thành replaceable capability."
 />
 
-## Core Concepts
+Điểm chính của diagram không phải "inheritance xấu, composition tốt". Nó cho thấy hai cách model **một dimension of change** khác nhau.
 
-- **Inheritance:** mô hình subtype relationship; child gắn với contract và behavior của parent.
-- **Composition:** assemble behavior bằng collaborators như Parser, OCR engine, Embedder hoặc VectorStore.
-- **Replaceable capability:** nếu OCR hoặc storage có lifecycle và implementation riêng, composition giữ boundary rõ hơn.
-- **Deep hierarchy:** càng nhiều tầng, behavior càng khó trace và thay đổi parent càng có blast radius lớn.
-- **AI Agent architecture:** agent thường được compose từ tools/capabilities thay vì tạo hierarchy sâu cho mọi tổ hợp tool.
+Inheritance đưa feature vào type identity. Composition đưa feature vào collaborator configuration.
 
-## Example
+## Vì sao composition giảm change impact
 
-`DocumentProcessor` nên compose các capability độc lập:
+Giả sử đổi OCR engine từ Tesseract sang một cloud OCR provider.
+
+Với hierarchy, thay đổi có thể kéo theo class mới hoặc sửa behavior ở một parent/subclass cụ thể.
+
+Với composition:
+
+```ts
+const processor = new DocumentProcessor(
+  new PdfParser(),
+  new CloudOcrEngine(),
+  new OpenAIEmbedder(),
+  new QdrantVectorStore(),
+);
+```
+
+`DocumentProcessor` không đổi.
+
+Thay vector store:
+
+```ts
+const processor = new DocumentProcessor(
+  new PdfParser(),
+  new CloudOcrEngine(),
+  new OpenAIEmbedder(),
+  new PgVectorStore(),
+);
+```
+
+Orchestration vẫn không đổi.
+
+Thay đổi được cô lập vào capability boundary tương ứng.
+
+Đây là lợi ích chính: **feature variability không còn bắt type hierarchy phải tăng theo mọi combination**.
+
+## Composition không có nghĩa là mọi thứ đều optional
+
+Một design dễ over-generalize thành hàng chục injected interfaces và flag.
+
+Không phải collaborator nào cũng cần replaceable abstraction.
+
+Nếu parser là implementation duy nhất, cực nhỏ và không có independent change pressure, có thể dùng concrete collaborator.
+
+Composition nói về cách assemble behavior; nó không bắt mọi dependency phải có interface.
 
 ```ts
 class DocumentProcessor {
   constructor(
-    private readonly parser: Parser,
+    private readonly parser: PdfParser,
+    private readonly vectorStore: VectorStore,
+  ) {}
+}
+```
+
+Vẫn là composition vì `DocumentProcessor` **uses** `PdfParser`; nó không kế thừa từ parser.
+
+## Khi inheritance vẫn là lựa chọn đúng
+
+Inheritance hợp lý khi domain thật sự có subtype relationship ổn định.
+
+Ví dụ một framework có abstract protocol lifecycle:
+
+```ts
+abstract class Job {
+  abstract execute(): Promise<void>;
+
+  async run() {
+    await this.beforeExecute();
+    await this.execute();
+    await this.afterExecute();
+  }
+
+  protected async beforeExecute() {}
+  protected async afterExecute() {}
+}
+```
+
+Nếu `CleanupJob`, `ReindexJob` và `ReportJob` đều thật sự là `Job`, giữ lifecycle contract giống nhau và caller có thể đối xử với chúng như `Job`, inheritance có thể diễn đạt model tốt.
+
+Nhưng phải kiểm tra Liskov Substitution Principle:
+
+- subtype có giữ preconditions/postconditions hợp lý không?
+- caller có cần check subtype trước khi dùng không?
+- child có throw `unsupported` cho behavior parent promise không?
+- parent change có phá assumptions của child không?
+
+Nếu câu trả lời xấu, "IS-A" trên sơ đồ class có thể chỉ là syntax, không phải semantic subtype thật.
+
+## Code reuse không đủ để chọn inheritance
+
+Một lý do phổ biến để extend class là:
+
+> "Hai class dùng chung một đoạn code."
+
+Reuse là một concern, nhưng không chứng minh subtype relationship.
+
+Nếu chỉ cần reuse algorithm/helper, có thể dùng composition hoặc extract function/module:
+
+```ts
+class InvoiceExporter {
+  constructor(private readonly formatter: CsvFormatter) {}
+}
+
+class UserExporter {
+  constructor(private readonly formatter: CsvFormatter) {}
+}
+```
+
+Không cần:
+
+```text
+BaseCsvThing
+├─ InvoiceExporter
+└─ UserExporter
+```
+
+chỉ vì cả hai cùng format CSV.
+
+Inheritance tạo coupling mạnh hơn reuse đơn thuần: child phụ thuộc vào parent contract, protected state, lifecycle và behavior evolution.
+
+## Composition cũng có thể bị coupling xấu
+
+Composition không tự động tạo clean design.
+
+Ví dụ:
+
+```ts
+class DocumentProcessor {
+  constructor(
+    private readonly awsTextract: AwsTextractClient,
+    private readonly pinecone: PineconeClient,
+    private readonly openAI: OpenAIClient,
+  ) {}
+}
+```
+
+Đây vẫn là composition về mặt object structure, nhưng core processor biết trực tiếp vendor details.
+
+Nếu vendor mechanics thay đổi độc lập với orchestration, meaningful capability boundaries có thể tốt hơn:
+
+```ts
+class DocumentProcessor {
+  constructor(
     private readonly ocr: OcrEngine,
     private readonly embedder: Embedder,
     private readonly vectorStore: VectorStore,
@@ -60,41 +316,99 @@ class DocumentProcessor {
 }
 ```
 
-Cấu trúc này tránh hierarchy theo tổ hợp feature như `BaseProcessor → PDFProcessor → OCRPDFProcessor → EmbeddingOCRPDFProcessor`. Mỗi capability có thể được thay, test hoặc cấu hình riêng mà không tạo thêm subclass cho mọi combination.
+Vì vậy "composition" không thay thế reasoning về abstraction/coupling.
 
-## When to Use
+## AI Agent architecture là một ví dụ composition tự nhiên
 
-- Dùng composition cho capability độc lập, có thể thay thế hoặc kết hợp theo nhiều cấu hình.
-- Dùng inheritance khi domain thật sự có subtype relation và child giữ được contract của parent.
-- Ưu tiên composition khi hierarchy bắt đầu phản ánh tổ hợp feature thay vì identity.
-- Với AI Agent, compose tools khi tool set là capability/configuration của agent.
+Một AI Agent thường được hình dung như:
+
+```text
+Agent
+├─ LLM
+├─ Tools
+├─ Memory
+└─ Retriever
+```
+
+Agent **uses** các capability này.
+
+Một coding agent có thể đổi:
+
+- model;
+- tool set;
+- memory strategy;
+- retriever;
+- sandbox/runtime.
+
+Nếu mỗi combination trở thành subtype:
+
+```text
+BaseAgent
+└─ ToolAgent
+   └─ MemoryToolAgent
+      └─ RagMemoryToolAgent
+         └─ ClaudeRagMemoryToolAgent
+```
+
+hierarchy nhanh chóng phản ánh configuration chứ không còn identity có ý nghĩa.
+
+Composition cho phép assemble runtime:
+
+```ts
+const agent = new Agent({
+  model,
+  tools,
+  memory,
+  retriever,
+});
+```
+
+Đây là lý do nhiều agent architectures ưu tiên capability composition thay vì deep inheritance trees.
+
+## Khi nào nên dùng cái nào?
+
+Dùng **composition** khi:
+
+- behavior là capability độc lập;
+- implementation có thể thay đổi riêng;
+- nhiều combination/configuration cần tồn tại;
+- runtime assembly là requirement;
+- hierarchy bắt đầu tăng theo feature combinations;
+- muốn test collaborators độc lập.
+
+Dùng **inheritance** khi:
+
+- có subtype relationship thật;
+- subtype contract ổn định;
+- child substitutable cho parent;
+- shared lifecycle/polymorphism là bản chất của model;
+- hierarchy nông và dễ reasoning.
 
 ## Common Mistakes
 
-- **Dùng inheritance để reuse code:** reuse đơn thuần không chứng minh quan hệ IS-A.
-- **Hierarchy theo mọi feature combination:** số subclass tăng nhanh và behavior khó trace.
-- **Composition không có boundary:** inject concrete vendor detail khắp nơi vẫn tạo coupling.
-- **Coi composition luôn thắng:** subtype ổn định và substitutable vẫn có thể là inheritance hợp lý.
+- **Dùng inheritance chỉ để reuse code:** reuse không chứng minh quan hệ IS-A.
+- **Hierarchy theo mọi feature combination:** subclass count tăng cùng configuration space.
+- **Coi composition luôn thắng:** subtype ổn định và substitutable vẫn có thể dùng inheritance rất tốt.
+- **Composition nhưng vendor detail leak khắp nơi:** object structure khác không có nghĩa coupling đã tốt.
+- **Interface hóa mọi collaborator:** composition không bắt mọi dependency phải abstract.
+- **Confuse configuration với identity:** OCR-enabled, Redis-backed hay GPT-5-powered thường là configuration/capability, không nhất thiết là subtype.
+
+## Decision Guide
+
+Khi chọn giữa composition và inheritance, hỏi:
+
+1. Đây có thật sự là **IS-A**, hay chỉ là **USES-A/HAS-A**?
+2. Caller có thể thay subtype vào parent mà không special-case không?
+3. Behavior này là identity ổn định hay capability có thể đổi?
+4. Requirement mới có làm sinh thêm subclass chỉ vì feature combination không?
+5. Parent change có blast radius lớn xuống descendants không?
+6. Capability có cần runtime configuration, independent testing hoặc provider replacement không?
+7. Mình đang dùng inheritance vì domain model hay chỉ vì code reuse thuận tiện?
+
+Nếu hierarchy đang mô tả "processor với OCR + embedding + vector store X", composition thường là model trung thực hơn.
 
 ## Related Knowledge
 
-- [Coupling & Cohesion](./coupling-and-cohesion.mdx) — deep hierarchy tăng coupling; capability boundary giúp thu hẹp change impact.
-- [Abstraction & Encapsulation](./abstraction-and-encapsulation.mdx) — abstraction định nghĩa capability được compose, implementation encapsulate HOW.
-- [SOLID as Design Lenses](./solid-design-lenses.mdx) — LSP kiểm tra subtype contract, còn DIP hỗ trợ inject collaborator qua suitable contract.
-
-## Self-test
-
-1. `IS-A` và `HAS-A / USES-A` dẫn tới hai lựa chọn nào?
-2. Vì sao code reuse không đủ để chọn inheritance?
-3. `DocumentProcessor` có Parser, OCR, Embedder và VectorStore nên được model thế nào?
-4. Trường hợp nào inheritance vẫn hợp lý?
-
-<details>
-<summary>Answers</summary>
-
-1. `IS-A` có thể dùng inheritance; `HAS-A / USES-A` thường dùng composition.
-2. Inheritance còn áp behavioral contract và coupling với parent; reuse không chứng minh subtype relation.
-3. Compose bốn capability qua các boundary phù hợp thay vì tạo subclass cho từng tổ hợp.
-4. Khi subtype relation là thật, ổn định và child thay thế được parent mà không phá behavioral promise.
-
-</details>
+- [Coupling & Cohesion](./coupling-and-cohesion.mdx) — deep hierarchy tăng coupling; capability boundaries giúp thu hẹp change impact.
+- [Abstraction & Encapsulation](./abstraction-and-encapsulation.mdx) — composition thường mạnh hơn khi collaborators được đặt sau meaningful capability boundaries.
+- [SOLID as Design Lenses](./solid-design-lenses.mdx) — LSP kiểm tra subtype contract; DIP hỗ trợ dependency direction khi compose collaborators.
