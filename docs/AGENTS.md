@@ -47,6 +47,44 @@ A technically correct article is not sufficient if it assumes missing reasoning 
 
 These do not need to become separate headings when a more natural teaching structure is clearer.
 
+## Canonical knowledge article contract
+
+Public knowledge docs are **teaching artifacts, not learning summaries**. A strong article should take a cold reader through the reasoning path, not merely list correct definitions.
+
+Use this as the default content contract for substantial Level 3 knowledge articles:
+
+1. **Why it matters / problem pressure** — establish the real engineering problem and consequence before introducing a pattern or abstraction.
+2. **Mental model** — give one memorable intuition that organizes the topic.
+3. **Core concepts and distinctions** — define the important terms and explicitly separate concepts that readers commonly confuse.
+4. **Concrete scenario** — prefer one realistic scenario that can evolve through the article instead of unrelated toy examples.
+5. **Progressive problem evolution** — when appropriate, show `simple state → requirement changes → naive solution → pain appears` so the reader can see why the problem exists.
+6. **Root-cause reasoning** — explain which responsibility, dependency, state, contract, or system property actually creates the problem.
+7. **Better design / mechanism** — introduce the improved design only after the reader can see the problem it solves.
+8. **Why it works** — connect the solution back to change impact, runtime behavior, data flow, failure isolation, correctness, or the relevant engineering consequence. Do not stop at cleaner-looking code.
+9. **Trade-offs and decision guide** — explain costs, when the technique is justified, when a simpler design is acceptable, and which questions should drive the decision.
+10. **Common mistakes / failure modes** — cover cargo-cult usage, over-engineering, misleading heuristics, and important edge cases.
+11. **Practical takeaway** — end with reusable engineering heuristics or review questions that help the reader apply the concept.
+12. **Related knowledge** — link only to canonical concepts that materially extend or clarify the article.
+
+This is a **content contract, not a mandatory heading template**. Merge, rename, reorder, or omit headings when the topic teaches more naturally another way, but do not omit an important reasoning layer merely to make the article shorter.
+
+### Teaching progression rules
+
+Prefer this reasoning arc when it fits the topic:
+
+`Problem → Mental Model → Concrete Evolution → Root Cause → Better Design → Why It Works → Trade-offs → Application`
+
+Follow these rules:
+
+- **Show why before showing the pattern.** Do not introduce `Factory`, `Repository`, `Strategy`, Dependency Injection, an interface, an agent architecture, or another abstraction as a best practice before establishing the problem it solves.
+- **Prefer progressive examples.** When one scenario can carry the article, evolve it through requirement changes instead of switching examples for every concept.
+- **Do not label the initial simple design as wrong without pressure.** A direct dependency or concrete implementation can be appropriate before meaningful variability or complexity exists.
+- **Explain the delta.** When showing before/after code or architecture, state exactly what changed in dependencies, responsibilities, behavior, blast radius, failure handling, or operational characteristics.
+- **Teach trade-offs, not dogma.** More interfaces, layers, patterns, services, agents, caches, or abstractions are not automatically better.
+- **Prefer engineering judgment over memorization.** The reader should finish knowing what signals to inspect and what decision to make, not only how to repeat a definition.
+
+A compact `TL;DR` may remain at the top, but its compression must not become the depth of the whole article. Self-tests are optional; do not use learner-progress-style quizzes as a substitute for a strong reader-facing conclusion.
+
 ## Do not over-compress at capture time
 
 Do not turn a rich learning/discussion session into a public article containing only the learner's demonstrated bullet points.
