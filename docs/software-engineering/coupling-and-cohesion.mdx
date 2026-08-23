@@ -1,6 +1,6 @@
 ---
 title: Coupling & Cohesion
-description: Nhận diện responsibility và dependency khiến thay đổi lan rộng trong codebase.
+description: Hiểu cách responsibility và dependency quyết định blast radius của thay đổi trong codebase.
 tags: [programming, code-design, coupling, cohesion]
 ---
 
@@ -13,40 +13,13 @@ import {ExcalidrawDiagram} from '@site/src/components/Diagrams';
 
 <TLDR>
 
-**Cohesion** hỏi các phần trong một module có cùng phục vụ một trách nhiệm rõ ràng hay không; **coupling** hỏi module phụ thuộc chặt tới mức nào vào module hoặc implementation khác. Design dễ bảo trì thường hướng tới high cohesion và low coupling để giảm blast radius của thay đổi.
+**Cohesion** hỏi những responsibility nào thực sự nên sống cùng nhau. **Coupling** hỏi một phần của hệ thống biết và phụ thuộc bao nhiêu vào phần khác — đặc biệt là khi một thay đổi xảy ra, nó kéo theo bao nhiêu code phải sửa hoặc retest. Design tốt không cố xóa mọi dependency; nó đặt dependency và responsibility ở boundary giúp **change impact** nhỏ và dễ reasoning.
 
 </TLDR>
 
-## Mental Model
+## Vì sao Coupling & Cohesion quan trọng?
 
-Đừng bắt đầu bằng câu hỏi “class này có bao nhiêu dòng?”. Hãy hỏi:
-
-1. Nó có bao nhiêu **reasons to change** không liên quan nhau?
-2. Nó biết trực tiếp bao nhiêu infrastructure detail?
-3. Khi một dependency đổi, bao nhiêu business logic phải đổi theo?
-
-<Principle label="Change rule">Tách file chỉ thay đổi vị trí code; giảm coupling đòi hỏi thay đổi dependency boundary.</Principle>
-
-<ExcalidrawDiagram
-  aspectRatio={1098.7707691187184 / 529.75}
-  src="/img/diagrams/excalidraw/coupling-and-cohesion.svg"
-  mobileSrc="/img/diagrams/excalidraw/coupling-and-cohesion-mobile.svg"
-  mobileAspectRatio={511.34 / 1004.5}
-  alt="Một UserService ôm validation, password, PostgreSQL, SendGrid, Kafka và audit khiến thay đổi lan rộng; khi tách thành các cohesive boundary, thay đổi provider được cô lập."
-  caption="Tách responsibility theo reason to change mới thu hẹp blast radius; chỉ chuyển cùng dependency sang nhiều file không đạt hiệu quả này."
-/>
-
-## Core Concepts
-
-- **High cohesion:** validation logic nằm cùng validation responsibility; payment orchestration tập trung vào checkout use case.
-- **Low cohesion:** một `UserService` vừa validate, hash password, viết PostgreSQL, gọi SendGrid, publish Kafka và ghi audit log. Các phần này thay đổi vì những lý do khác nhau.
-- **High coupling:** business service gọi trực tiếp provider SDK, SQL detail hoặc concrete implementation nên thay provider kéo theo sửa core logic.
-- **Low coupling:** business logic phụ thuộc vào capability boundary phù hợp; implementation detail có thể đổi với ít tác động hơn.
-- **Blast radius:** phạm vi code, test và behavior có thể bị ảnh hưởng bởi một thay đổi. Coupling thấp thường thu hẹp phạm vi này.
-
-## Example
-
-Ban đầu hệ thống chỉ hỗ trợ Stripe, nên `CheckoutService` gọi trực tiếp Stripe:
+Hãy bắt đầu với một checkout rất đơn giản. Sản phẩm chỉ hỗ trợ Stripe nên `CheckoutService` gọi Stripe trực tiếp:
 
 ```ts
 class CheckoutService {
@@ -57,7 +30,91 @@ class CheckoutService {
 }
 ```
 
-Khi cần thêm PayPal, cách nhanh nhưng coupling cao là đưa luôn provider-specific branching vào core checkout:
+Ở thời điểm này, design trên **chưa chắc sai**. Nếu Stripe là implementation duy nhất, logic nhỏ và chưa có pressure phải thay đổi, thêm nhiều layer chỉ để "đúng pattern" có thể làm code khó đọc hơn.
+
+Vấn đề xuất hiện khi requirement thay đổi.
+
+Business muốn thêm PayPal. Sau đó có thể thêm provider khác, provider-specific error mapping, retry policy hoặc metrics. Một thay đổi vốn thuộc payment integration bắt đầu buộc core checkout phải biết ngày càng nhiều implementation detail.
+
+Câu hỏi quan trọng không còn là "class này có dài không?" mà là:
+
+> **Tại sao một thay đổi cục bộ ở payment provider lại có thể lan vào business orchestration?**
+
+Coupling và cohesion là hai lens để reasoning về chính change impact đó.
+
+## Mental Model
+
+Có thể nhớ hai khái niệm bằng hai câu hỏi:
+
+- **Cohesion:** những thứ này có thật sự nên thay đổi cùng nhau không?
+- **Coupling:** nếu thứ này thay đổi, những nơi nào khác bị kéo theo?
+
+<Principle label="Change impact">Đừng tối ưu số file, số class hay số interface. Hãy tối ưu boundary để một thay đổi có ý nghĩa chỉ lan tới những nơi thực sự cần biết về nó.</Principle>
+
+<ExcalidrawDiagram
+  aspectRatio={1098.7707691187184 / 529.75}
+  src="/img/diagrams/excalidraw/coupling-and-cohesion.svg"
+  mobileSrc="/img/diagrams/excalidraw/coupling-and-cohesion-mobile.svg"
+  mobileAspectRatio={511.34 / 1004.5}
+  alt="Một module ôm nhiều responsibility và infrastructure dependency khiến thay đổi lan rộng; khi responsibility được đặt sau các boundary phù hợp, blast radius được thu hẹp."
+  caption="Tách responsibility theo reason to change mới thu hẹp blast radius; chỉ chuyển cùng dependency sang nhiều file không đạt hiệu quả này."
+/>
+
+## Core Concepts
+
+### Cohesion: responsibility nào nên sống cùng nhau?
+
+Một module có **high cohesion** khi những phần bên trong cùng phục vụ một purpose rõ ràng và thường thay đổi vì những lý do có liên quan.
+
+Ví dụ, checkout orchestration có thể cần validate order, tính tổng tiền và yêu cầu payment capability. Những hành vi đó cùng phục vụ checkout use case.
+
+Ngược lại, nếu cùng một service vừa orchestration checkout, vừa biết cách tạo Stripe PaymentIntent, vừa map PayPal error, vừa cấu hình Kafka và tự format audit record, module đó có nhiều **reasons to change** không liên quan. Đây là dấu hiệu low cohesion.
+
+Cohesion không phải phép đo kích thước:
+
+- class lớn chưa chắc low cohesion nếu toàn bộ logic cùng phục vụ một responsibility phức tạp;
+- class nhỏ chưa chắc high cohesion nếu nó vẫn trộn các concern không liên quan;
+- tách một class thành năm file không tự tạo cohesion nếu responsibility boundary không thay đổi.
+
+### Coupling: module biết bao nhiêu về module khác?
+
+Hai module phải cộng tác thì luôn có một mức dependency nào đó. Vì vậy mục tiêu không phải **zero coupling**.
+
+Điều cần quan sát là một module đang phụ thuộc vào điều gì:
+
+- capability/contract ổn định mà nó thực sự cần;
+- hay concrete SDK, database detail, vendor error, configuration và assumptions của implementation khác.
+
+**High coupling** thường xuất hiện khi một implementation detail thay đổi nhưng caller cũng phải sửa theo. **Lower coupling** nghĩa là dependency được đặt ở boundary phù hợp để phần lớn thay đổi được giữ cục bộ.
+
+### Blast radius: coupling trở thành chi phí thay đổi như thế nào?
+
+**Blast radius** là phạm vi code, test và behavior có thể bị ảnh hưởng bởi một thay đổi.
+
+Nếu đổi payment provider yêu cầu sửa checkout orchestration, provider branching, error handling và nhiều test không liên quan, blast radius lớn. Nếu provider detail được cô lập sau một capability boundary, cùng thay đổi đó có thể chỉ tác động adapter và integration tests tương ứng.
+
+Coupling vì thế không chỉ là một khái niệm structural. Nó ảnh hưởng trực tiếp đến **change impact**, khả năng review, test và deploy an toàn.
+
+## Một requirement nhỏ có thể làm coupling lớn dần như thế nào?
+
+### Stage 1 — chỉ có Stripe
+
+Ban đầu:
+
+```ts
+class CheckoutService {
+  async checkout(input: ChargeInput) {
+    const stripe = new StripeClient();
+    return stripe.charge(input);
+  }
+}
+```
+
+Code đơn giản, dễ đọc. Chưa có lý do đủ mạnh để tạo abstraction chỉ vì tương lai *có thể* thay provider.
+
+### Stage 2 — thêm PayPal
+
+Cách nhanh nhất là thêm branching trực tiếp:
 
 ```ts
 class CheckoutService {
@@ -73,15 +130,49 @@ class CheckoutService {
 }
 ```
 
-Lúc này `CheckoutService` vừa orchestration checkout vừa biết Stripe SDK, PayPal SDK và cách chọn từng provider. Mỗi provider mới lại tạo thêm một reason to change cho core service.
+Code vẫn chạy. Nhưng responsibility đã bắt đầu dịch chuyển.
 
-Tách capability thanh toán sau một boundary chung giúp checkout chỉ phụ thuộc vào hành vi nó thực sự cần:
+`CheckoutService` giờ biết:
+
+- checkout orchestration;
+- Stripe client;
+- PayPal client;
+- cách chọn provider.
+
+Nếu hai SDK trả về error model khác nhau, service có thể sớm phải biết thêm provider-specific mapping. Nếu provider thứ ba xuất hiện, core checkout lại có thêm một nhánh và thêm test surface.
+
+### Stage 3 — integration detail bắt đầu xâm nhập core logic
+
+Giả sử Stripe cần retry cho một nhóm lỗi, PayPal có error code khác, còn metrics phải gắn provider name. Nếu tất cả logic đó tiếp tục được đặt trong `CheckoutService`, mỗi integration change đều có khả năng sửa core checkout.
+
+Đây là lúc blast radius trở thành tín hiệu rõ ràng: **payment integration đang thay đổi vì lý do khác với checkout orchestration nhưng hai concern vẫn bị buộc thay đổi cùng một nơi.**
+
+## Root Problem: không phải `if/else`, mà là boundary
+
+Một chuỗi `if/else` tự nó không phải root problem. Root problem là **ownership của responsibility và dependency**.
+
+Ở design trên có hai pressure khác nhau:
+
+1. **Cohesion problem:** `CheckoutService` sở hữu cả checkout orchestration lẫn provider integration details — những phần có reasons to change khác nhau.
+2. **Coupling problem:** high-level checkout logic phụ thuộc trực tiếp vào concrete provider SDK và assumptions của chúng.
+
+Vì vậy chỉ chuyển Stripe code sang `stripe.ts` và PayPal code sang `paypal.ts` chưa đủ. Nếu `CheckoutService` vẫn phải hiểu provider detail và quyết định dựa trên chúng, dependency relationship về bản chất chưa được cải thiện.
+
+<Principle label="Boundary rule">Tách file thay đổi vị trí code. Giảm coupling đòi hỏi thay đổi điều mà mỗi module cần biết về module khác.</Principle>
+
+## Better Design: phụ thuộc vào payment capability
+
+Khi provider variability đã trở thành requirement thật, checkout có thể phụ thuộc vào capability mà nó thực sự cần:
 
 ```ts
 interface PaymentGateway {
   charge(input: ChargeInput): Promise<ChargeResult>;
 }
+```
 
+Provider-specific implementation sở hữu SDK detail:
+
+```ts
 class StripePaymentGateway implements PaymentGateway {
   charge(input: ChargeInput) {
     return new StripeClient().charge(input);
@@ -93,7 +184,11 @@ class PayPalPaymentGateway implements PaymentGateway {
     return new PayPalClient().charge(input);
   }
 }
+```
 
+Core checkout chỉ orchestration checkout:
+
+```ts
 class CheckoutService {
   constructor(private readonly gateway: PaymentGateway) {}
 
@@ -103,41 +198,94 @@ class CheckoutService {
 }
 ```
 
-`CheckoutService` giữ cohesion quanh checkout; `StripePaymentGateway` và `PayPalPaymentGateway` sở hữu provider detail. Thêm provider mới không buộc core checkout biết thêm SDK hoặc thêm nhánh `if/else` theo provider.
+Việc chọn Stripe hay PayPal có thể được thực hiện ở composition root hoặc một resolver riêng nếu hệ thống thực sự cần runtime selection. `CheckoutService` không cần biết SDK nào đang đứng sau capability.
 
-## When to Use
+## Vì sao design mới thực sự giảm coupling?
 
-- Khi một class có nhiều reasons to change không liên quan.
-- Khi business logic import trực tiếp database, messaging hoặc vendor SDK.
-- Khi thay một provider làm nhiều module phải sửa và retest.
-- Khi review một đề xuất “tách thành nhiều file” nhưng dependency graph vẫn giữ nguyên.
+Điểm quan trọng không phải là "code có interface nên đẹp hơn". Dependency đã thay đổi về ý nghĩa.
+
+**Trước:**
+
+`CheckoutService → Stripe SDK / PayPal SDK / provider-specific behavior`
+
+**Sau:**
+
+`CheckoutService → PaymentGateway capability → provider implementation`
+
+Requirement **"thêm provider mới"** trước đây buộc core checkout biết thêm một concrete implementation. Sau khi có boundary phù hợp, thay đổi chủ yếu trở thành **thêm một implementation của payment capability**.
+
+Cohesion cũng tốt hơn:
+
+- `CheckoutService` thay đổi khi checkout orchestration thay đổi;
+- `StripePaymentGateway` thay đổi khi Stripe integration thay đổi;
+- `PayPalPaymentGateway` thay đổi khi PayPal integration thay đổi.
+
+Điều này không đảm bảo mọi future change đều không chạm core code. Nếu business requirement thật sự thay đổi checkout contract, core vẫn phải thay đổi. Mục tiêu là **cô lập những thay đổi không thuộc responsibility của core**, không phải làm core bất biến bằng mọi giá.
+
+## Low Coupling không có nghĩa là nhiều abstraction hơn
+
+Boundary mang lại lợi ích nhưng cũng có cost:
+
+- thêm type và indirection;
+- reader phải navigate nhiều file hơn;
+- contract phải được thiết kế và duy trì;
+- abstraction sai có thể leak vendor detail hoặc che giấu khác biệt quan trọng;
+- test setup có thể phức tạp hơn nếu architecture bị chia nhỏ quá mức.
+
+Vì vậy nếu hệ thống chỉ dùng Stripe, integration rất nhỏ và không có pressure thực tế để thay thế hoặc cô lập complexity, direct dependency có thể là lựa chọn hợp lý.
+
+Abstraction trở nên đáng giá khi nó bảo vệ một **meaningful change boundary**.
+
+<Principle label="Trade-off">Low coupling không phải ít dependency nhất. Đó là dependency structure giúp những thay đổi độc lập có thể diễn ra độc lập với chi phí hợp lý.</Principle>
+
+## Decision Guide
+
+Khi review một module, thay vì hỏi "có nên tạo interface không?", hãy trace change impact:
+
+1. Module này có nhiều **reasons to change** không liên quan nhau không?
+2. Business logic có biết trực tiếp vendor SDK, SQL detail, messaging detail hoặc infrastructure-specific error không?
+3. Nếu dependency đổi implementation, caller có phải sửa dù business requirement không đổi không?
+4. Một requirement nhỏ có khiến nhiều module và nhiều loại test phải thay đổi không?
+5. Boundary dự định thêm có cô lập một loại change thực tế, hay chỉ thêm indirection vì "best practice"?
+6. Nếu bỏ abstraction đi hôm nay, code có đơn giản hơn mà vẫn giữ blast radius chấp nhận được không?
+
+Các câu hỏi này hữu ích hơn việc đếm số class hoặc ép mọi dependency phải đi qua interface.
 
 ## Common Mistakes
 
-- **Đồng nhất class lớn với design xấu:** size là signal, không phải root cause; responsibility và dependency mới là trọng tâm.
-- **Tách file nhưng giữ direct dependencies:** code phân tán hơn nhưng coupling không giảm.
-- **Tạo boundary không có business meaning:** thêm interface tùy ý có thể chỉ tăng indirection.
-- **Chỉ tối ưu số dependency:** một dependency phù hợp vẫn tốt hơn nhiều lớp wrapper không bảo vệ thay đổi nào.
+### "Class lớn nghĩa là cohesion thấp"
+
+Không nhất thiết. Size là signal để kiểm tra, không phải root cause. Hãy tìm unrelated reasons to change.
+
+### "Tách thành nhiều file sẽ giảm coupling"
+
+Không. Nếu dependency graph và knowledge giữa modules không đổi, code chỉ được phân tán sang nhiều vị trí hơn.
+
+### "Có interface là low coupling"
+
+Không. Một interface expose `StripePaymentIntent`, vendor error hoặc provider-specific option vẫn có thể là leaky abstraction. Boundary phải nói bằng capability có ý nghĩa với caller.
+
+### "Low coupling nghĩa là zero coupling"
+
+Không có collaboration nào mà hoàn toàn không có dependency. Mục tiêu là dependency phù hợp, rõ ràng và ổn định trước loại change mà hệ thống thực sự gặp.
+
+### "Cứ thêm abstraction trước để future-proof"
+
+Premature abstraction có thể tạo thêm maintenance cost cho variability chưa từng xuất hiện. Design đơn giản trước, rồi tạo boundary khi pressure và change pattern đủ rõ, thường dễ reasoning hơn.
+
+## Practical Takeaway
+
+Khi requirement thay đổi, hãy **trace xem change lan tới đâu**.
+
+- Nếu một module thay đổi vì nhiều lý do không liên quan, xem lại **cohesion**.
+- Nếu implementation detail thay đổi khiến business logic phải sửa, xem lại **coupling**.
+- Nếu chỉ tách file nhưng caller vẫn biết cùng implementation detail, blast radius chưa thực sự giảm.
+- Nếu một boundary không bảo vệ loại change nào có ý nghĩa, có thể bạn đang thêm abstraction quá sớm.
+
+Mục tiêu cuối cùng không phải "high cohesion, low coupling" như một khẩu hiệu. Mục tiêu là một codebase nơi **responsibility có ownership rõ ràng và những thay đổi độc lập có thể diễn ra với blast radius nhỏ, dễ hiểu và dễ kiểm soát**.
 
 ## Related Knowledge
 
-- [Abstraction & Encapsulation](./abstraction-and-encapsulation.mdx) — giải thích cách capability boundary giảm việc business logic biết implementation detail.
-- [SOLID as Design Lenses](./solid-design-lenses.mdx) — SRP và DIP cung cấp hai lens thực dụng để phát hiện low cohesion và high coupling.
-- [Composition vs Inheritance](./composition-vs-inheritance.mdx) — composition giúp capability có thể được thay thế mà không tạo deep inheritance coupling.
-
-## Self-test
-
-1. Vì sao một class lớn chưa chắc là root problem?
-2. `UserService` vừa hash password, gửi email và publish event có smell gì?
-3. Tách code thành năm file có tự giảm coupling không?
-4. Boundary nào giúp thêm PayPal mà không sửa core checkout theo provider?
-
-<details>
-<summary>Answers</summary>
-
-1. Size chỉ là signal; cần xem responsibilities có liên quan và dependencies có hợp lý không.
-2. Low cohesion vì nhiều reasons to change, đồng thời high coupling nếu phụ thuộc trực tiếp infrastructure/provider.
-3. Không; dependency relationships phải thay đổi thì coupling mới giảm.
-4. Một `PaymentGateway` capability boundary mà checkout phụ thuộc vào.
-
-</details>
+- [Abstraction & Encapsulation](./abstraction-and-encapsulation.mdx) — capability boundary định nghĩa WHAT mà caller cần và giữ provider-specific HOW ở phía implementation.
+- [SOLID as Design Lenses](./solid-design-lenses.mdx) — SRP và DIP cung cấp hai lens để reasoning sâu hơn về responsibility và dependency direction.
+- [Composition vs Inheritance](./composition-vs-inheritance.mdx) — composition cho phép assemble replaceable capabilities mà không tạo deep inheritance coupling.
