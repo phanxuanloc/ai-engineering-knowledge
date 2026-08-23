@@ -1,6 +1,6 @@
 ---
 title: SOLID as Design Lenses
-description: Dùng SOLID để reasoning về change pressure, contract và dependency thay vì áp dụng như checklist máy móc.
+description: Dùng SOLID để reasoning về change pressure, behavioral contract và dependency direction thay vì áp dụng như checklist máy móc.
 tags: [programming, code-design, solid, dependency-inversion]
 ---
 
@@ -12,15 +12,23 @@ import {Principle, TLDR} from '@site/src/components/Learning';
 
 <TLDR>
 
-SOLID hữu ích nhất khi được dùng như **năm design lenses để inspect change pressure**: responsibility nào đang bị trộn, dimension nào thay đổi lặp lại, contract nào bị phá, interface nào ép capability giả, và business policy nào đang phụ thuộc infrastructure detail. Mục tiêu là giảm change impact và giữ design dễ reasoning — không phải tối đa số lượng interface, class hay pattern.
+SOLID hữu ích nhất khi được dùng như **năm design lenses để inspect change pressure**:
+
+- **SRP** — responsibility nào đang bị trộn và tạo nhiều unrelated reasons to change?
+- **OCP** — dimension nào thay đổi lặp lại đến mức cần extension boundary?
+- **LSP** — implementation có giữ behavioral promise mà caller dựa vào?
+- **ISP** — contract có ép implementation support capability không có thật?
+- **DIP** — high-level policy đang phụ thuộc application capability hay infrastructure detail?
+
+Mục tiêu không phải tối đa số interface, class hay pattern. Mục tiêu là làm cho **change impact dễ dự đoán, contract đáng tin và dependency direction phù hợp với responsibility**.
 
 </TLDR>
 
-## Example
+## Why It Matters
 
-### Khi một service nhỏ bắt đầu phình ra
+SOLID thường được học như năm câu định nghĩa phải nhớ. Cách học đó dễ dẫn đến một failure mode quen thuộc: nhìn thấy class concrete thì thêm interface, thấy `if/else` thì thêm Strategy, thấy object creation thì thêm Factory — nhưng không chỉ ra được design đang bảo vệ khỏi loại thay đổi nào.
 
-Giả sử một hệ thống notification ban đầu chỉ gửi email qua SendGrid:
+Hãy bắt đầu với một notification system rất nhỏ. Sản phẩm chỉ gửi email qua SendGrid:
 
 ```ts
 class NotificationService {
@@ -35,48 +43,61 @@ class NotificationService {
 }
 ```
 
-Ở thời điểm này, code trực tiếp như vậy có thể hoàn toàn đủ tốt.
+Ở thời điểm này, direct dependency **chưa chắc là vấn đề**. Một implementation duy nhất, requirement ổn định và code nhỏ có thể không cần thêm abstraction.
 
-Sau vài tháng, requirement tăng:
+Pressure xuất hiện khi hệ thống lớn dần:
 
-- email có template riêng;
-- SMS qua Twilio;
-- push notification qua Firebase;
-- retry policy khác nhau;
-- audit log phải được persist;
-- một số channel không support HTML;
-- channel được chọn theo user preference;
-- business logic bắt đầu phải hiểu SendGrid/Twilio/Firebase errors.
+- product thêm SMS và push notification;
+- email, SMS và push có capability khác nhau;
+- retry policy thay đổi theo provider;
+- audit log phải persist;
+- user preference quyết định channel;
+- enterprise tenant có thể dùng provider riêng;
+- business logic bắt đầu hiểu SendGrid, Twilio và Firebase errors.
 
-Nếu mọi thứ tiếp tục dồn vào cùng một service, mỗi requirement mới kéo theo nhiều `if/else`, vendor types và unrelated responsibilities.
+Một thay đổi vốn thuộc một concern bắt đầu lan sang nhiều responsibility, contract bắt đầu promise quá mức và high-level policy phải biết ngày càng nhiều low-level mechanics.
 
-Đó là lúc SOLID có practical value.
+Đây là lúc SOLID có practical value.
+
+Câu hỏi trung tâm không phải:
+
+> **“Class này có tuân thủ đủ năm chữ SOLID không?”**
+
+Mà là:
+
+> **“Requirement này thay đổi thì thay đổi lan đi đâu, contract nào bị căng và dependency nào đang đặt sai hướng?”**
 
 ## Mental Model
 
-<Principle label="Overall model">SOLID không hỏi "đã dùng đúng pattern chưa?". Nó hỏi: **khi requirement thay đổi, thay đổi đó lan đi đâu và vì sao?**</Principle>
+Hãy coi SOLID như **năm góc camera cùng nhìn một design dưới change pressure**. Mỗi lens tập trung vào một failure mode khác nhau, nhưng chúng có thể cùng chỉ vào một root cause.
+
+<Principle label="Overall model">SOLID không phải checklist để chứng minh code “đúng pattern”. Nó là bộ câu hỏi giúp reasoning về responsibility, extension, behavioral contract, capability boundary và dependency direction.</Principle>
+
+Có thể nhớ bằng năm câu hỏi:
+
+```text
+SRP  → Ai đang sở hữu những reason-to-change nào?
+OCP  → Dimension nào đang thay đổi lặp lại?
+LSP  → Implementation có giữ đúng behavioral promise không?
+ISP  → Contract có capability nào không phải implementation nào cũng support?
+DIP  → High-level policy đang biết application capability hay vendor detail?
+```
+
+Năm lens không độc lập hoàn toàn. Một boundary mới có thể đồng thời cải thiện SRP, OCP và DIP; nhưng nếu contract thiết kế quá rộng, cùng boundary đó lại có thể vi phạm LSP hoặc ISP.
 
 ## Core Concepts
 
-- **SRP** — module có đang chịu nhiều unrelated reasons to change?
-- **OCP** — một recurring dimension of change có đang buộc sửa core logic liên tục?
-- **LSP** — implementation có giữ behavioral promise mà caller dựa vào?
-- **ISP** — contract có ép implementation support capability không có thật?
-- **DIP** — high-level business policy có đang biết low-level infrastructure detail?
+### SRP — Single Responsibility Principle
 
-SOLID không phải năm rule tách biệt hoàn toàn. Trong thực tế, một design smell thường chạm nhiều lens cùng lúc.
+SRP thường bị rút gọn thành:
 
-## SRP — Single Responsibility Principle
+> “Một class chỉ làm một việc.”
 
-Một cách hiểu quá đơn giản là:
+Câu này quá mơ hồ và dễ dẫn đến việc tách class chỉ để class nhỏ hơn.
 
-> "Một class chỉ làm một việc."
+Lens hữu ích hơn là **reason to change**.
 
-Câu này dễ dẫn tới việc tách class quá mức.
-
-Cách hữu ích hơn là nhìn vào **reasons to change**.
-
-Giả sử `NotificationService` đang làm tất cả những việc sau:
+Giả sử `NotificationService` đang làm tất cả các việc sau:
 
 ```ts
 class NotificationService {
@@ -90,7 +111,7 @@ class NotificationService {
 }
 ```
 
-Các reason to change khác nhau gồm:
+Các phần này có thể thay đổi vì những lý do rất khác nhau:
 
 - product đổi notification policy;
 - designer đổi template rendering;
@@ -98,9 +119,9 @@ Các reason to change khác nhau gồm:
 - platform team đổi retry strategy;
 - compliance đổi audit requirements.
 
-Đây là SRP pressure: một module đang sở hữu knowledge thuộc nhiều change axes khác nhau.
+Đó là **SRP pressure**: một module đang sở hữu knowledge thuộc nhiều change axes không liên quan.
 
-Một design hợp lý hơn có thể tách theo responsibility boundary:
+Một responsibility boundary hợp lý hơn có thể là:
 
 ```text
 NotificationService   → business orchestration
@@ -109,17 +130,19 @@ NotificationSender    → delivery capability
 NotificationAudit     → audit persistence
 ```
 
-Điểm quan trọng không phải số class tăng lên. Điểm quan trọng là **một change có nơi sở hữu rõ ràng và blast radius nhỏ hơn**.
+Điểm quan trọng không phải số class tăng. Điểm quan trọng là mỗi loại thay đổi có **owner rõ ràng hơn và blast radius nhỏ hơn**.
 
-## OCP — Open/Closed Principle
+SRP vì thế gần với cohesion hơn là file size. Một class lớn vẫn có thể cohesive nếu toàn bộ logic phục vụ cùng responsibility; một class nhỏ vẫn có thể có nhiều reason to change.
+
+### OCP — Open/Closed Principle
 
 OCP thường bị hiểu thành:
 
-> "Không bao giờ sửa code cũ, chỉ được thêm code mới."
+> “Không bao giờ sửa code cũ, chỉ được thêm code mới.”
 
-Đây không phải mục tiêu thực tế.
+Đó không phải mục tiêu thực tế.
 
-OCP hữu ích khi một **dimension of change đã recurring**.
+OCP có giá trị khi một **dimension of change đã recurring**.
 
 Ban đầu chỉ có SendGrid:
 
@@ -131,7 +154,7 @@ class NotificationService {
 
 Không có gì sai khi code trực tiếp.
 
-Nhưng khi thêm SMS và push, một design dạng branching bắt đầu hình thành:
+Nhưng khi thêm SMS và push, core orchestration có thể bắt đầu chứa provider branching:
 
 ```ts
 if (channel === 'email') {
@@ -143,9 +166,9 @@ if (channel === 'email') {
 }
 ```
 
-Mỗi channel mới buộc core orchestration sửa lại.
+Nếu mỗi channel mới đều buộc cùng core logic sửa lại, provider/channel đã trở thành một recurring change dimension.
 
-Khi đó có thể tạo extension boundary:
+Khi đó một extension boundary có thể có giá trị:
 
 ```ts
 interface NotificationSender {
@@ -153,7 +176,7 @@ interface NotificationSender {
 }
 ```
 
-Mỗi provider implement contract riêng:
+Provider-specific implementation đứng phía sau contract:
 
 ```ts
 class EmailSender implements NotificationSender { /* SendGrid */ }
@@ -161,21 +184,19 @@ class SmsSender implements NotificationSender { /* Twilio */ }
 class PushSender implements NotificationSender { /* Firebase */ }
 ```
 
-Core service phụ thuộc capability thay vì vendor list.
+OCP ở đây không có nghĩa core code bất biến vĩnh viễn. Nó có nghĩa **một loại variability lặp lại đã có extension point riêng**, nên thêm implementation mới không cần làm những nơi không sở hữu provider mechanics hiểu thêm provider mới.
 
-OCP ở đây không có nghĩa "class cũ không bao giờ được sửa". Nó có nghĩa **một recurring behavior dimension có extension point ổn định hơn**, nên thêm implementation mới không cần chạm vào nơi không sở hữu provider detail.
+<Principle label="OCP timing">Future possibility chưa đủ để justify abstraction. Extension point đáng tạo khi một dimension of change đã đủ rõ, đủ lặp lại hoặc đủ costly nếu tiếp tục lan vào core.</Principle>
 
-<Principle label="OCP timing">Đừng tạo extension point cho mọi future possibility. Hãy tạo nó khi một dimension of change đã đủ rõ và lặp lại.</Principle>
+### LSP — Liskov Substitution Principle
 
-## LSP — Liskov Substitution Principle
-
-LSP không chỉ hỏi implementation có compile với interface hay không.
+LSP không hỏi implementation có cùng method signature hay có compile với interface hay không.
 
 Nó hỏi:
 
-> Nếu caller thay implementation A bằng B, behavioral assumptions có còn đúng không?
+> **Nếu caller thay implementation A bằng B, những behavioral assumptions mà caller dựa vào có còn đúng không?**
 
-Ví dụ:
+Giả sử có contract:
 
 ```ts
 interface NotificationSender {
@@ -183,11 +204,9 @@ interface NotificationSender {
 }
 ```
 
-Giả sử `EmailSender.send()` resolve khi message đã được provider chấp nhận, còn một implementation khác resolve ngay cả khi nó silently drop message do payload unsupported.
+Nếu `EmailSender.send()` resolve khi provider đã chấp nhận message, nhưng một sender khác resolve ngay cả khi payload bị silently drop, hai implementation có cùng signature nhưng không có cùng behavioral semantics.
 
-Hai implementation cùng signature nhưng không cùng behavioral contract.
-
-Một ví dụ rõ hơn:
+Một ví dụ khác:
 
 ```ts
 class SmsSender implements NotificationSender {
@@ -199,15 +218,21 @@ class SmsSender implements NotificationSender {
 }
 ```
 
-Nếu caller tin rằng mọi `NotificationSender` đều support mọi loại `NotificationMessage`, `SmsSender` không thực sự substitutable.
+Nếu caller tin rằng mọi `NotificationSender` đều chấp nhận mọi `NotificationMessage`, `SmsSender` không thực sự substitutable.
 
-LSP buộc design quay lại câu hỏi: **contract đang promise điều gì?**
+LSP buộc design quay về contract:
 
-Có thể cần thu hẹp message model, tách capability, hoặc đặt precondition rõ ràng hơn.
+- precondition nào caller phải thỏa?
+- postcondition nào caller được tin?
+- error semantics là gì?
+- sync/async acknowledgement có cùng nghĩa không?
+- side effect có giữ invariant mà caller dựa vào không?
 
-## ISP — Interface Segregation Principle
+Cùng type shape không đảm bảo cùng behavioral contract.
 
-Một interface quá rộng thường ép implementation vào capability không có thật:
+### ISP — Interface Segregation Principle
+
+Một interface quá rộng có thể ép implementation vào capability không có thật:
 
 ```ts
 interface NotificationChannel {
@@ -217,9 +242,9 @@ interface NotificationChannel {
 }
 ```
 
-SMS không support HTML. Email không có push badge. Nếu implementation phải `throw`, no-op hoặc return fake success, contract đang nói dối.
+SMS không support HTML. Email không có push badge. Nếu implementation phải `throw`, no-op hoặc fake success, contract đang nói dối về capability.
 
-Có thể tách capability:
+Có thể tách theo capability thật:
 
 ```ts
 interface TextSender {
@@ -235,13 +260,15 @@ interface BadgeCapable {
 }
 ```
 
-Hoặc tốt hơn nữa, thiết kế contract theo actual use case thay vì cố gắng tạo một "universal notification interface".
+Nhưng ISP cũng không có nghĩa **interface càng nhỏ càng tốt**. Nếu tách mọi method thành một interface riêng, system có thể trở nên khó hiểu vì indirection tăng nhưng semantics không rõ hơn.
 
-ISP không khuyến khích interface càng nhỏ càng tốt. Nó khuyến khích **contract phản ánh capability thật mà caller cần và implementation có thể giữ**.
+Lens đúng là:
 
-## DIP — Dependency Inversion Principle
+> **Caller nào cần capability nào, và implementation nào có thể giữ capability đó một cách trung thực?**
 
-DIP xuất hiện khi high-level business policy biết quá nhiều low-level infrastructure detail.
+### DIP — Dependency Inversion Principle
+
+DIP quan tâm đến **dependency direction** giữa high-level policy và low-level detail.
 
 Ví dụ:
 
@@ -251,9 +278,9 @@ class NotificationService {
 }
 ```
 
-Service này đang phụ thuộc trực tiếp vào vendor SDK.
+Nếu `NotificationService` chứa business/application policy nhưng import trực tiếp vendor SDK, high-level policy đang biết low-level infrastructure detail.
 
-Khi business logic chỉ cần capability "send notification", dependency có thể được đảo qua application-level contract:
+Khi business logic chỉ cần capability “send notification”, dependency có thể đi qua application-level contract:
 
 ```ts
 interface NotificationSender {
@@ -269,7 +296,7 @@ class NotificationService {
 }
 ```
 
-Dependency direction trở thành:
+Conceptual dependency trở thành:
 
 ```text
 High-level policy
@@ -282,153 +309,279 @@ Infrastructure implementations
 EmailSender / SmsSender / PushSender
 ```
 
-Business policy không còn import trực tiếp vendor SDK.
+Business policy phụ thuộc vào capability mà nó cần. Infrastructure implementation phụ thuộc vào contract đó để cung cấp capability.
 
-### DIP không đồng nghĩa với Dependency Injection
+#### DIP không đồng nghĩa với Dependency Injection
 
-- **DIP** là design principle về dependency direction.
-- **Dependency Injection (DI)** là một technique để cung cấp dependency từ bên ngoài.
-- **Interface** là một cách biểu diễn contract.
-- **Factory/Resolver** là mechanism để tạo hoặc chọn implementation.
+Các khái niệm này liên quan nhưng không giống nhau:
 
-Bạn có thể dùng DI mà vẫn vi phạm DIP nếu inject concrete infrastructure type vào high-level logic.
+- **DIP** — principle về dependency direction.
+- **Dependency Injection (DI)** — technique để cung cấp dependency từ bên ngoài.
+- **Interface** — một cách biểu diễn contract.
+- **Factory/Resolver** — mechanism để tạo hoặc chọn implementation.
 
-Bạn cũng không cần Factory ở mọi nơi.
-
-Nếu composition root đã biết implementation nào cần dùng:
+Bạn có thể dùng DI nhưng vẫn vi phạm DIP:
 
 ```ts
-const service = new NotificationService(new EmailSender(sendGrid));
+class NotificationService {
+  constructor(private readonly sendGrid: SendGridClient) {}
+}
 ```
 
-thì direct injection là đủ.
+`SendGridClient` được inject từ bên ngoài, nhưng high-level service vẫn phụ thuộc concrete infrastructure type.
 
-Factory/Resolver chỉ đáng dùng khi implementation phải được chọn theo runtime input, tenant configuration, feature flag hoặc policy khác.
+Ngược lại, khi composition root đã biết implementation cần dùng, direct construction/injection có thể đủ:
 
-## Năm lens nhìn cùng một system
-
-Cùng notification system, năm lens cho năm câu hỏi khác nhau:
-
-```text
-SRP  → Ai sở hữu reason-to-change này?
-OCP  → Dimension nào đang thay đổi lặp lại?
-LSP  → Implementation này có thay thế được implementation khác không?
-ISP  → Contract có capability nào implementation không support?
-DIP  → Business policy đang phụ thuộc vào application contract hay vendor detail?
+```ts
+const service = new NotificationService(
+  new EmailSender(sendGrid),
+);
 ```
 
-Một quyết định tốt thường cải thiện nhiều lens cùng lúc.
+Factory hoặc Resolver chỉ đáng thêm khi system thật sự cần runtime selection, tenant-specific implementation, feature flag hoặc một creation policy phức tạp.
 
-Ví dụ tách `NotificationSender` ra khỏi `NotificationService` có thể:
+## Example
 
-- tăng SRP vì orchestration không còn sở hữu provider mechanics;
-- cải thiện OCP vì provider mới có extension point;
-- cải thiện DIP vì business service phụ thuộc application contract;
-- buộc kiểm tra LSP/ISP để contract không promise quá mức.
+Phần này dùng một notification scenario xuyên suốt để thấy năm lens phối hợp như thế nào. Mục tiêu không phải ép một “SOLID architecture”, mà là trace từ **change pressure → root cause → boundary decision**.
 
-## SOLID không phải checklist để maximize abstraction
+### Stage 1 — một email provider, design đơn giản
 
-Một anti-pattern phổ biến là nhìn thấy một class nhỏ rồi lập tức tạo:
+Ban đầu system chỉ gửi email:
 
-```text
-Interface
-  ↓
-Abstract Base Class
-  ↓
-Concrete Implementation
-  ↓
-Factory
-  ↓
-Resolver
+```ts
+class NotificationService {
+  constructor(private readonly sendGrid: SendGridClient) {}
+
+  notify(user: User, text: string) {
+    return this.sendGrid.send({
+      to: user.email,
+      text,
+    });
+  }
+}
 ```
 
-trong khi hệ thống chỉ có một implementation và không có change pressure nào đáng kể.
+Ở đây chưa có bằng chứng rằng interface hoặc Factory sẽ làm design tốt hơn. Một concrete dependency có thể là lựa chọn đơn giản và hợp lý.
 
-Kết quả là nhiều indirection hơn nhưng không giảm blast radius nào.
+### Stage 2 — requirement bắt đầu thay đổi theo nhiều axis
 
-SOLID không nói "nhiều abstraction hơn = tốt hơn".
+Sau đó product yêu cầu:
 
-Nó nói: **hãy đặt boundary nơi change thực sự cần boundary**.
+- SMS cho OTP;
+- push cho mobile user;
+- email support HTML;
+- SMS chỉ support text;
+- user preference chọn channel;
+- mỗi provider có retry/error behavior khác nhau;
+- mọi notification phải audit.
 
-## Practical Review Scenario
+Nếu tất cả logic được thêm trực tiếp vào `NotificationService`, class bắt đầu vừa quyết định business policy, vừa render content, vừa biết provider SDK, vừa retry, vừa audit.
 
-Giả sử product yêu cầu:
+**SRP** phát hiện nhiều unrelated reasons to change.
 
-> "User premium dùng push trước, nếu push fail thì fallback email; enterprise tenant có thể dùng provider riêng."
+Nếu mỗi channel mới thêm một nhánh vào core orchestration, **OCP** phát hiện recurring extension pressure.
 
-Thay vì hỏi "pattern nào đúng?", dùng SOLID để reasoning:
+### Stage 3 — tạo sender boundary nhưng contract quá rộng
 
-**SRP:** fallback policy thuộc orchestration hay provider adapter?
+Team nhận ra provider variability và tạo một interface:
 
-→ Fallback giữa channels là business/application policy, không nên giấu trong Firebase adapter.
+```ts
+interface NotificationSender {
+  sendText(text: string): Promise<void>;
+  sendHtml(html: string): Promise<void>;
+  setBadge(count: number): Promise<void>;
+}
+```
 
-**OCP:** enterprise provider có phải recurring extension dimension không?
+Bây giờ SendGrid, Twilio và Firebase đều “implement cùng interface”, nhưng:
 
-→ Nếu nhiều tenant thật sự có provider riêng, sender boundary có giá trị.
+- Twilio không support HTML;
+- SendGrid không có push badge;
+- một số implementation buộc phải throw/no-op.
 
-**LSP:** custom provider có giữ semantics `send()` giống các sender khác không?
+Design có abstraction nhưng contract không còn truthful.
 
-→ Nếu custom provider chỉ queue asynchronous còn caller cần delivery acknowledgement, contract cần làm rõ.
+**ISP** cho thấy interface đang expose capability quá rộng. **LSP** cho thấy implementation không thể được thay thế mà vẫn giữ assumptions của caller.
 
-**ISP:** mọi sender có support attachment/HTML/badge không?
+Đây là ví dụ quan trọng: **thêm interface có thể cải thiện DIP nhưng vẫn tạo contract tệ nếu capability boundary được thiết kế sai.**
 
-→ Không; tránh universal interface ép fake capability.
+### Root Cause — system đang trộn ba loại concern
 
-**DIP:** fallback orchestration có import Firebase/SendGrid SDK không?
+Root problem không nằm ở một chữ cái riêng lẻ. System đang có ít nhất ba pressure:
 
-→ Không nên; nó nên phụ thuộc application contracts.
+1. **Responsibility pressure** — orchestration, rendering, delivery mechanics và audit có reasons to change khác nhau.
+2. **Variability pressure** — channel/provider trở thành recurring dimension.
+3. **Contract pressure** — các channel không có cùng capability hoặc semantics.
 
-Đây là cách SOLID hỗ trợ engineering judgment thay vì pattern memorization.
+Nếu chỉ “apply SOLID” bằng cách tạo nhiều class mà không phân biệt ba pressure này, design vẫn có thể sai boundary.
+
+### Better Design — capability boundary vừa đủ
+
+Một thiết kế tốt hơn có thể giữ orchestration ở application layer và tách delivery capability theo use case thật:
+
+```ts
+interface TextNotificationSender {
+  sendText(input: TextNotification): Promise<SendResult>;
+}
+
+interface RichNotificationSender {
+  sendHtml(input: HtmlNotification): Promise<SendResult>;
+}
+```
+
+Provider adapter giữ SDK mechanics:
+
+```ts
+class TwilioTextSender implements TextNotificationSender {
+  constructor(private readonly twilio: TwilioClient) {}
+
+  async sendText(input: TextNotification): Promise<SendResult> {
+    // Map application input to Twilio request.
+    // Map Twilio response/error to application semantics.
+    return sendWithTwilio(this.twilio, input);
+  }
+}
+```
+
+Application orchestration phụ thuộc capability thay vì vendor SDK:
+
+```ts
+class NotificationService {
+  constructor(
+    private readonly textSender: TextNotificationSender,
+    private readonly audit: NotificationAudit,
+  ) {}
+
+  async sendOtp(input: OtpNotification) {
+    const result = await this.textSender.sendText({
+      destination: input.phone,
+      text: input.message,
+    });
+
+    await this.audit.record(result);
+    return result;
+  }
+}
+```
+
+Không phải mọi system đều cần chính xác các interface này. Điểm cần giữ là boundary xuất phát từ **actual capability và actual change pressure**, không từ acronym.
+
+### Why It Works — mỗi lens bảo vệ một phần khác nhau
+
+Với design trên:
+
+- **SRP:** orchestration, provider mechanics và audit có owner rõ hơn;
+- **OCP:** khi provider/channel thực sự là extension dimension, implementation mới có nơi gắn vào mà không kéo vendor detail vào core;
+- **LSP:** mỗi implementation phải giữ semantics của contract tương ứng;
+- **ISP:** caller không bị ép phụ thuộc capability nó không dùng, implementation không phải fake support;
+- **DIP:** business/application policy phụ thuộc capability contract thay vì SendGrid/Twilio/Firebase SDK.
+
+Một quyết định boundary có thể cải thiện nhiều lens cùng lúc, nhưng không có nghĩa nhiều abstraction hơn luôn tốt hơn.
+
+<Principle label="Design test">Một abstraction đáng giữ khi bạn chỉ ra được pressure cụ thể nó cô lập: reason to change, recurring variability, behavioral contract hoặc dependency direction. Nếu không chỉ ra được pressure đó, abstraction có thể chỉ là ceremony.</Principle>
 
 ## When to Use
 
-Dùng SOLID như review lenses khi:
+Dùng SOLID như review lenses khi có một hoặc nhiều signal sau:
 
-- requirement changes liên tục lan qua nhiều modules;
-- một module có nhiều unrelated reasons to change;
-- một behavior dimension liên tục thêm implementation mới;
-- caller phải special-case theo implementation;
-- interface ép implementation no-op/throw cho capability không support;
-- business policy import trực tiếp vendor/infrastructure SDK.
+- một module có nhiều **unrelated reasons to change**;
+- requirement mới liên tục thêm branching theo cùng một variability dimension;
+- caller phải special-case theo implementation cụ thể;
+- implementation cùng interface nhưng có semantics hoặc failure behavior khác nhau;
+- interface ép implementation `throw unsupported`, no-op hoặc fake success;
+- business/application policy import trực tiếp vendor SDK, database driver hoặc infrastructure-specific types;
+- một change nhỏ kéo theo nhiều module/test không cùng responsibility;
+- bạn đang cân nhắc thêm interface, Strategy, Factory hoặc adapter và cần kiểm tra abstraction đó bảo vệ pressure nào.
 
-Không cần áp dụng machinery SOLID chỉ để làm một class nhỏ trông "enterprise" hơn.
+Không cần “apply SOLID” cho mọi class. Nếu system có một implementation nhỏ, requirement ổn định và direct dependency có blast radius chấp nhận được, design đơn giản có thể tốt hơn.
 
 ## Common Mistakes
 
-- **Memorize acronym nhưng không nối với change impact.**
-- **SRP = một method/class chỉ làm một việc.** Reason-to-change mới là lens hữu ích hơn.
-- **OCP = không sửa code cũ.** Thực tế vẫn sửa code; trọng tâm là recurring extension dimension.
-- **LSP = compile được là đủ.** Behavioral promise mới quyết định substitutability.
-- **ISP = interface càng nhỏ càng tốt.** Contract phải vừa đúng capability caller cần.
-- **DIP = cứ có interface là đạt.** Interface vẫn có thể expose vendor detail hoặc đặt sai boundary.
-- **Factory ở mọi nơi.** Factory giải quyết creation/runtime selection, không phải nghi thức SOLID.
+- **Memorize acronym nhưng không nối với change impact.** Thuộc định nghĩa không giúp quyết định boundary.
+- **SRP = một class chỉ được làm một việc.** Lens hữu ích hơn là unrelated reasons to change.
+- **OCP = không được sửa code cũ.** Core vẫn thay đổi khi business requirement thật sự thay đổi; OCP tập trung vào recurring extension dimension.
+- **LSP = cùng interface là substitutable.** Behavioral promise mới quyết định substitutability.
+- **ISP = interface càng nhỏ càng tốt.** Contract phải phản ánh capability caller cần, không phải tối thiểu số method bằng mọi giá.
+- **DIP = cứ có interface là đạt.** Interface có thể vẫn expose vendor detail hoặc nằm sai boundary.
+- **DI = DIP.** Inject concrete infrastructure type không tự đảo dependency direction.
+- **Factory ở mọi nơi.** Factory giải quyết creation/selection; nếu implementation đã biết ở composition root, nó có thể chỉ thêm ceremony.
 - **Premature abstraction.** Future possibility không phải bằng chứng cho current complexity.
+- **Một refactor phải cải thiện đủ cả năm chữ.** Mỗi lens chẩn đoán một pressure khác nhau; không phải change nào cũng cần chạm tất cả.
 
 ## Decision Guide
 
-Khi review design, hỏi:
+Khi review design, đừng bắt đầu bằng “nên dùng pattern nào?”. Trace pressure theo thứ tự:
 
-1. Requirement này đổi thì module nào phải sửa?
-2. Module có bao nhiêu unrelated reasons to change?
-3. Có behavior dimension nào đang thêm implementation lặp lại không?
-4. Implementation có giữ behavioral contract mà caller dựa vào không?
-5. Interface có method/capability implementation phải no-op hoặc throw không?
-6. Business policy có đang import vendor/infrastructure detail không?
-7. Abstraction mới có giảm một change blast radius cụ thể không?
-8. Factory/Resolver có giải quyết runtime selection thật, hay chỉ thêm ceremony?
+1. **Reason to change:** requirement này đổi thì module nào phải sửa? Có unrelated responsibilities nào đang bị buộc thay đổi cùng nhau không?
+2. **Variability:** có dimension nào lặp lại đủ nhiều để cần extension point không, hay mới chỉ là khả năng trong tương lai?
+3. **Behavioral contract:** caller đang dựa vào guarantee nào? Implementation mới có giữ được guarantee đó không?
+4. **Capability boundary:** interface có method/capability nào implementation phải no-op, throw hoặc fake support không?
+5. **Dependency direction:** high-level policy đang phụ thuộc application language hay vendor/infrastructure language?
+6. **Change impact:** abstraction dự định thêm có thu hẹp blast radius cụ thể không?
+7. **Cost:** layer/interface/factory mới có tạo indirection, type maintenance và test setup nhiều hơn giá trị nó mang lại không?
 
-Nếu không chỉ ra được pressure cụ thể mà abstraction đang bảo vệ, design có thể đang over-engineered.
+Có thể map các câu hỏi đó về năm lens:
+
+| Pressure cần inspect | Lens ưu tiên | Câu hỏi chính |
+| --- | --- | --- |
+| Nhiều responsibility thay đổi vì lý do khác nhau | SRP | Ai nên sở hữu change này? |
+| Một behavior/provider liên tục có implementation mới | OCP | Variability này đã đủ recurring để có extension point chưa? |
+| Cùng contract nhưng behavior khác expectation | LSP | Caller có thể thay implementation mà không đổi assumptions không? |
+| Interface ép capability giả | ISP | Contract có đúng với nhu cầu caller và capability thật không? |
+| Business logic biết low-level detail | DIP | Dependency nên trỏ vào capability nào? |
+
+Nếu không chỉ ra được pressure cụ thể mà abstraction đang bảo vệ, giữ design đơn giản thường là lựa chọn tốt hơn.
+
+## Practical Takeaway
+
+Khi dùng SOLID trong code review hoặc design discussion, hãy đổi cách nói từ **pattern-first** sang **pressure-first**.
+
+Thay vì:
+
+```text
+“Chỗ này cần interface để đúng DIP.”
+```
+
+hãy reasoning:
+
+```text
+“Checkout policy hiện đang import provider SDK.
+Provider mechanics thay đổi độc lập với checkout behavior.
+Ta cần một application-level capability boundary để dependency của core dừng ở WHAT,
+không lan sang HOW của provider.”
+```
+
+Thay vì:
+
+```text
+“Class này quá to nên vi phạm SRP.”
+```
+
+hãy hỏi:
+
+```text
+“Class này đang thay đổi vì product policy, template rendering và vendor SDK.
+Ba reason-to-change này có cần cùng owner không?”
+```
+
+Một rule ngắn có thể mang vào thực tế:
+
+> **Tìm pressure trước, chọn lens sau, thêm boundary cuối cùng.**
+
+SOLID có giá trị khi nó giúp bạn giải thích **vì sao change đang khó** và **boundary nào làm change impact hợp lý hơn** — không phải khi code trông “enterprise” hơn.
 
 ## Self-test
 
-1. SRP khác gì với câu "một class chỉ làm một việc"?
-2. Khi nào OCP đáng tạo extension point, và khi nào nó chỉ là premature abstraction?
-3. Vì sao cùng method signature vẫn có thể vi phạm LSP?
-4. DIP khác Dependency Injection và Factory ở điểm nào?
-5. Một interface buộc implementation `throw unsupported` đang gợi ý lens nào?
+1. SRP khác gì với câu “một class chỉ làm một việc”? Vì sao `reason to change` là lens hữu ích hơn?
+2. Một system chỉ có một payment provider ổn định có nhất thiết cần interface để “đúng OCP/DIP” không? Vì sao?
+3. Vì sao hai implementations cùng method signature vẫn có thể vi phạm LSP?
+4. Một interface buộc `SmsSender` implement `sendHtml()` rồi throw đang gợi ý ISP hay LSP? Hai lens liên hệ với nhau thế nào?
+5. Dependency Injection khác Dependency Inversion Principle ở điểm nào?
+6. Khi nào Factory/Resolver có giá trị thật thay vì chỉ thêm indirection?
+7. Nếu một refactor thêm ba interface nhưng không thu hẹp change blast radius, bạn sẽ đánh giá nó thế nào?
 
 ## Related Knowledge
 
-- [Coupling & Cohesion](./coupling-and-cohesion.mdx) — SOLID thường được dùng để giảm unnecessary coupling và tăng responsibility cohesion.
-- [Abstraction & Encapsulation](./abstraction-and-encapsulation.mdx) — DIP/ISP chỉ có ý nghĩa khi contract là meaningful abstraction, không phải interface được tạo theo thói quen.
-- [Composition vs Inheritance](./composition-vs-inheritance.mdx) — LSP giúp đánh giá subtype; DIP thường dẫn tới composition qua injected collaborators.
+- [Coupling & Cohesion](./coupling-and-cohesion.mdx) — dùng để chẩn đoán responsibility và dependency nào khiến change lan rộng trước khi chọn design response.
+- [Abstraction & Encapsulation](./abstraction-and-encapsulation.mdx) — đào sâu cách thiết kế WHAT/HOW boundary để contract có ý nghĩa và implementation detail không leak ra caller.
+- [Composition vs Inheritance](./composition-vs-inheritance.mdx) — liên quan trực tiếp đến substitutability, behavioral contracts và cách compose dependencies thay vì lạm dụng inheritance.
