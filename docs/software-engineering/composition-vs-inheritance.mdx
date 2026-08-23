@@ -17,7 +17,9 @@ Inheritance phù hợp khi subtype thật sự có quan hệ **IS-A** ổn đị
 
 </TLDR>
 
-## Khi hierarchy bắt đầu encode feature combinations
+## Example
+
+### Khi hierarchy bắt đầu encode feature combinations
 
 Giả sử hệ thống xử lý document ban đầu chỉ cần parse PDF:
 
@@ -87,6 +89,14 @@ DocumentProcessor
 />
 
 <Principle label="Default question">Behavior này là identity ổn định của subtype, hay chỉ là capability/configuration mà object đang sử dụng?</Principle>
+
+## Core Concepts
+
+- **Inheritance** model subtype relationship và kéo theo parent contract, lifecycle và coupling.
+- **Composition** assemble behavior từ collaborators/capabilities mà object sử dụng.
+- **Replaceable capability** là behavior có lifecycle hoặc implementation thay đổi độc lập với object orchestration.
+- **Feature-combination hierarchy** là signal inheritance đang model configuration thay vì identity.
+- **Substitutability** là điều kiện quan trọng để inheritance đúng semantic, không chỉ đúng syntax.
 
 Nếu câu trả lời là "object này dùng parser/OCR/embedder/vector store", composition thường phản ánh domain tốt hơn.
 
@@ -365,7 +375,7 @@ const agent = new Agent({
 
 Đây là lý do nhiều agent architectures ưu tiên capability composition thay vì deep inheritance trees.
 
-## Khi nào nên dùng cái nào?
+## When to Use
 
 Dùng **composition** khi:
 
@@ -406,6 +416,14 @@ Khi chọn giữa composition và inheritance, hỏi:
 7. Mình đang dùng inheritance vì domain model hay chỉ vì code reuse thuận tiện?
 
 Nếu hierarchy đang mô tả "processor với OCR + embedding + vector store X", composition thường là model trung thực hơn.
+
+## Self-test
+
+1. Signal nào cho thấy inheritance hierarchy đang model feature combinations thay vì subtype identity?
+2. Vì sao code reuse không đủ để chứng minh quan hệ IS-A?
+3. Composition có bắt mọi collaborator phải có interface không?
+4. Khi nào inheritance vẫn là lựa chọn hợp lý?
+5. Vì sao AI Agent thường phù hợp với composition hơn deep inheritance?
 
 ## Related Knowledge
 

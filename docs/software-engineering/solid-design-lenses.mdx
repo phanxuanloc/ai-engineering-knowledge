@@ -16,7 +16,9 @@ SOLID hữu ích nhất khi được dùng như **năm design lenses để inspe
 
 </TLDR>
 
-## Khi một service nhỏ bắt đầu phình ra
+## Example
+
+### Khi một service nhỏ bắt đầu phình ra
 
 Giả sử một hệ thống notification ban đầu chỉ gửi email qua SendGrid:
 
@@ -54,7 +56,7 @@ Nếu mọi thứ tiếp tục dồn vào cùng một service, mỗi requirement
 
 <Principle label="Overall model">SOLID không hỏi "đã dùng đúng pattern chưa?". Nó hỏi: **khi requirement thay đổi, thay đổi đó lan đi đâu và vì sao?**</Principle>
 
-Năm lens tập trung vào năm loại pressure khác nhau:
+## Core Concepts
 
 - **SRP** — module có đang chịu nhiều unrelated reasons to change?
 - **OCP** — một recurring dimension of change có đang buộc sửa core logic liên tục?
@@ -378,6 +380,19 @@ Thay vì hỏi "pattern nào đúng?", dùng SOLID để reasoning:
 
 Đây là cách SOLID hỗ trợ engineering judgment thay vì pattern memorization.
 
+## When to Use
+
+Dùng SOLID như review lenses khi:
+
+- requirement changes liên tục lan qua nhiều modules;
+- một module có nhiều unrelated reasons to change;
+- một behavior dimension liên tục thêm implementation mới;
+- caller phải special-case theo implementation;
+- interface ép implementation no-op/throw cho capability không support;
+- business policy import trực tiếp vendor/infrastructure SDK.
+
+Không cần áp dụng machinery SOLID chỉ để làm một class nhỏ trông "enterprise" hơn.
+
 ## Common Mistakes
 
 - **Memorize acronym nhưng không nối với change impact.**
@@ -403,6 +418,14 @@ Khi review design, hỏi:
 8. Factory/Resolver có giải quyết runtime selection thật, hay chỉ thêm ceremony?
 
 Nếu không chỉ ra được pressure cụ thể mà abstraction đang bảo vệ, design có thể đang over-engineered.
+
+## Self-test
+
+1. SRP khác gì với câu "một class chỉ làm một việc"?
+2. Khi nào OCP đáng tạo extension point, và khi nào nó chỉ là premature abstraction?
+3. Vì sao cùng method signature vẫn có thể vi phạm LSP?
+4. DIP khác Dependency Injection và Factory ở điểm nào?
+5. Một interface buộc implementation `throw unsupported` đang gợi ý lens nào?
 
 ## Related Knowledge
 

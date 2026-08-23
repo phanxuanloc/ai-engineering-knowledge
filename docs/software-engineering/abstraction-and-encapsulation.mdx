@@ -16,7 +16,9 @@ import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
 
 </TLDR>
 
-## Khi direct dependency bắt đầu trở thành vấn đề
+## Example
+
+### Khi direct dependency bắt đầu trở thành vấn đề
 
 Giả sử hệ thống checkout ban đầu chỉ hỗ trợ Stripe. Một implementation trực tiếp như sau hoàn toàn có thể hợp lý:
 
@@ -84,6 +86,14 @@ Khi thêm provider thứ ba, đổi Stripe API version, hoặc thay cách map pr
 <Principle label="Boundary test">Nếu caller phải hiểu vendor detail để sử dụng capability, boundary đang leak phần HOW.</Principle>
 
 Một payment use case cần nói bằng ngôn ngữ của application: **charge một khoản tiền**. Nó không cần nói bằng ngôn ngữ của Stripe như `PaymentIntent`, hay PayPal như `Order Capture`.
+
+## Core Concepts
+
+- **Abstraction** mô tả capability và contract mà caller cần, không phải chi tiết provider thực hiện capability đó.
+- **Encapsulation** giữ SDK calls, credentials, retry, state và error mapping ở phía implementation boundary.
+- **Meaningful boundary** nói bằng application language như `charge()` thay vì vendor language như `PaymentIntent`.
+- **Leaky abstraction** xảy ra khi vendor types hoặc vendor semantics vẫn tràn qua contract.
+- **Premature abstraction** xảy ra khi thêm indirection trước khi có complexity hoặc variability thực sự cần cô lập.
 
 ## Từ provider detail đến application capability
 
@@ -250,13 +260,17 @@ Một heuristic hữu ích:
 
 <Principle label="Timing">Đừng abstract vì "sau này có thể cần". Abstract khi bạn đã thấy một dimension of change cần được cô lập.</Principle>
 
-Các signal thường đáng chú ý:
+## When to Use
 
-- cùng một provider detail xuất hiện ở nhiều business modules;
+Cân nhắc tạo abstraction/encapsulation boundary khi:
+
+- vendor detail xuất hiện ở nhiều business modules;
 - thêm implementation mới buộc sửa core orchestration;
-- caller phải map vendor errors hoặc vendor request types;
-- test business logic bắt buộc dựng cả infrastructure client;
-- thay implementation làm change blast radius lớn hơn responsibility thực sự.
+- caller phải map vendor errors hoặc dùng vendor request/response types;
+- business tests phải dựng cả infrastructure client;
+- implementation có complexity riêng cần thay đổi hoặc test độc lập.
+
+Giữ direct concrete dependency khi implementation còn nhỏ, ổn định và không tạo change blast radius đáng kể.
 
 ## Một ví dụ khác: File Storage
 
@@ -306,6 +320,13 @@ Khi review một boundary, hỏi:
 6. Nếu implementation đổi, phần business nào thực sự cần biết?
 
 Nếu câu trả lời cho câu 6 là "gần như không phần nào", đó thường là dấu hiệu một abstraction + encapsulation boundary có giá trị.
+
+## Self-test
+
+1. Trong payment example, phần nào là abstraction và phần nào là encapsulation?
+2. Vì sao `PaymentGateway` vẫn là leaky abstraction nếu input/output dùng Stripe types?
+3. Một concrete `EmailSender` có thể encapsulate tốt dù chưa có interface không? Vì sao?
+4. Signal nào cho thấy abstraction đã có pressure thực tế thay vì chỉ là dự đoán tương lai?
 
 ## Related Knowledge
 
