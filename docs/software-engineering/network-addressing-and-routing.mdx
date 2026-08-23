@@ -1,10 +1,10 @@
 ---
 title: Network Addressing & Routing
-description: DNS, IP, port, subnet/CIDR, private/public IP, NAT, routing và firewall trong mental model debug network thực tế.
+description: DNS, IP, port, subnet/CIDR, routing, firewall và NAT trong một mental model debug network theo failure boundary.
 tags: [networking, dns, ip, cidr, routing, nat]
 ---
 
-import {Comparison, TLDR} from '@site/src/components/Learning';
+import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
 
 # Network Addressing & Routing
 
@@ -12,114 +12,174 @@ import {Comparison, TLDR} from '@site/src/components/Learning';
 
 <TLDR>
 
-Trước khi HTTP có thể chạy, client phải biết **đích là IP nào**, **đi đường nào**, và **traffic có được phép đi qua hay không**. Mental model thực dụng là: `DNS → IP/port → Routing → Firewall/NAT`.
+Một request chưa thể trở thành HTTP chỉ vì domain resolve được. Trước application layer, hệ thống phải trả lời đúng bốn câu hỏi: **domain map tới IP nào, destination là IP:port nào, packet đi route nào, và network policy/NAT có cho traffic đi qua đúng identity hay không**. Mental model thực dụng: `DNS → destination → route → policy/translation`.
 
 </TLDR>
 
+## Why It Matters
+
+Network failure thường bị debug sai layer. Developer thấy API timeout rồi bắt đầu kiểm tra JSON body, authentication hoặc business code, trong khi TCP connection còn chưa tới được destination. Ngược lại, DNS resolve thành công cũng dễ tạo cảm giác “network đã ổn” dù route, firewall hoặc NAT vẫn sai.
+
+Trong production, đặc biệt khi gọi partner API, private network, VPC hoặc service sau NAT, câu hỏi quan trọng không phải chỉ là “IP có đúng không?” mà là **packet rời máy với source nào, đi qua next hop nào và policy nào đang quyết định cho phép traffic**.
+
 ## Mental Model
 
-Hãy tách bốn câu hỏi:
+Hãy xem network addressing như một chuỗi quyết định, không phải một danh sách thuật ngữ:
 
-1. **DNS:** domain này map tới IP nào?
-2. **IP + port:** destination host/service là gì?
-3. **Routing:** packet đi qua next hop nào để tới destination?
-4. **Firewall/NAT:** traffic có được phép và source/destination có bị translate không?
+1. **DNS — name resolution:** tên này map tới IP nào?
+2. **IP + port — destination:** host/service đích cụ thể là gì?
+3. **Routing — path selection:** next hop nào dẫn packet tới destination network?
+4. **Firewall/NAT — policy & identity:** traffic có được phép và source/destination có bị translate không?
 
-Nếu DNS resolve đúng nhưng `IP:443` vẫn timeout, request có thể còn chưa tới HTTP layer.
+<Principle label="Debug heuristic">Đi từ failure boundary thấp nhất đã được chứng minh thành công. Đừng debug HTTP khi TCP tới destination port còn chưa thông.</Principle>
 
 ## Core Concepts
 
-### DNS, IP và port
+### DNS trả lời “ở đâu”, không trả lời “đi bằng cách nào”
 
-- **DNS** map tên như `api.example.com` tới IP như `203.0.113.20`.
-- **IP** xác định network destination.
-- **Port** xác định service endpoint trên host. Ví dụ quen thuộc: HTTP `80`, HTTPS `443`, SSH `22`.
+DNS map hostname như `api.example.com` tới một hoặc nhiều IP như `203.0.113.20`. Nó không chứng minh rằng client có route tới IP đó, port đang mở hay firewall cho phép traffic.
 
-Mental model: **IP = tòa nhà, port = số phòng**.
+<Comparison items={[
+  {title: 'DNS', description: 'Domain này resolve thành IP nào?'},
+  {title: 'Routing', description: 'Packet đi next hop nào để tới network chứa IP đó?'},
+]} />
 
-### Private IP, public IP và NAT
+### IP và port xác định network endpoint
 
-Private IPv4 ranges thường gặp:
+IP xác định host/network destination; port xác định service endpoint trên host. Ví dụ phổ biến: HTTPS `443`, HTTP `80`, SSH `22`.
+
+Mental model dễ nhớ: **IP = tòa nhà, port = số phòng**. Route tới đúng tòa nhà nhưng sai phòng vẫn không kết nối được service.
+
+### Subnet và CIDR là cách mô tả một address range
+
+CIDR như `10.20.30.0/24` biểu diễn một network range. Prefix càng lớn thì range càng nhỏ; `/32` là một IPv4 address duy nhất.
+
+Ví dụ `10.20.30.57` thuộc `10.20.30.0/24`. Nhưng việc “thuộc subnet được allow” vẫn chưa đủ nếu rule còn giới hạn destination, port hoặc protocol.
+
+### Private IP và public IP sống ở hai visibility boundary khác nhau
+
+Private IPv4 ranges phổ biến:
 
 - `10.0.0.0/8`
 - `172.16.0.0/12`
 - `192.168.0.0/16`
 
-Một server có thể có private IP `10.10.1.15`, nhưng khi đi Internet lại được NAT thành public outbound IP `14.1.2.9`. Partner trên Internet làm source-IP allowlist thường cần **outbound IP họ thực sự nhìn thấy**, không phải private IP nội bộ.
+Server có thể chạy ở `10.10.1.15`, nhưng khi đi Internet qua NAT, partner chỉ nhìn thấy public outbound IP như `14.1.2.9`. Vì vậy source-IP allowlist bên ngoài thường phải dùng **IP sau translation**, không phải private IP nội bộ.
 
-### Subnet và CIDR
+### Routing chọn next hop, không đảm bảo destination chấp nhận traffic
 
-CIDR như `10.20.30.0/24` mô tả một network/range, không phải chỉ host `.0`. Prefix càng lớn thì range càng nhỏ; `/32` biểu diễn một IPv4 address duy nhất.
+Routing table quyết định packet nên đi interface/gateway nào dựa trên destination prefix. Có route hợp lệ chỉ nghĩa hệ thống biết đường đi tiếp theo; firewall, ACL hoặc service state vẫn có thể chặn ở phía sau.
 
-Ví dụ, `10.20.30.57` thuộc `10.20.30.0/24`.
+### Firewall rule thường là một tuple, không chỉ một IP
 
-### Routing
-
-<Comparison items={[
-  {title: 'DNS', description: 'Destination là IP nào?'},
-  {title: 'Routing', description: 'Đi đường/next hop nào để tới destination đó?'},
-]} />
-
-DNS có thể resolve đúng nhưng request vẫn fail nếu máy không có route hợp lệ tới destination.
-
-### Firewall rule không chỉ có source IP
-
-Một network rule có thể xét đồng thời:
+Rule thực tế có thể xét đồng thời:
 
 - source IP/subnet;
-- destination IP;
-- port;
-- protocol.
+- destination IP/subnet;
+- destination port;
+- protocol;
+- connection state hoặc direction tùy platform.
 
-Vì vậy “IP thuộc subnet được allow” chưa có nghĩa mọi traffic từ IP đó đều được phép.
+Vì vậy “source thuộc subnet được allow” không đồng nghĩa “mọi traffic đều được phép”.
 
 ## Example
 
-Partner API:
+### Starting Point: partner API hoạt động từ laptop
+
+Developer gọi `https://partner.example.com` từ laptop và nhận `200`. Service production mới deploy cũng resolve được domain:
 
 ```text
-DNS → 203.0.113.20             ✓
-Route to Internet              ✓
-TCP 203.0.113.20:443           timeout
-Server private IP              10.10.1.15
-NAT public outbound IP         14.1.2.9
-Partner allowlist              14.1.2.3 only
+partner.example.com → 203.0.113.20
 ```
 
-Reasoning đúng: partner đang allow sai outbound source IP. Cần allow `14.1.2.9` rồi test lại connectivity tới `203.0.113.20:443`.
+Nhìn nhanh có vẻ DNS và endpoint đều đúng.
+
+### Requirement Changes: production call bị timeout
+
+Từ production service:
+
+```text
+DNS                         203.0.113.20      ✓
+Route to Internet           default gateway  ✓
+TCP 203.0.113.20:443        timeout
+Server private IP           10.10.1.15
+NAT public outbound IP      14.1.2.9
+Partner allowlist           14.1.2.3 only
+```
+
+Nếu chỉ nhìn private IP `10.10.1.15`, team có thể yêu cầu partner allow sai địa chỉ. Nếu chỉ nhìn DNS success, team có thể mất thời gian debug TLS/HTTP dù connection chưa tới được `:443`.
+
+### Root Cause
+
+Partner firewall không nhìn thấy private IP của server. Sau NAT, source mà partner thực sự thấy là `14.1.2.9`, nhưng allowlist chỉ chứa `14.1.2.3`.
+
+### Better Diagnosis
+
+1. Resolve hostname và ghi lại destination IP.
+2. Kiểm tra route tới destination network.
+3. Test TCP tới đúng destination port.
+4. Xác định source IP sau NAT/egress proxy mà bên ngoài nhìn thấy.
+5. Đối chiếu firewall/allowlist rule theo source, destination, port và protocol.
+6. Chỉ khi transport thông mới chuyển sang TLS/HTTP debugging.
+
+### Why It Works
+
+Cách debug này bám theo **failure boundary**. Mỗi bước chỉ kết luận điều mà signal thật sự chứng minh. DNS success không được nâng thành “network success”; route success không được nâng thành “port reachable”; private IP không được nhầm với external source identity.
 
 ## When to Use
 
-- Khi service call timeout trước khi có HTTP status.
-- Khi cần xác định IP nào phải whitelist.
-- Khi debug route giữa private networks/VPC/subnets.
-- Khi phân biệt DNS failure với routing/firewall failure.
+- Service call timeout trước khi có HTTP status.
+- Cần xác định IP nào phải allowlist cho partner hoặc firewall.
+- Debug route giữa VPC, subnet, VPN, peering hoặc private network.
+- Phân biệt DNS failure với routing/firewall/NAT failure.
+- Điều tra vì sao cùng một hostname gọi được từ laptop nhưng fail trong production.
 
 ## Common Mistakes
 
-- **Whitelist private IP cho partner Internet:** external service thường thấy outbound IP sau NAT/proxy.
-- **DNS resolve được = network hoạt động:** DNS success chưa chứng minh có route hoặc TCP connectivity.
-- **Timeout = chắc chắn thiếu whitelist:** routing, firewall, network ACL hoặc service listening state đều có thể gây timeout.
-- **CIDR `.0/24` chỉ là một IP:** đây là một network range.
+- **DNS resolve được = network hoạt động:** DNS chỉ chứng minh name resolution.
+- **Whitelist private IP cho partner Internet:** external service thường thấy IP sau NAT/proxy.
+- **Timeout = chắc chắn thiếu allowlist:** route, firewall, ACL, security group, proxy hoặc service listening state đều có thể gây timeout.
+- **CIDR `.0/24` chỉ là một IP:** đó là một range.
+- **Có route = endpoint reachable:** route chỉ chọn đường; policy và destination state vẫn có thể chặn.
+- **Debug từ application xuống:** bắt đầu ở JSON/auth khi TCP chưa thông làm tăng thời gian chẩn đoán.
 
-## Related Knowledge
+## Decision Guide
 
-- [Networking & Web Fundamentals](./networking-and-web-fundamentals.mdx) — mental map end-to-end của toàn request path.
-- [Transport, TLS & HTTP](./transport-tls-and-http.mdx) — bước tiếp theo sau khi destination/network path đã thông.
+Khi request chưa có HTTP response, hỏi theo thứ tự:
+
+1. **Hostname resolve không?** Nếu không, debug DNS/configuration.
+2. **Destination IP:port là gì?** Đừng chỉ test hostname chung chung.
+3. **Có route hợp lệ tới destination không?** Kiểm tra next hop/interface.
+4. **TCP/UDP tới destination port có đi qua không?** Nếu timeout/refused, vẫn đang ở network/transport boundary.
+5. **Bên nhận nhìn thấy source IP nào?** Xem NAT, egress gateway hoặc proxy.
+6. **Policy match tuple nào?** Source, destination, port, protocol có đúng không?
+7. **Chỉ sau đó** mới chuyển sang TLS/HTTP/application debugging.
+
+## Practical Takeaway
+
+<Principle label="Production rule">Khi làm allowlist hoặc debug timeout, dùng identity mà boundary bên kia thực sự quan sát được — không mặc định dùng IP mà process nhìn thấy ở local machine.</Principle>
+
+Trong incident, hãy ghi lại tối thiểu: `resolved IP`, `destination port`, `route/next hop`, `observed outbound IP`, `policy rule`, `connectivity result`. Chỉ sáu dữ kiện này đã loại bỏ phần lớn suy đoán mơ hồ.
 
 ## Self-test
 
-1. DNS resolve đúng nhưng destination `:443` timeout. Bạn kiểm tra nhóm layer nào trước HTTP body?
+1. DNS resolve đúng nhưng `203.0.113.20:443` timeout. Bạn nên ưu tiên debug HTTP body hay network/transport boundary?
 2. Server private IP là `10.0.1.5`, outbound NAT là `203.0.113.8`; partner Internet cần allowlist IP nào?
-3. `10.20.30.57` có thuộc `10.20.30.0/24` không?
-4. DNS và routing khác nhau ở câu hỏi nào?
+3. Vì sao `10.20.30.57 ∈ 10.20.30.0/24` vẫn chưa chứng minh traffic chắc chắn được firewall cho phép?
+4. Routing và firewall khác nhau ở trách nhiệm nào?
 
 <details>
 <summary>Answers</summary>
 
-1. Routing/firewall/NAT/TCP connectivity tới destination port.
-2. `203.0.113.8`.
-3. Có.
-4. DNS trả lời “IP nào?”, routing trả lời “đi đường nào?”.
+1. Network/transport boundary trước HTTP.
+2. `203.0.113.8` nếu đó là source mà partner thực sự nhìn thấy.
+3. Vì firewall rule còn có thể xét destination, port, protocol hoặc direction/state.
+4. Routing chọn next hop/path; firewall quyết định policy cho phép/chặn traffic.
 
 </details>
+
+## Related Knowledge
+
+- [Networking & Web Fundamentals](./networking-and-web-fundamentals.mdx) — mental map end-to-end của một web request.
+- [Transport, TLS & HTTP](./transport-tls-and-http.mdx) — failure boundaries tiếp theo sau khi destination và network path đã thông.
+- [Proxies, Load Balancing & Client IP](./proxies-load-balancing-and-client-ip.mdx) — vì sao network peer và original client identity có thể khác nhau.

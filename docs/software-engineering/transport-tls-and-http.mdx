@@ -1,11 +1,11 @@
 ---
 title: Transport, TLS & HTTP
-description: TCP/UDP, TLS/HTTPS và HTTP request-response trong cùng một mental model transport-to-application.
+description: TCP/UDP, TLS/HTTPS và HTTP request-response trong mental model theo failure boundary từ transport tới application.
 tags: [networking, tcp, udp, tls, https, http]
 ---
 
-import {Comparison, TLDR} from '@site/src/components/Learning';
-import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 # Transport, TLS & HTTP
 
@@ -13,139 +13,182 @@ import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 
 <TLDR>
 
-Sau khi biết destination và có network path, client còn phải thiết lập transport, bảo vệ connection bằng TLS khi dùng HTTPS, rồi mới trao đổi HTTP request/response. Mental model: `TCP/UDP → TLS → HTTP`.
+Một “API call” thực tế đi qua nhiều boundary: **transport → secure channel → HTTP semantics → application behavior**. TCP reliability không đảm bảo business exactly-once; TLS bảo vệ connection chứ không bảo vệ toàn bộ application; và một HTTP status như `401` cho biết request đã đi xa hơn rất nhiều so với một TCP timeout.
 
 </TLDR>
 
+## Why It Matters
+
+Khi mọi lỗi đều bị gọi chung là “API fail”, team dễ retry sai, debug sai layer hoặc kết luận sai về security. `connection timeout`, `TLS handshake error`, `HTTP 401`, `HTTP 500` và “payment bị charge hai lần” là năm loại failure có boundary khác nhau.
+
+Muốn debug nhanh và thiết kế retry an toàn, cần biết **layer nào đã thành công, layer nào chưa xảy ra, và guarantee của layer dưới không tự động nâng cấp thành guarantee của business operation**.
+
 ## Mental Model
 
-Đừng gộp ba layer thành “API call”. Hãy tách:
+Hãy tách một HTTPS request thành bốn câu hỏi:
 
-- **TCP/UDP:** dữ liệu được vận chuyển thế nào?
-- **TLS:** connection được bảo vệ/xác thực thế nào?
-- **HTTP:** client và server trao đổi request/response theo semantics nào?
+1. **Transport:** hai endpoint có trao đổi byte/datagram được không?
+2. **TLS:** secure authenticated channel có thiết lập được không?
+3. **HTTP:** request/response semantics có được trao đổi không?
+4. **Application:** operation có thành công, idempotent và authorized không?
 
-Một lỗi ở transport có thể khiến HTTP chưa bao giờ xảy ra.
+<Principle label="Boundary rule">Mỗi signal chỉ chứng minh layer của nó. TCP success không chứng minh TLS/HTTP success; HTTP response không chứng minh business operation đúng; transport reliability không tạo business exactly-once.</Principle>
+
+<FlowExplainer
+  title="Một HTTPS request đi qua các failure boundary"
+  description="Theo dõi request từ transport tới application để thấy mỗi error signal chặn ở đâu."
+  scenarios={[
+    {
+      id: 'https-request',
+      label: 'HTTPS request lifecycle',
+      layout: 'compact',
+      presentation: 'progressive',
+      nodes: [
+        {id: 'client', label: 'Client', detail: 'knows destination IP:443', role: 'client'},
+        {id: 'tcp', label: 'TCP', detail: 'connection + reliable byte stream', role: 'service'},
+        {id: 'tls', label: 'TLS', detail: 'encrypted authenticated channel', role: 'security'},
+        {id: 'http', label: 'HTTP', detail: 'method · path · headers · body', role: 'service'},
+        {id: 'app', label: 'Application', detail: 'auth · business operation', role: 'service'},
+      ],
+      steps: [
+        {title: '1 · Connect', from: 'client', to: 'tcp', message: 'TCP :443', description: 'Nếu bước này timeout, HTTP còn chưa bắt đầu.'},
+        {title: '2 · Secure channel', from: 'tcp', to: 'tls', message: 'TLS handshake', description: 'Certificate hoặc protocol mismatch fail ở boundary TLS.'},
+        {title: '3 · Send request', from: 'tls', to: 'http', message: 'POST /payments', description: 'HTTP method, headers và body chỉ có nghĩa sau khi channel cần thiết đã sẵn sàng.'},
+        {title: '4 · Execute operation', from: 'http', to: 'app', message: 'charge()', description: 'Authorization, validation và business side effect nằm ở application boundary.'},
+      ],
+    },
+  ]}
+/>
 
 ## Core Concepts
 
-### TCP vs UDP
+### TCP và UDP cung cấp transport semantics khác nhau
 
 <Comparison items={[
-  {title: 'TCP', description: 'Reliable ordered byte stream; có connection state và retransmission.'},
-  {title: 'UDP', description: 'Datagram transport; không cung cấp cùng guarantee về delivery/ordering như TCP.'},
+  {title: 'TCP', description: 'Connection-oriented reliable ordered byte stream; có retransmission và flow/congestion control.'},
+  {title: 'UDP', description: 'Datagram transport; không tự cung cấp cùng guarantee về delivery, ordering hay connection state.'},
 ]} />
 
-HTTP/1.1 và HTTP/2 thường chạy trên TCP. HTTP/3 dùng QUIC trên UDP. DNS thường dùng UDP trong nhiều trường hợp phổ biến.
+HTTP/1.1 và HTTP/2 thường chạy trên TCP. HTTP/3 dùng QUIC trên UDP nhưng QUIC tự cung cấp nhiều transport guarantee ở user space. Điều này cho thấy **HTTP không đồng nghĩa TCP**.
 
-### TCP reliability không phải business exactly-once
+### TCP reliability chỉ bảo vệ transport delivery
 
-Payment có thể đã charge thành công nhưng response bị mất. Client retry vẫn có thể tạo duplicate business operation. Idempotency key giải quyết vấn đề application-level khác với transport reliability.
+TCP cố gắng giao byte stream đáng tin cậy giữa hai endpoints. Nó không biết “charge payment” là một business operation.
 
-### TLS và HTTPS
+Nếu server đã charge thành công nhưng connection đứt trước khi client nhận response, client không biết operation đã commit hay chưa. Retry có thể tạo charge thứ hai. Đây là lý do idempotency key tồn tại ở application layer.
 
-Mental model giản lược:
+### TLS tạo secure channel, không tạo secure application
 
-`HTTP → TLS → TCP → IP`
+TLS cung cấp ba property chính:
 
-TLS cung cấp:
+- confidentiality của data in transit;
+- integrity của dữ liệu trên channel;
+- peer authentication, phổ biến nhất là server authentication qua certificate.
 
-- confidentiality/encryption in transit;
-- integrity;
-- server authentication thông qua certificate.
+TLS không sửa authorization sai, SQL injection, secret bị log, insecure business logic hay compromised endpoint.
 
-HTTPS không sửa authorization sai, SQL injection hay secret bị log ra ngoài.
+### HTTP định nghĩa application protocol semantics
 
-### HTTP request/response
+Request thường có method, path, query, headers và optional body. Response có status, headers và body.
 
-Request thường có:
+Một HTTP status là signal rất mạnh về failure boundary:
 
-- method;
-- path;
-- query;
-- headers;
-- optional body.
+- `401`/`403`: request đã tới HTTP/application boundary đủ xa để server trả policy result;
+- `500`: server/application xử lý request và fail phía trong;
+- connection timeout: có thể chưa có HTTP exchange nào;
+- TLS handshake error: transport có thể đã nối nhưng secure channel chưa sẵn sàng.
 
-Response thường có:
+### HTTP stateless không có nghĩa application không có state
 
-- status;
-- headers;
-- body.
+HTTP request tự nó không giữ conversation state giữa các request. Identity/session được bổ sung bằng mechanisms như cookie, server-side session hoặc bearer token.
 
-### HTTP statelessness và identity
-
-HTTP về cơ bản là stateless, nên identity/session cần cơ chế bổ sung.
-
-- **Cookie** là browser storage/transmission mechanism.
-- **Session** là state của phiên làm việc, thường server-side và được tham chiếu bằng session ID.
-- **Token-based auth** có thể gửi credential qua `Authorization: Bearer ...`.
-
-### Debug HTTP status theo layer
-
-Nếu nhận được `HTTP 401 Unauthorized`, request đã đi đủ xa để có HTTP response. Ưu tiên authentication credential/token/cookie trước DNS/routing/firewall.
-
-Nếu `IP:443` timeout thì HTTP endpoint, JSON body và business logic có thể còn chưa được chạm tới.
+Cookie là storage/transmission mechanism của browser; session là application state của phiên; token là credential/claim representation. Chúng không phải cùng một khái niệm.
 
 ## Example
 
-Payment API dùng HTTPS:
+### Starting Point: payment API hoạt động bình thường
 
-<ReactFlowDiagram
-  ariaLabel="HTTPS payment request phase flow"
-  direction="TB"
-  interactive={false}
-  kind="lifecycle"
-  primaryPath={['client', 'tcp', 'tls', 'request', 'response']}
-  nodes={[
-    {id: 'client', label: 'Client', detail: 'knows destination IP:port', role: 'source'},
-    {id: 'tcp', label: 'TCP Connection', detail: 'reliable byte stream', role: 'process'},
-    {id: 'tls', label: 'TLS Handshake', detail: 'secure authenticated channel', role: 'constraint'},
-    {id: 'request', label: 'POST /payments', detail: 'HTTP request semantics', role: 'process', emphasis: true},
-    {id: 'response', label: 'HTTP Response', detail: 'status · headers · body', role: 'output'},
-  ]}
-  edges={[
-    {source: 'client', target: 'tcp'},
-    {source: 'tcp', target: 'tls'},
-    {source: 'tls', target: 'request'},
-    {source: 'request', target: 'response'},
-  ]}
-  caption="HTTP request chỉ được trao đổi sau khi transport và secure channel cần thiết đã được thiết lập; mỗi phase có failure boundary riêng."
-/>
+Client gửi:
 
-Nếu server charge thành công nhưng response bị mất, retry có thể duplicate payment dù TCP là reliable transport. Cần application-level idempotency.
+```http
+POST /payments
+Idempotency-Key: pay_123
+Authorization: Bearer ...
+```
+
+Server charge thành công và trả `201 Created`.
+
+### Requirement Changes: response bị mất
+
+Lần sau server charge thành công nhưng connection bị reset trước khi response tới client. Client chỉ thấy network error và retry cùng operation.
+
+Naive implementation tạo một charge mới cho mỗi request sẽ duplicate payment. Nói “nhưng TCP reliable” không giải quyết được ambiguity này: TCP không biết business transaction đã commit.
+
+### Root Cause
+
+Failure xảy ra **sau side effect nhưng trước observation của client**. Client không thể phân biệt “server chưa xử lý” với “server xử lý xong nhưng response thất lạc” chỉ từ network error.
+
+### Better Design
+
+Client reuse cùng `Idempotency-Key` cho cùng logical operation. Server lưu result/operation identity và khi nhận retry cùng key, nó trả lại kết quả cũ thay vì tạo side effect mới.
+
+### Why It Works
+
+Idempotency được đặt đúng boundary nơi business identity tồn tại. Transport layer không cần biết “payment”; application layer mới có đủ context để nhận ra hai network requests thực ra là một logical operation.
 
 ## When to Use
 
-- Khi phân biệt connection timeout với HTTP error.
-- Khi debug TLS/certificate/HTTPS issues.
-- Khi cần hiểu vì sao 401/403/500 cho biết request đã qua network stack đủ xa.
-- Khi thiết kế retry cho operations có side effect.
+- Debug connection timeout, TLS/certificate issue hoặc HTTP error.
+- Thiết kế retry cho operation có side effect.
+- Phân biệt transport guarantee với business guarantee.
+- Review auth/session/cookie/token behavior ở HTTP layer.
+- Điều tra vì sao browser/client có HTTP status nhưng team vẫn đang kiểm tra firewall.
 
 ## Common Mistakes
 
-- **HTTP = TCP:** HTTP/3 cho thấy application protocol và transport protocol là hai layer khác nhau.
-- **TCP reliable = operation exactly-once:** sai boundary; business idempotency vẫn cần xử lý riêng.
-- **HTTPS = application secure:** TLS chỉ bảo vệ data in transit và peer authentication ở boundary của nó.
-- **401 = firewall:** đã có HTTP response thì nên ưu tiên authentication/application investigation.
+- **HTTP = TCP:** HTTP/3 là phản ví dụ rõ ràng.
+- **TCP reliable = business exactly-once:** transport không biết logical operation identity.
+- **HTTPS = application secure:** TLS chỉ bảo vệ channel trong scope của nó.
+- **401 = network problem:** đã có HTTP response thì authentication/authorization thường đáng ưu tiên hơn routing.
+- **Retry mọi network error bằng request mới:** side effect có thể đã commit trước khi response bị mất.
+- **Cookie = session:** cookie có thể chỉ mang session ID; session state có thể nằm server-side.
 
-## Related Knowledge
+## Decision Guide
 
-- [Network Addressing & Routing](./network-addressing-and-routing.mdx) — destination/path trước khi transport được thiết lập.
-- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — HTTP semantics và API styles ở layer cao hơn.
+Khi một HTTPS call fail, hỏi:
+
+1. **Có connect tới destination port không?** Không → network/transport.
+2. **TLS handshake hoàn tất không?** Không → certificate, protocol, SNI, trust chain hoặc TLS config.
+3. **Có HTTP status không?** Có → network path và protocol stack đã đi đủ xa; đọc status/headers/body.
+4. **Operation có side effect không?** Có → retry phải xét idempotency.
+5. **Client có biết operation đã commit chưa?** Nếu ambiguous → dùng operation identity/idempotency thay vì đoán từ connection state.
+6. **Security requirement thuộc channel hay application?** Encryption/authentication của peer ≠ authorization/business security.
+
+## Practical Takeaway
+
+<Principle label="Retry rule">Retry policy phải dựa trên semantics của operation, không chỉ dựa trên loại network error.</Principle>
+
+Trong incident, map error vào boundary trước: `connect → TLS → HTTP → application`. Trong design review, map guarantee vào đúng layer: `transport delivery`, `channel security`, `protocol semantics`, `business idempotency`.
 
 ## Self-test
 
-1. TCP và HTTP giải quyết hai responsibility khác nhau thế nào?
-2. HTTPS thêm layer nào giữa HTTP và TCP?
-3. Tại sao TCP không ngăn double charge khi client retry?
-4. Nhận `401` thì nên debug network hay authentication trước?
+1. Nhận `401` chứng minh những layer nào đã hoạt động đủ xa?
+2. Vì sao server charge thành công nhưng client timeout vẫn có thể dẫn tới double charge?
+3. TLS bảo vệ điều gì và không bảo vệ điều gì?
+4. HTTP stateless khác gì với “application không có session state”?
 
 <details>
 <summary>Answers</summary>
 
-1. TCP vận chuyển reliable byte stream; HTTP định nghĩa request/response semantics.
-2. TLS.
-3. Vì business operation có thể đã hoàn thành trước khi response bị mất; retry là application-level behavior.
-4. Authentication trước.
+1. Network/transport và HTTP exchange đã đi đủ xa để server trả response; ưu tiên auth/application investigation.
+2. Side effect có thể commit trước khi response bị mất; retry là một request mới nếu application không nhận diện cùng logical operation.
+3. TLS bảo vệ confidentiality/integrity và peer authentication trên channel; không tự sửa authorization, injection hay business logic.
+4. HTTP request không tự giữ state giữa calls, nhưng application vẫn có thể quản lý session qua cookie/token/server-side state.
 
 </details>
+
+## Related Knowledge
+
+- [Network Addressing & Routing](./network-addressing-and-routing.mdx) — destination, route và policy trước transport.
+- [Proxies, Load Balancing & Client IP](./proxies-load-balancing-and-client-ip.mdx) — intermediaries thay đổi network peer và có thể terminate TLS.
+- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — REST, gRPC và GraphQL ở application communication layer.

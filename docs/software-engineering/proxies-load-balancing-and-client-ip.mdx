@@ -4,8 +4,8 @@ description: Forward proxy, reverse proxy, load balancing, health checks và ori
 tags: [proxy, reverse-proxy, load-balancing, client-ip]
 ---
 
-import {Comparison, TLDR} from '@site/src/components/Learning';
-import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 # Proxies, Load Balancing & Client IP
 
@@ -13,126 +13,186 @@ import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 
 <TLDR>
 
-Production traffic thường không đi thẳng từ client tới backend instance. Proxy và load balancer đứng giữa để route, terminate TLS, distribute traffic và hide backend topology; vì vậy backend có thể không nhìn thấy original client IP trực tiếp.
+Production traffic thường đi qua intermediaries thay vì tới backend trực tiếp. **Forward proxy** đại diện phía client; **reverse proxy** đại diện phía server; **load balancing** phân phối traffic giữa backends. Khi có proxy/LB, backend thường nhìn thấy **direct network peer** là intermediary, nên original client identity phải được truyền qua một trusted boundary thay vì suy ra mù quáng từ socket source IP hoặc header do Internet gửi lên.
 
 </TLDR>
 
+## Why It Matters
+
+Proxy và load balancer giải quyết scale, availability, TLS termination, routing và topology hiding, nhưng đồng thời tạo ra một consequence quan trọng: **network path mà backend nhìn thấy không còn giống logical request path mà user nghĩ tới**.
+
+Nếu không hiểu boundary này, team dễ:
+
+- log sai client IP;
+- rate-limit nhầm tất cả user theo IP của load balancer;
+- trust `X-Forwarded-For` do attacker tự gửi;
+- debug instance unhealthy từ phía client dù client không hề biết instance nào xử lý request;
+- nhầm reverse proxy với load balancing như hai loại product loại trừ nhau.
+
 ## Mental Model
 
-Tách theo responsibility:
+Đừng học theo tên vendor. Hãy tách responsibility:
 
-- **Forward proxy:** đại diện/intermediate cho client khi đi ra ngoài.
-- **Reverse proxy:** đứng trước backend và nhận request thay backend.
-- **Load balancing:** phân phối traffic giữa nhiều backend instances.
+- **Forward proxy:** đứng phía client, thay client đi ra ngoài.
+- **Reverse proxy:** đứng phía server, nhận request trước backend.
+- **Load balancer:** chọn một backend hoặc một nhóm backends để xử lý traffic.
+- **Health checking:** quyết định backend nào còn đủ điều kiện nhận traffic.
+- **Client identity propagation:** truyền original-client metadata qua trusted intermediary chain.
 
-Một component có thể làm nhiều responsibility cùng lúc; đừng học theo product name, hãy học theo vai trò.
+<Principle label="Boundary rule">Một component có thể giữ nhiều responsibility. Hãy hỏi “nó đang đại diện cho phía nào và quyết định điều gì?” thay vì chỉ hỏi “đây là Nginx, ALB hay API Gateway?”.</Principle>
 
 ## Core Concepts
 
-### Forward proxy vs reverse proxy
+### Forward proxy và reverse proxy khác nhau ở phía được đại diện
 
 <Comparison items={[
-  {title: 'Forward proxy', description: 'Đứng phía client; server bên ngoài thấy proxy là network peer.'},
-  {title: 'Reverse proxy', description: 'Đứng phía server; client chỉ biết public/server-facing endpoint.'},
+  {title: 'Forward proxy', description: 'Đứng phía client; destination server thấy proxy là network peer.'},
+  {title: 'Reverse proxy', description: 'Đứng phía server; client chỉ thấy public/server-facing endpoint.'},
 ]} />
 
-### Load balancing
+Một corporate outbound proxy là forward proxy điển hình. Một ingress/reverse proxy đứng trước app instances là reverse proxy.
 
-Load balancer phân phối request tới nhiều backend instances để scale và tăng availability.
+### Load balancing là routing responsibility
 
-<ReactFlowDiagram
-  ariaLabel="Load balancer fans traffic out to backend instances"
-  direction="TB"
-  interactive={false}
-  kind="relationship"
-  nodes={[
-    {id: 'client', label: 'Client', role: 'source'},
-    {id: 'lb', label: 'Load Balancer', detail: 'one public entry point', role: 'process', emphasis: true},
-    {id: 'api-1', label: 'API #1', role: 'output'},
-    {id: 'api-2', label: 'API #2', role: 'output'},
-    {id: 'api-3', label: 'API #3', role: 'output'},
-  ]}
-  edges={[
-    {source: 'client', target: 'lb'},
-    {source: 'lb', target: 'api-1'},
-    {source: 'lb', target: 'api-2'},
-    {source: 'lb', target: 'api-3'},
-  ]}
-  caption="Client dùng một entry point; load balancer giữ backend topology ở phía sau và chọn instance xử lý request."
-/>
+Load balancer nhận traffic ở một entry point rồi chọn backend dựa trên strategy và health state. Nó có thể dùng round-robin, least-connections, hashing hoặc policy khác; fundamental quan trọng hơn algorithm là **client không cần biết backend topology**.
 
-### Health checks
+### Health check biến topology thành runtime state
 
-Nếu `API #2` crash và health check fail, behavior hợp lý là ngừng route traffic tới instance đó và tiếp tục dùng các instance healthy.
+Backend không chỉ “có trong config” hoặc “không có”. Nó còn có trạng thái runtime: healthy, unhealthy, draining, warming up… Load balancer phải route dựa trên state hợp lệ thay vì chỉ danh sách static.
 
-### Original client IP
+### Direct peer khác original client
 
-Nếu flow là:
+Flow:
 
-`Client 14.1.2.9 → Load Balancer 10.0.1.5 → Backend 10.0.2.10`
+```text
+Client 14.1.2.9 → Load Balancer 10.0.1.5 → Backend 10.0.2.10
+```
 
-Backend có thể thấy direct network peer là load balancer, không phải original client. Proxy thường truyền original-client information qua header như `X-Forwarded-For`.
+Backend socket có thể thấy peer là `10.0.1.5`. Original client `14.1.2.9` chỉ còn là metadata nếu intermediary truyền tiếp.
 
-### Trust boundary
+### Forwarded headers nằm trong trust boundary
 
-Không nên mù quáng tin `X-Forwarded-For` từ Internet. Header này chỉ đáng tin khi trusted proxy/load balancer của hệ thống kiểm soát hoặc normalize nó.
+Headers như `Forwarded` hoặc `X-Forwarded-For` có thể mang client IP, nhưng Internet client cũng có thể tự gửi header cùng tên. Vì vậy backend chỉ nên trust giá trị được **trusted proxy append/normalize** theo cấu hình rõ ràng.
+
+Nếu trust chain sai, attacker có thể spoof IP dùng cho audit, access control hoặc rate limiting.
 
 ## Example
 
-Một public API dùng load balancer trước ba instances. `API #2` unhealthy:
+### Starting Point: một backend instance
 
-<ReactFlowDiagram
-  ariaLabel="Load balancer excludes an unhealthy backend from routing"
-  direction="TB"
-  interactive={false}
-  kind="workflow"
-  nodes={[
-    {id: 'lb', label: 'Load Balancer', detail: 'health-aware routing', role: 'process', emphasis: true},
-    {id: 'api-1', label: 'API #1', detail: 'healthy · receives traffic', role: 'output'},
-    {id: 'api-2', label: 'API #2', detail: 'unhealthy · excluded', role: 'constraint'},
-    {id: 'api-3', label: 'API #3', detail: 'healthy · receives traffic', role: 'output'},
+Public API ban đầu chạy trên một instance. Client connect trực tiếp nên backend log source IP gần với client network identity. Thiết kế đơn giản là hợp lý ở quy mô nhỏ.
+
+### Requirement Changes: scale lên ba instances
+
+Team thêm load balancer để có một public entry point và ba backends. Từ đây client chỉ biết LB, không biết instance cụ thể.
+
+<FlowExplainer
+  title="Load balancer chọn backend theo health state"
+  description="Theo dõi một request khi một instance đã unhealthy và bị loại khỏi routing pool."
+  scenarios={[
+    {
+      id: 'health-aware-routing',
+      label: 'Healthy routing',
+      layout: 'compact',
+      presentation: 'focused',
+      nodes: [
+        {id: 'client', label: 'Client', detail: 'public request', role: 'client'},
+        {id: 'lb', label: 'Load Balancer', detail: 'health-aware routing', role: 'service'},
+        {id: 'api1', label: 'API #1', detail: 'healthy', role: 'service'},
+        {id: 'api2', label: 'API #2', detail: 'unhealthy · excluded', role: 'security'},
+        {id: 'api3', label: 'API #3', detail: 'healthy', role: 'service'},
+      ],
+      edges: [
+        {source: 'client', target: 'lb'},
+        {source: 'lb', target: 'api1'},
+        {source: 'lb', target: 'api2'},
+        {source: 'lb', target: 'api3'},
+      ],
+      steps: [
+        {title: '1 · Client reaches one entry point', from: 'client', to: 'lb', message: 'GET /orders', description: 'Client không chọn instance; nó chỉ biết load balancer endpoint.'},
+        {title: '2 · Health state filters candidates', active: ['lb', 'api2'], visible: ['api1', 'api2', 'api3'], description: 'API #2 fail health check nên không còn là routing candidate dù vẫn tồn tại trong topology.'},
+        {title: '3 · Route to healthy backend', from: 'lb', to: 'api1', message: 'forward request', description: 'Load balancer chọn một healthy instance và che quyết định này khỏi client.'},
+      ],
+    },
   ]}
-  edges={[
-    {source: 'lb', target: 'api-1', label: 'route'},
-    {source: 'lb', target: 'api-3', label: 'route'},
-  ]}
-  caption="Health check failure loại API #2 khỏi active routing pool; các healthy instances tiếp tục nhận traffic."
 />
 
-Load balancer nên tạm loại `API #2` khỏi routing pool. Client không cần biết instance cụ thể nào đang xử lý request.
+### Pain Appears: backend log chỉ thấy load balancer IP
+
+Team dùng source IP ở socket để rate-limit user. Sau khi thêm LB, mọi request trông như tới từ `10.0.1.5`, khiến hàng nghìn user bị gom thành một identity.
+
+Naive fix là trust bất kỳ `X-Forwarded-For` nào backend nhận được. Cách này mở spoofing risk.
+
+### Root Cause
+
+Transport peer và original client là hai identity khác nhau. Load balancer trở thành peer trực tiếp; original client chỉ có thể được bảo tồn dưới dạng metadata qua trusted intermediary chain.
+
+### Better Design
+
+1. Edge/load balancer xóa hoặc normalize header không đáng tin từ Internet.
+2. Edge ghi/append original client information theo policy chuẩn.
+3. Backend chỉ trust forwarded headers khi request tới từ known trusted proxy range.
+4. Rate limiting/audit sử dụng normalized client identity, không dùng raw user-controlled header.
+5. Health-aware routing loại backend unhealthy khỏi active pool.
+
+### Why It Works
+
+Thiết kế tách rõ **network peer**, **logical client identity** và **backend availability**. Mỗi concern có owner: transport xác định peer, trusted proxy xác nhận/propagate identity, load balancer quản lý routing candidates.
 
 ## When to Use
 
-- Khi scale backend horizontally.
-- Khi cần một entry point chung cho nhiều services/instances.
-- Khi debug backend log thấy source IP khác client thực tế.
-- Khi thiết kế health checks và failover routing.
+- Scale backend horizontally.
+- Cần một public entry point cho nhiều instances/services.
+- Terminate TLS hoặc centralize routing ở edge.
+- Debug backend log thấy IP proxy/LB thay vì client.
+- Thiết kế health checks, draining và failover.
+- Xây rate limit/audit dựa trên client identity phía sau trusted proxies.
 
 ## Common Mistakes
 
-- **Reverse proxy và load balancer là hai product loại trừ nhau:** một component có thể làm cả hai responsibility.
-- **Backend luôn thấy original client IP:** proxy/LB thường trở thành network peer trực tiếp.
-- **Tin mọi `X-Forwarded-For`:** chỉ trust dưới trusted-proxy configuration.
-- **Client phải tự chọn healthy instance:** load balancer thường che topology này khỏi client.
+- **Reverse proxy = load balancer:** một component có thể làm cả hai, nhưng hai responsibility khác nhau.
+- **Backend luôn thấy original client IP:** proxy/LB thường là network peer trực tiếp.
+- **Tin mọi `X-Forwarded-For`:** user có thể tự gửi header nếu edge không normalize.
+- **Health check pass = business endpoint chắc chắn tốt:** check quá nông có thể bỏ sót dependency failure; check quá sâu có thể làm hệ thống flap.
+- **Client phải retry sang instance khác:** trong kiến trúc có LB, backend selection thường là trách nhiệm của intermediary.
+- **Dùng client IP làm identity tuyệt đối:** NAT, mobile networks và shared proxies có thể khiến nhiều user dùng chung IP.
 
-## Related Knowledge
+## Decision Guide
 
-- [Networking & Web Fundamentals](./networking-and-web-fundamentals.mdx) — vị trí proxy/LB trong end-to-end request path.
-- [System Design Fundamentals](./system-design-fundamentals.mdx) — load balancing trong broader system architecture.
+Khi thiết kế intermediary layer, hỏi:
+
+1. **Component đang đại diện cho client hay server?** → forward vs reverse proxy responsibility.
+2. **Có nhiều backend candidates không?** → cần load-balancing decision.
+3. **Backend health thay đổi runtime không?** → health checks/draining phải ảnh hưởng routing.
+4. **Backend cần original client IP để làm gì?** → observability, rate limit hay security policy có mức trust khác nhau.
+5. **Ai được phép ghi forwarded headers?** → chỉ trusted edge/proxy chain.
+6. **Có đang dùng IP như user identity không?** → xem lại vì NAT/shared networks có thể phá assumption.
+
+## Practical Takeaway
+
+<Principle label="Trust rule">Chỉ trust original-client metadata sau khi xác định trusted proxy chain và cách edge normalize header. Raw header từ Internet không phải identity.</Principle>
+
+Trong architecture review, vẽ riêng ba thứ: **public entry point**, **routing candidates + health state**, và **client identity propagation**. Nếu chúng bị gộp thành một mũi tên “client → backend”, nhiều production assumption quan trọng đang bị che mất.
 
 ## Self-test
 
-1. Forward proxy đại diện cho phía nào?
-2. Khi một backend fail health check, load balancer nên làm gì?
-3. Tại sao backend có thể thấy IP của load balancer thay vì client?
-4. Khi nào có thể trust `X-Forwarded-For`?
+1. Forward proxy và reverse proxy khác nhau ở phía nào được đại diện?
+2. Vì sao backend sau LB có thể thấy IP của LB thay vì client?
+3. Tại sao không nên trust `X-Forwarded-For` từ mọi request?
+4. Một backend fail health check nên ảnh hưởng routing thế nào?
 
 <details>
 <summary>Answers</summary>
 
-1. Client.
-2. Ngừng route traffic tới backend unhealthy và dùng các backend healthy.
-3. Vì TCP connection cuối cùng tới backend được tạo từ proxy/LB.
-4. Khi header đi qua trusted proxy boundary được cấu hình kiểm soát đúng.
+1. Forward proxy đại diện client; reverse proxy đại diện server/backend side.
+2. Vì connection trực tiếp tới backend được tạo từ LB/proxy, nên đó là network peer.
+3. Vì Internet client có thể tự spoof header; chỉ trusted proxy chain mới nên xác nhận/normalize nó.
+4. Backend unhealthy phải bị loại khỏi active routing candidates cho tới khi đủ điều kiện trở lại.
 
 </details>
+
+## Related Knowledge
+
+- [Network Addressing & Routing](./network-addressing-and-routing.mdx) — NAT và source identity ở network boundary.
+- [Transport, TLS & HTTP](./transport-tls-and-http.mdx) — transport peer, TLS termination và HTTP forwarding.
+- [System Design Fundamentals](./system-design-fundamentals.mdx) — load balancing trong broader production architecture.

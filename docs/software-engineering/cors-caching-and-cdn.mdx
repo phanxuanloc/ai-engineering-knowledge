@@ -1,10 +1,11 @@
 ---
 title: CORS, Caching & CDN
-description: Browser cross-origin policy, HTTP cache freshness và CDN edge caching trong practical web debugging.
+description: Browser cross-origin policy, HTTP cache freshness và CDN edge caching trong practical web debugging theo policy và freshness boundary.
 tags: [cors, browser, cache, cdn, http]
 ---
 
-import {TLDR} from '@site/src/components/Learning';
+import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
+import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 # CORS, Caching & CDN
 
@@ -12,109 +13,218 @@ import {TLDR} from '@site/src/components/Learning';
 
 <TLDR>
 
-Browser web failures không phải lúc nào cũng là network failures. **CORS** quyết định browser JavaScript có được truy cập cross-origin response hay không; **HTTP cache/CDN** có thể trả dữ liệu nhanh nhưng stale nếu freshness/invalidation không đúng.
+Sau khi network, TLS và HTTP đều hoạt động, browser vẫn có thể chặn JavaScript đọc cross-origin response vì **CORS**, còn browser cache/CDN có thể trả response **đúng protocol nhưng sai freshness**. Vì vậy `curl 200`, `HTTP 200` hoặc “database đã mới” chưa đủ để kết luận user sẽ thấy dữ liệu đúng.
 
 </TLDR>
 
+## Why It Matters
+
+Frontend failure rất dễ bị quy thành “API lỗi” hoặc “network lỗi” dù request đã tới backend thành công. Hai nhóm problem phổ biến nằm sau HTTP connectivity:
+
+- **policy problem:** browser nhận response nhưng không cho page script sử dụng nó;
+- **freshness problem:** request thành công nhưng response đến từ cached state cũ.
+
+Nếu không tách hai boundary này, team có thể sửa firewall cho một CORS bug hoặc sửa database cho một stale CDN response.
+
 ## Mental Model
 
-Sau khi network/TLS/HTTP đều hoạt động, vẫn còn hai nhóm vấn đề dễ gây nhầm:
+Hãy hỏi hai câu sau khi HTTP đã chạy:
 
-- **Browser policy:** request có thể tới server nhưng JavaScript vẫn bị CORS chặn đọc response.
-- **Cached state:** backend/database đã mới nhưng browser/CDN vẫn trả response cũ.
+1. **Browser policy:** JavaScript origin hiện tại có được phép gửi/đọc request cross-origin này không?
+2. **Freshness path:** response đến từ browser cache, intermediary/CDN hay origin — và nó còn fresh theo policy không?
 
-Vì vậy `HTTP 200` chưa đủ để kết luận user đang nhìn đúng dữ liệu.
+<Principle label="Debug heuristic">`HTTP success` chỉ nói protocol exchange thành công. Nó không tự chứng minh browser được phép expose response cho JavaScript hoặc response là phiên bản mới nhất.</Principle>
 
 ## Core Concepts
 
-### Origin và Same-Origin Policy
+### Origin được xác định bởi scheme + host + port
 
-Origin được xác định bởi:
+Hai URL cùng domain family vẫn có thể khác origin. Ví dụ:
 
-`scheme + host + port`
+- `https://app.company.com`
+- `https://api.company.com`
 
-Ví dụ `https://app.company.com` và `https://api.company.com` khác origin vì host khác nhau.
+khác origin vì host khác nhau.
 
-### CORS
+### Same-Origin Policy là browser security boundary
 
-CORS là browser cross-origin security mechanism, không phải basic firewall/network connectivity.
+Browser hạn chế script từ một origin truy cập tài nguyên của origin khác. Đây là browser-enforced policy, không phải firewall rule ở network layer.
 
-Một signal thực tế:
+`curl` hoặc Postman không chạy Same-Origin Policy giống browser page script. Vì vậy “curl gọi được” không phủ định CORS issue.
 
-- `curl` gọi API được `200`;
-- backend log thấy browser request;
-- browser JavaScript báo CORS error.
+### CORS là cơ chế server khai báo cross-origin permission cho browser
 
-Khi đó nên điều tra CORS/Same-Origin Policy trước DNS/TCP/firewall.
+Server dùng response headers để cho browser biết origin/method/header nào được phép. Browser mới là bên enforce policy đối với page JavaScript.
 
-### Preflight
+CORS không phải authentication. Một origin được phép CORS không có nghĩa user được authorized vào resource.
 
-Một số cross-origin requests khiến browser gửi `OPTIONS` trước để hỏi server có cho phép method/headers/origin tương ứng hay không. Actual request chỉ tiếp tục khi policy phù hợp.
+### Preflight kiểm tra policy trước actual request trong một số trường hợp
 
-### Cache HIT và MISS
+Browser có thể gửi `OPTIONS` trước actual request để hỏi server có cho phép origin, method và request headers tương ứng hay không.
 
-- **HIT:** cache đã có response phù hợp và có thể trả trực tiếp.
-- **MISS:** cache phải đi tới origin/backend.
+Preflight success chỉ chứng minh policy handshake phù hợp; actual request vẫn có thể fail authentication, validation hoặc business logic.
 
-### Cache-Control
+### Cache HIT/MISS mô tả nơi response được lấy
 
-`Cache-Control: max-age=3600` cho phép response được coi là fresh trong khoảng thời gian tương ứng theo policy.
+- **HIT:** một cache có usable response và trả trực tiếp.
+- **MISS:** cache phải đi tiếp tới upstream/origin.
 
-### CDN
+Điểm quan trọng là request path có thể dừng trước origin. Khi đó backend log hoặc database state không nhất thiết phản ánh response user vừa nhận.
 
-CDN đặt edge/cache gần user để giảm latency và origin load. Khi edge có cached response phù hợp, request có thể không cần chạy tới origin.
+### Freshness và invalidation là correctness problem
 
-### Stale data
+`Cache-Control: max-age=3600` cho phép response được coi là fresh trong một khoảng thời gian theo policy. Nếu resource thay đổi trước khi TTL hết, client/CDN vẫn có thể hợp lệ theo cache policy nhưng sai với business expectation “thấy thay đổi ngay”.
 
-Trade-off quan trọng nhất của cache là freshness. Nếu database đã là `New Name`, GET trả `200`, nhưng browser hiện `Old Name` và response có cache lifetime dài, stale cache/invalidation là nghi vấn mạnh.
+Cache không chỉ là performance optimization; nó tạo **consistency/freshness trade-off**.
+
+### CDN đưa cache boundary tới gần user
+
+CDN edge giảm latency và origin load bằng cách trả cached content gần user. Lợi ích càng lớn thì invalidation/keying/freshness policy càng quan trọng.
 
 ## Example
 
-```text
-DNS                         ✓
-TCP :443                    ✓
-TLS                         ✓
-OPTIONS /profile            204
-GET /profile                200
-Database                    New Name
-Browser                     Old Name
-Cache-Control               max-age=3600
+### Starting Point: profile API không cache
+
+Browser gọi `GET /profile`; request tới origin mỗi lần. User đổi display name từ `Old Name` thành `New Name`, refresh và thấy dữ liệu mới.
+
+### Requirement Changes: thêm CDN/cache để giảm latency
+
+Team thêm cache:
+
+```http
+Cache-Control: max-age=3600
 ```
 
-Network và CORS preflight đều đã hoạt động. Signal mạnh nhất nằm ở cache freshness, không phải DNS/firewall/TLS.
+Sau update, database đã là `New Name`, nhưng browser vẫn thấy `Old Name`.
+
+<FlowExplainer
+  title="Một request có thể dừng ở cache trước khi tới origin"
+  description="Theo dõi hai path HIT và MISS để thấy vì sao backend/database có thể mới nhưng user vẫn nhận response cũ."
+  scenarios={[
+    {
+      id: 'cache-hit',
+      label: 'Cache HIT',
+      layout: 'compact',
+      presentation: 'progressive',
+      nodes: [
+        {id: 'browser', label: 'Browser', detail: 'GET /profile', role: 'client'},
+        {id: 'edge', label: 'CDN / Cache', detail: 'Old Name · still fresh', role: 'database'},
+        {id: 'origin', label: 'Origin API', detail: 'would return New Name', role: 'service'},
+      ],
+      steps: [
+        {title: '1 · Request reaches cache', from: 'browser', to: 'edge', message: 'GET /profile', description: 'Browser request tới cache boundary trước origin.'},
+        {title: '2 · Fresh cached response exists', active: ['edge'], visible: ['browser', 'edge'], description: 'Entry vẫn fresh theo max-age nên cache không cần hỏi origin.'},
+        {title: '3 · Cached response returns', from: 'edge', to: 'browser', message: '200 · Old Name', description: 'User nhận HTTP 200 nhưng response là cached state cũ.'},
+      ],
+    },
+    {
+      id: 'cache-miss',
+      label: 'Cache MISS',
+      layout: 'compact',
+      presentation: 'progressive',
+      nodes: [
+        {id: 'browser', label: 'Browser', detail: 'GET /profile', role: 'client'},
+        {id: 'edge', label: 'CDN / Cache', detail: 'no usable entry', role: 'database'},
+        {id: 'origin', label: 'Origin API', detail: 'New Name', role: 'service'},
+      ],
+      steps: [
+        {title: '1 · Request reaches cache', from: 'browser', to: 'edge', message: 'GET /profile', description: 'Cache kiểm tra key và freshness.'},
+        {title: '2 · Miss goes upstream', from: 'edge', to: 'origin', message: 'cache MISS', description: 'Không có usable entry nên request tiếp tục tới origin.'},
+        {title: '3 · Origin response returns', from: 'origin', to: 'edge', message: '200 · New Name', description: 'Origin cung cấp state mới; cache có thể lưu response theo policy.'},
+        {title: '4 · User gets fresh value', from: 'edge', to: 'browser', message: '200 · New Name', description: 'Response mới quay lại browser.'},
+      ],
+    },
+  ]}
+/>
+
+### Another Signal: curl works, browser fails
+
+Giả sử:
+
+```text
+curl GET /profile           200
+Browser OPTIONS /profile    204
+Browser GET /profile        200 at server
+Page JavaScript             CORS error
+```
+
+Network path và backend có thể đều hoạt động. Investigation nên tập trung vào CORS response headers/origin policy, không quay lại DNS/firewall đầu tiên.
+
+### Root Cause
+
+Có hai root cause khác nhau dù symptoms đều là “UI sai”:
+
+- browser policy không cho script expose response;
+- cache freshness policy cho phép trả cached representation cũ.
+
+### Better Diagnosis
+
+1. Xác nhận request có HTTP response thật không.
+2. Nếu chỉ browser fail nhưng curl/Postman success, kiểm tra origin, preflight và CORS headers.
+3. Nếu data stale, xác định response source: browser cache, CDN/edge hay origin.
+4. Kiểm tra cache key, age/freshness headers, TTL và invalidation behavior.
+5. Đối chiếu business freshness requirement với cache policy thay vì chỉ hỏi “cache có nhanh không?”.
+
+### Why It Works
+
+Cách debug tách **policy boundary** khỏi **freshness boundary**. CORS giải thích “response có được page sử dụng không”; cache giải thích “response nào được trả và có cần hỏi origin không”. Hai concern đều nằm trên một network path có thể hoàn toàn healthy.
 
 ## When to Use
 
-- Khi browser fail nhưng curl/Postman hoạt động.
-- Khi debug cross-origin frontend/backend integration.
-- Khi client thấy stale data dù backend/database đã cập nhật.
-- Khi dùng CDN/static caching để giảm latency và origin load.
+- Browser fail nhưng curl/Postman hoạt động.
+- Frontend/backend chạy khác origin.
+- Debug preflight hoặc custom headers/methods.
+- User thấy stale data dù origin/database đã cập nhật.
+- Dùng CDN/browser cache để giảm latency và origin load.
+- Thiết kế API có yêu cầu freshness khác nhau giữa static content và mutable business data.
 
 ## Common Mistakes
 
-- **CORS = firewall:** request có thể đã tới backend nhưng browser vẫn chặn JavaScript đọc response.
-- **Curl thành công nghĩa browser chắc chắn thành công:** curl không thực thi Same-Origin Policy như browser JavaScript.
-- **Cache mọi thứ lâu để tối ưu performance:** stale data có thể trở thành correctness problem.
-- **HTTP 200 = dữ liệu fresh:** response có thể đến từ browser cache/CDN edge.
+- **CORS = firewall:** browser policy có thể fail sau khi server đã nhận request.
+- **CORS = authentication:** CORS kiểm soát browser cross-origin access, không thay thế authn/authz.
+- **Curl success = browser success:** curl không enforce Same-Origin Policy như page script.
+- **HTTP 200 = fresh:** response có thể là cache HIT.
+- **Cache lâu nhất có thể luôn tốt:** latency giảm nhưng freshness risk tăng.
+- **Database mới = user phải thấy mới:** request có thể chưa tới origin.
+- **Invalidate một URL là đủ trong mọi case:** cache key có thể còn phụ thuộc query, headers, cookies hoặc variants.
 
-## Related Knowledge
+## Decision Guide
 
-- [Networking & Web Fundamentals](./networking-and-web-fundamentals.mdx) — mental map end-to-end và vị trí browser/cache trong debugging flow.
-- [Transport, TLS & HTTP](./transport-tls-and-http.mdx) — HTTP request/response trước khi browser policy/cache được xét.
+Khi browser/web data có vấn đề, hỏi:
+
+1. **Chỉ browser fail hay mọi client đều fail?** Chỉ browser → ưu tiên browser policy/CORS.
+2. **Request có preflight không?** Có → kiểm tra `OPTIONS` response và allowed origin/method/headers.
+3. **Có HTTP response nhưng script không đọc được?** → CORS/exposure issue, không phải basic connectivity.
+4. **Response body cũ hay request fail?** Body cũ → freshness path.
+5. **Response đến từ đâu?** Browser cache, CDN, reverse proxy cache hay origin.
+6. **Business chấp nhận stale bao lâu?** TTL/invalidation phải bắt đầu từ requirement này.
+7. **Cache key có phân biệt đúng variants không?** Sai key có thể vừa stale vừa leak dữ liệu giữa users/representations.
+
+## Practical Takeaway
+
+<Principle label="Caching rule">Thiết kế cache từ freshness requirement trước, rồi mới tối ưu hit rate. Performance tốt nhưng trả sai state vẫn là correctness failure.</Principle>
+
+Trong debugging, phân loại symptom thành `connectivity`, `browser policy` hoặc `freshness`. Chỉ ba nhãn này đã giúp tránh phần lớn vòng lặp “backend nói 200 nhưng frontend vẫn lỗi”.
 
 ## Self-test
 
-1. Curl nhận `200` nhưng browser báo CORS. Bạn nghi vấn gì trước?
-2. Origin được xác định bởi ba thành phần nào?
-3. `OPTIONS` preflight dùng để làm gì?
-4. Database mới nhưng browser cũ và `max-age` còn hiệu lực. Nghi vấn nào mạnh nhất?
+1. Vì sao `curl 200` không loại trừ CORS issue?
+2. Preflight `OPTIONS` thành công có chứng minh actual request chắc chắn authorized không?
+3. Database là `New Name` nhưng CDN trả `Old Name` còn fresh theo `max-age`. Network có nhất thiết lỗi không?
+4. Tại sao cache policy là một correctness decision chứ không chỉ performance decision?
 
 <details>
 <summary>Answers</summary>
 
-1. CORS/Same-Origin Policy configuration.
-2. Scheme + host + port.
-3. Browser kiểm tra trước server có cho phép cross-origin request tương ứng hay không.
-4. Stale cached response/cache invalidation.
+1. Vì curl không enforce Same-Origin Policy như browser page JavaScript.
+2. Không. Preflight chỉ kiểm tra cross-origin permission; actual request vẫn có auth/business logic riêng.
+3. Không. Đây có thể là cache HIT hợp lệ theo policy nhưng stale so với business expectation.
+4. Vì TTL/key/invalidation quyết định user có thể quan sát state cũ bao lâu và thậm chí representation nào được reuse.
 
 </details>
+
+## Related Knowledge
+
+- [Networking & Web Fundamentals](./networking-and-web-fundamentals.mdx) — mental map end-to-end của web request.
+- [Transport, TLS & HTTP](./transport-tls-and-http.mdx) — HTTP boundary trước browser policy và caching behavior.
+- [Proxies, Load Balancing & Client IP](./proxies-load-balancing-and-client-ip.mdx) — intermediaries có thể đồng thời terminate, route hoặc cache traffic.
