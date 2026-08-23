@@ -38,8 +38,8 @@ Hãy hình dung một payment boundary như một quầy dịch vụ. Caller ch�
 <ReactFlowDiagram
   ariaLabel="Mental model của abstraction và encapsulation: caller phụ thuộc vào capability, implementation detail nằm phía sau boundary"
   kind="relationship"
-  direction="LR"
-  height={310}
+  direction="TB"
+  height={520}
   interactive={false}
   minimap={false}
   controls={false}
@@ -130,8 +130,8 @@ Bản thân `if` không phải root cause. Vấn đề là `CheckoutService` b�
 <ReactFlowDiagram
   ariaLabel="Dependency trước khi tạo payment boundary: CheckoutService phụ thuộc trực tiếp vào cả Stripe SDK và PayPal SDK"
   kind="architecture"
-  direction="LR"
-  height={300}
+  direction="TB"
+  height={430}
   interactive={false}
   minimap={false}
   controls={false}
@@ -224,8 +224,8 @@ class CheckoutService {
 <ReactFlowDiagram
   ariaLabel="Dependency sau khi tạo payment boundary: CheckoutService phụ thuộc PaymentGateway, các adapter encapsulate vendor SDK"
   kind="architecture"
-  direction="LR"
-  height={390}
+  direction="TB"
+  height={680}
   interactive={false}
   minimap={false}
   controls={false}
@@ -259,8 +259,8 @@ Thiết kế mới không tốt hơn chỉ vì có interface. Giá trị nằm �
 <ReactFlowDiagram
   ariaLabel="Blast radius của một Stripe change dừng tại StripePaymentGateway thay vì lan vào CheckoutService"
   kind="data-flow"
-  direction="LR"
-  height={290}
+  direction="TB"
+  height={520}
   interactive={false}
   minimap={false}
   controls={false}
@@ -339,8 +339,8 @@ Không phải mọi direct dependency đều cần “fix”. Nếu system chỉ
 <ReactFlowDiagram
   ariaLabel="Decision flow cho timing của abstraction: direct dependency khi đơn giản, abstraction boundary khi meaningful change pressure xuất hiện"
   kind="workflow"
-  direction="LR"
-  height={300}
+  direction="TB"
+  height={540}
   interactive={false}
   minimap={false}
   controls={false}
