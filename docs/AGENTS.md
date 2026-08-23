@@ -68,6 +68,29 @@ Use this as the default content contract for substantial Level 3 knowledge artic
 
 This is a **content contract, not a mandatory heading template**. Merge, rename, reorder, or omit headings when the topic teaches more naturally another way, but do not omit an important reasoning layer merely to make the article shorter.
 
+### Navigation contract and topic ownership
+
+For substantial Level 3 knowledge articles, prefer a stable reader-facing H2 navigation contract when those sections are relevant:
+
+`TL;DR → Why It Matters → Mental Model → Core Concepts → Example → When to Use → Common Mistakes → Decision Guide → Practical Takeaway → Self-test → Related Knowledge`
+
+This is a **navigation contract, not a content-fill template**:
+
+- keep these canonical H2 names and order when the article contains the corresponding material, so readers can predict where to find motivation, application guidance, mistakes, and review questions;
+- topic-specific deep dives such as `Leaky Abstraction`, `Blast Radius`, `Cache Stampede`, or `Dependency Direction` may appear as additional sections where the teaching flow needs them;
+- scenario-specific stages such as `Starting Point`, `Requirement Changes`, `Root Cause`, `Better Design`, and `Why It Works` should usually be H3 subsections inside `Example` rather than universal top-level sections;
+- do not invent empty or weak sections merely to satisfy the navigation contract;
+- visuals are evidence-driven: add a diagram, flow, table, or code block only when it materially improves understanding, not to satisfy a per-section quota.
+
+Before writing adjacent articles, define **one central question / teaching job per article**. Related articles may reuse the same domain scenario, but they must not repeat the same reasoning journey.
+
+Example distinction:
+
+- `Coupling & Cohesion` owns diagnosis: **where does change propagate, and why is the blast radius too large?**
+- `Abstraction & Encapsulation` owns boundary design: **what should the caller know, and which HOW details must stay behind the boundary?**
+
+When two articles overlap, keep enough shared context for each article to remain understandable in isolation, then link to the canonical owner instead of re-teaching the full neighboring concept. Reuse a scenario to build continuity, not to duplicate explanation.
+
 ### Teaching progression rules
 
 Prefer this reasoning arc when it fits the topic:

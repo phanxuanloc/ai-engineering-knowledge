@@ -15,7 +15,7 @@ import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 
 **Abstraction** định nghĩa capability có ý nghĩa với caller — **WHAT** hệ thống cho phép yêu cầu. **Encapsulation** giữ implementation detail — **HOW** capability đó hoạt động — ở sau boundary.
 
-Hai concept thường đi cùng nhau nhưng không đồng nghĩa. Một interface chỉ có giá trị khi nó bảo vệ một complexity hoặc variability có thật; thêm interface cho mọi class không tự làm design tốt hơn.
+Bài này tập trung vào **thiết kế knowledge boundary**: caller nên biết gì, contract nên nói bằng ngôn ngữ nào, và detail nào phải dừng phía sau boundary. Nếu muốn chẩn đoán vì sao change đang lan quá rộng trước khi thiết kế boundary, xem [Coupling & Cohesion](./coupling-and-cohesion.mdx).
 
 </TLDR>
 
@@ -23,13 +23,13 @@ Hai concept thường đi cùng nhau nhưng không đồng nghĩa. Một interfa
 
 Abstraction và encapsulation thường được giải thích bằng định nghĩa kiểu “ẩn chi tiết implementation”. Cách giải thích đó đúng nhưng chưa đủ để ra quyết định thiết kế.
 
-Câu hỏi thực tế hơn là:
+Câu hỏi trung tâm của bài này là:
 
-> **Khi một implementation thay đổi, phần nào của hệ thống buộc phải biết và thay đổi theo?**
+> **Caller thực sự cần biết WHAT nào, và HOW nào phải được giữ phía sau boundary?**
 
-Nếu thay Stripe bằng PayPal, đổi SDK version hoặc thay retry strategy mà business logic của checkout cũng phải sửa theo, implementation detail đã lan quá xa.
+Nếu checkout phải hiểu Stripe `PaymentIntent`, PayPal order capture, vendor error code hoặc retry semantics chỉ để yêu cầu “charge khoản tiền này”, implementation knowledge đã leak qua boundary.
 
-Abstraction và encapsulation giúp tạo một boundary để application phụ thuộc vào **capability ổn định**, còn provider-specific mechanics được thay đổi độc lập phía sau boundary đó.
+Abstraction và encapsulation giúp application phụ thuộc vào **capability có ý nghĩa với domain/use case**, còn provider-specific mechanics được giữ độc lập phía sau boundary đó.
 
 ## Mental Model
 
@@ -64,19 +64,54 @@ Caller không cần biết Stripe dùng `PaymentIntent`, PayPal dùng order capt
 
 ## Core Concepts
 
-- **Abstraction** mô tả capability và contract mà caller cần, không phải chi tiết provider thực hiện capability đó.
-- **Encapsulation** giữ SDK calls, credentials, retry, state và error mapping ở phía implementation boundary.
-- **Meaningful boundary** nói bằng application language như `charge()` thay vì vendor language như `PaymentIntent`.
-- **Leaky abstraction** xảy ra khi vendor types hoặc vendor semantics vẫn tràn qua contract.
-- **Premature abstraction** xảy ra khi thêm indirection trước khi có complexity hoặc variability thực sự cần cô lập.
+### Abstraction: expose capability có ý nghĩa
 
-Điểm quan trọng: abstraction quyết định **caller được nhìn thấy gì**; encapsulation quyết định **detail nào bị giữ lại phía sau boundary**.
+Abstraction mô tả điều caller cần hệ thống làm. Một abstraction tốt thường nói bằng **application language**:
+
+```ts
+paymentGateway.charge(input)
+```
+
+thay vì bắt caller nói bằng vendor language:
+
+```ts
+stripe.paymentIntents.create(params)
+```
+
+Abstraction vì thế không chỉ là “ẩn code”. Nó định nghĩa **knowledge contract** giữa caller và implementation.
+
+### Encapsulation: giữ mechanics phía sau boundary
+
+Encapsulation giữ những detail không nên trở thành knowledge của caller, ví dụ:
+
+- SDK calls và payload shape;
+- credentials và client configuration;
+- provider-specific retry/idempotency mechanics;
+- vendor errors và status mapping;
+- implementation state hoặc caching detail.
+
+Abstraction quyết định **caller được nhìn thấy gì**; encapsulation quyết định **detail nào bị giữ lại phía sau boundary**.
+
+### Meaningful boundary: nói bằng application language
+
+Một boundary có ý nghĩa khi contract phản ánh capability thật mà application cần. `charge()`, `send()`, `store()` hoặc `publish()` có thể meaningful nếu đó đúng là language của use case.
+
+Ngược lại, đổi tên wrapper thành generic nhưng vẫn expose vendor types không tạo ra knowledge boundary thực sự.
+
+### Leakage và timing
+
+Hai failure mode quan trọng:
+
+- **Leaky abstraction:** contract generic về tên nhưng caller vẫn phải biết HOW của implementation.
+- **Premature abstraction:** thêm indirection khi chưa có complexity hoặc variability đủ để boundary mang lại giá trị.
 
 ## Example
 
-### Bước 1 — Stripe-only: direct dependency chưa chắc là vấn đề
+Bài [Coupling & Cohesion](./coupling-and-cohesion.mdx) đã dùng cùng checkout scenario để chẩn đoán change propagation. Ở đây chỉ lấy đủ context cần thiết và tập trung vào **boundary design**.
 
-Giả sử hệ thống checkout ban đầu chỉ hỗ trợ Stripe:
+### Starting Point — caller đang nói bằng Stripe language
+
+Giả sử checkout gọi Stripe trực tiếp:
 
 ```ts
 class CheckoutService {
@@ -98,76 +133,50 @@ class CheckoutService {
 }
 ```
 
-Ở thời điểm này business chỉ có một provider, Stripe logic còn nhỏ và requirement chưa cho thấy một dimension of change rõ ràng. Thiết kế này **không tự động sai**. Chưa có lý do bắt buộc phải thêm interface, adapter hay factory chỉ để “đúng pattern”.
+Khi integration nhỏ và ổn định, đây chưa chắc là design sai. Nhưng khi PayPal xuất hiện, hoặc Stripe mechanics bắt đầu có retry/idempotency/error mapping riêng, câu hỏi quan trọng không phải “có bao nhiêu `if`”, mà là:
 
-### Bước 2 — Requirement thay đổi
+> **Checkout có thực sự cần biết những provider concepts này không?**
 
-Sau đó business muốn hỗ trợ PayPal. Đồng thời Stripe bắt đầu có retry, idempotency, error mapping và provider-specific state riêng.
+### Root Cause — knowledge boundary bị đặt sai
 
-Một evolution ngây thơ có thể là:
+`CheckoutService` thực sự chỉ cần biết: **“Tôi cần charge khoản tiền này và nhận kết quả application hiểu được.”**
+
+Nó không cần biết Stripe dùng `PaymentIntent`, PayPal dùng order capture, SDK nào trả exception gì hay provider-specific status được map thế nào. Những detail đó là HOW của integration.
+
+### Better Design — define application capability
+
+Boundary bắt đầu từ capability mà caller cần:
 
 ```ts
-class CheckoutService {
-  constructor(
-    private readonly stripe: Stripe,
-    private readonly paypal: PayPalClient,
-  ) {}
-
-  async checkout(input: CheckoutInput) {
-    if (input.provider === 'stripe') {
-      // Stripe PaymentIntent, Stripe errors, Stripe retry rules...
-    }
-
-    if (input.provider === 'paypal') {
-      // PayPal order creation, capture, PayPal errors...
-    }
-  }
+interface ChargeInput {
+  amount: number;
+  currency: string;
+  paymentMethodId: string;
 }
-```
 
-Bản thân `if` không phải root cause. Vấn đề là `CheckoutService` bắt đầu sở hữu cả **checkout/business orchestration** lẫn **provider-specific payment mechanics**.
+interface ChargeResult {
+  paymentId: string;
+  status: 'succeeded' | 'pending' | 'failed';
+}
 
-<ReactFlowDiagram
-  ariaLabel="Dependency trước khi tạo payment boundary: CheckoutService phụ thuộc trực tiếp vào cả Stripe SDK và PayPal SDK"
-  kind="architecture"
-  direction="TB"
-  height={430}
-  interactive={false}
-  minimap={false}
-  controls={false}
-  nodes={[
-    {id: 'checkout', label: 'CheckoutService', detail: 'Business orchestration + provider knowledge', role: 'process', emphasis: true, size: 'wide'},
-    {id: 'stripe', label: 'Stripe SDK', detail: 'PaymentIntent · errors · retry', role: 'tool'},
-    {id: 'paypal', label: 'PayPal SDK', detail: 'Order capture · errors', role: 'tool'},
-  ]}
-  edges={[
-    {source: 'checkout', target: 'stripe', label: 'knows Stripe'},
-    {source: 'checkout', target: 'paypal', label: 'knows PayPal'},
-  ]}
-  caption="Provider knowledge tràn vào core checkout: mỗi vendor change có thể tạo blast radius vào business module."
-/>
-
-Khi thêm provider thứ ba, đổi Stripe API version hoặc thay error model của PayPal, core checkout tiếp tục phải sửa. Đó là signal cho thấy provider detail đang tạo **change pressure** lên business module.
-
-## Root Cause: Responsibility và Dependency Bị Trộn
-
-`CheckoutService` thực sự chỉ cần biết: **“Tôi cần charge khoản tiền này.”** Nó không cần biết Stripe dùng `PaymentIntent`, PayPal dùng order capture, provider nào cần idempotency key, SDK nào trả exception gì hay provider-specific status được map thế nào.
-
-Khi những detail này nằm trong checkout, business orchestration phụ thuộc trực tiếp vào infrastructure mechanics.
-
-## Better Design: Từ Provider Detail Đến Application Capability
-
-Khi variability đã có thật, ta đưa provider mechanics ra sau một capability boundary:
-
-```ts
 interface PaymentGateway {
   charge(input: ChargeInput): Promise<ChargeResult>;
 }
 ```
 
-Contract này nói bằng ngôn ngữ của application: **charge**.
+`CheckoutService` chỉ phụ thuộc vào application capability:
 
-Stripe adapter giữ Stripe-specific detail:
+```ts
+class CheckoutService {
+  constructor(private readonly gateway: PaymentGateway) {}
+
+  checkout(input: ChargeInput) {
+    return this.gateway.charge(input);
+  }
+}
+```
+
+Provider adapter giữ HOW:
 
 ```ts
 class StripePaymentGateway implements PaymentGateway {
@@ -189,99 +198,43 @@ class StripePaymentGateway implements PaymentGateway {
 }
 ```
 
-PayPal adapter giữ PayPal-specific detail:
-
-```ts
-class PayPalPaymentGateway implements PaymentGateway {
-  constructor(private readonly paypal: PayPalClient) {}
-
-  async charge(input: ChargeInput): Promise<ChargeResult> {
-    const order = await this.paypal.capture({
-      amount: input.amount,
-      currency: input.currency,
-    });
-
-    return {
-      paymentId: order.id,
-      status: mapPayPalStatus(order.status),
-    };
-  }
-}
-```
-
-`CheckoutService` quay lại tập trung vào checkout:
-
-```ts
-class CheckoutService {
-  constructor(private readonly gateway: PaymentGateway) {}
-
-  checkout(input: ChargeInput) {
-    return this.gateway.charge(input);
-  }
-}
-```
-
 <ReactFlowDiagram
-  ariaLabel="Dependency sau khi tạo payment boundary: CheckoutService phụ thuộc PaymentGateway, các adapter encapsulate vendor SDK"
+  ariaLabel="Dependency sau khi tạo payment boundary: CheckoutService phụ thuộc PaymentGateway, adapter encapsulate vendor SDK"
   kind="architecture"
   direction="TB"
-  height={680}
+  height={610}
   interactive={false}
   minimap={false}
   controls={false}
   nodes={[
     {id: 'checkout', label: 'CheckoutService', detail: 'Checkout orchestration', role: 'source'},
-    {id: 'gateway', label: 'PaymentGateway', eyebrow: 'APPLICATION CAPABILITY', detail: 'charge(input) → result', role: 'process', emphasis: true, size: 'wide'},
-    {id: 'stripe-adapter', label: 'StripePaymentGateway', detail: 'Maps application ↔ Stripe', role: 'process', size: 'wide'},
-    {id: 'paypal-adapter', label: 'PayPalPaymentGateway', detail: 'Maps application ↔ PayPal', role: 'process', size: 'wide'},
-    {id: 'stripe', label: 'Stripe SDK', role: 'tool'},
-    {id: 'paypal', label: 'PayPal SDK', role: 'tool'},
+    {id: 'gateway', label: 'PaymentGateway', eyebrow: 'ABSTRACTION · WHAT', detail: 'charge(input) → result', role: 'process', emphasis: true, size: 'wide'},
+    {id: 'adapter', label: 'Provider adapter', eyebrow: 'ENCAPSULATION · HOW', detail: 'Map application ↔ vendor', role: 'process', size: 'wide'},
+    {id: 'provider', label: 'Stripe / PayPal SDK', detail: 'Vendor mechanics', role: 'tool'},
   ]}
   edges={[
     {source: 'checkout', target: 'gateway', label: 'depends on'},
-    {source: 'gateway', target: 'stripe-adapter', label: 'implemented by'},
-    {source: 'gateway', target: 'paypal-adapter', label: 'implemented by'},
-    {source: 'stripe-adapter', target: 'stripe', label: 'encapsulates'},
-    {source: 'paypal-adapter', target: 'paypal', label: 'encapsulates'},
+    {source: 'gateway', target: 'adapter', label: 'implemented by'},
+    {source: 'adapter', target: 'provider', label: 'encapsulates'},
   ]}
-  caption="Core checkout phụ thuộc capability ổn định; vendor mechanics dừng ở adapter boundary."
+  primaryPath={['checkout', 'gateway', 'adapter', 'provider']}
+  caption="Core checkout nói bằng application capability; provider mechanics dừng phía sau adapter boundary."
 />
+
+### Why It Works — caller knowledge được thu hẹp
+
+Thiết kế mới không tốt hơn chỉ vì có interface. Giá trị nằm ở **knowledge ownership**:
+
+- checkout biết `charge(input) → result`;
+- adapter biết vendor API, errors, retry và mapping;
+- vendor-specific change không bắt caller học thêm vendor semantics nếu application contract không đổi.
 
 Đây là điểm abstraction và encapsulation gặp nhau:
 
-- `PaymentGateway.charge()` là **abstraction**: capability ổn định mà checkout cần;
-- `StripePaymentGateway` và `PayPalPaymentGateway` **encapsulate** HOW của từng provider.
+- `PaymentGateway.charge()` là **abstraction** — WHAT caller được phép yêu cầu;
+- provider adapter **encapsulate** HOW capability đó được thực hiện.
 
-## Why It Works
-
-Thiết kế mới không tốt hơn chỉ vì có interface. Giá trị nằm ở **change impact**.
-
-<ReactFlowDiagram
-  ariaLabel="Blast radius của một Stripe change dừng tại StripePaymentGateway thay vì lan vào CheckoutService"
-  kind="data-flow"
-  direction="TB"
-  height={520}
-  interactive={false}
-  minimap={false}
-  controls={false}
-  nodes={[
-    {id: 'change', label: 'Stripe changes', detail: 'API · error · retry semantics', role: 'source'},
-    {id: 'adapter', label: 'StripePaymentGateway', detail: 'Absorbs provider change', role: 'process', emphasis: true, size: 'wide'},
-    {id: 'boundary', label: 'PaymentGateway contract', detail: 'Remains application-level', role: 'constraint', size: 'wide'},
-    {id: 'checkout', label: 'CheckoutService', detail: 'No Stripe knowledge', role: 'output'},
-  ]}
-  edges={[
-    {source: 'change', target: 'adapter', label: 'impacts'},
-    {source: 'adapter', target: 'boundary', label: 'preserves'},
-    {source: 'boundary', target: 'checkout', label: 'stable for'},
-  ]}
-  primaryPath={['change', 'adapter', 'boundary', 'checkout']}
-  caption="Một provider change được hấp thụ ở adapter; business orchestration không cần học vendor mechanics mới."
-/>
-
-Nếu thêm PayPal, checkout không cần học PayPal SDK. Nếu providers trả error models khác nhau, adapter map chúng về error model application hiểu. Nếu Stripe và PayPal có retry mechanics khác nhau, mỗi adapter giữ policy kỹ thuật phù hợp với provider của nó.
-
-<Principle label="Design outcome">Business orchestration phụ thuộc vào payment capability; provider mechanics phụ thuộc vào vendor SDK. Blast radius của provider change được thu hẹp.</Principle>
+<Principle label="Design outcome">Boundary tốt giảm lượng implementation knowledge mà caller phải mang theo. Change impact nhỏ hơn là hệ quả của knowledge ownership đúng.</Principle>
 
 ## Abstraction Không Đồng Nghĩa Với Interface
 
@@ -309,28 +262,17 @@ Một abstraction bị leak khi contract vẫn bắt caller hiểu implementatio
 
 ```ts
 interface PaymentGateway {
-  charge(request: Stripe.PaymentIntentCreateParams): Promise<Stripe.PaymentIntent>;
+  charge(
+    request: Stripe.PaymentIntentCreateParams,
+  ): Promise<Stripe.PaymentIntent>;
 }
 ```
 
 Tên là `PaymentGateway`, nhưng input/output vẫn là Stripe types. Nếu chuyển sang PayPal, caller vẫn bị kéo theo Stripe semantics.
 
-Một contract tốt hơn dùng application-level types:
+Một contract tốt hơn dùng application-level types như `ChargeInput` và `ChargeResult`. Abstraction tốt không chỉ đổi tên class; nó **dịch dependency về ngôn ngữ của application**.
 
-```ts
-interface ChargeInput {
-  amount: number;
-  currency: string;
-  paymentMethodId: string;
-}
-
-interface ChargeResult {
-  paymentId: string;
-  status: 'succeeded' | 'pending' | 'failed';
-}
-```
-
-Abstraction tốt không chỉ đổi tên class. Nó **dịch dependency về ngôn ngữ của application**.
+Một boundary cũng có thể leak qua semantics dù type nhìn generic. Ví dụ `status: string` nhưng caller phải biết các giá trị `requires_action`, `requires_capture` của Stripe thì HOW vẫn chưa thực sự được giữ phía sau boundary.
 
 ## Premature Abstraction
 
@@ -353,85 +295,70 @@ Không phải mọi direct dependency đều cần “fix”. Nếu system chỉ
   edges={[
     {source: 'simple', target: 'direct', label: 'no pressure'},
     {source: 'direct', target: 'pressure', label: 'requirements evolve'},
-    {source: 'pressure', target: 'boundary', label: 'isolate change'},
+    {source: 'pressure', target: 'boundary', label: 'isolate knowledge'},
   ]}
   primaryPath={['simple', 'direct', 'pressure', 'boundary']}
   caption="Abstraction là response cho pressure thật, không phải layer mặc định phải thêm từ ngày đầu."
 />
 
-<Principle label="Timing">Đừng abstract vì “sau này có thể cần”. Abstract khi bạn đã thấy một dimension of change cần được cô lập.</Principle>
+<Principle label="Timing">Đừng abstract vì “sau này có thể cần”. Abstract khi bạn đã thấy một dimension of change hoặc implementation knowledge cần được cô lập.</Principle>
 
 ## When to Use
 
 Cân nhắc tạo abstraction/encapsulation boundary khi:
 
 - vendor detail xuất hiện ở nhiều business modules;
+- caller phải dùng vendor request/response types hoặc hiểu vendor status/error semantics;
 - thêm implementation mới buộc sửa core orchestration;
-- caller phải map vendor errors hoặc dùng vendor request/response types;
-- business tests phải dựng cả infrastructure client;
+- business tests phải dựng cả infrastructure client chỉ để exercise business behavior;
 - implementation có complexity riêng cần thay đổi hoặc test độc lập;
 - một dependency thay đổi thường xuyên hơn business policy sử dụng nó.
 
-Giữ direct concrete dependency khi implementation còn nhỏ, ổn định và không tạo change blast radius đáng kể. Điểm quyết định không phải “có bao nhiêu class”, mà là **có một dimension of change đáng cô lập hay chưa**.
-
-## Một Ví Dụ Khác: File Storage
-
-Application thường muốn nói:
-
-```ts
-interface FileStorage {
-  upload(file: Upload): Promise<StoredFile>;
-  getDownloadUrl(fileId: string): Promise<string>;
-}
-```
-
-Nó không muốn biết bucket naming, AWS credentials, S3 object keys hay signed URL implementation. `S3FileStorage` encapsulate các detail đó. Nếu chuyển sang provider khác, application vẫn có thể giữ cùng capability contract.
-
-Abstraction không phải đặc điểm riêng của payment. Nó là cách quản lý dependency và change boundary có thể áp dụng ở storage, messaging, email, authentication, external APIs và nhiều infrastructure integrations khác.
+Giữ direct concrete dependency khi implementation còn nhỏ, ổn định và không tạo knowledge leakage hoặc change blast radius đáng kể. Điểm quyết định không phải “có bao nhiêu class”, mà là **boundary có đang bảo vệ complexity/variability thực hay không**.
 
 ## Common Mistakes
 
 - **Tạo interface cho mọi class:** syntax không tự tạo meaningful abstraction.
 - **Đồng nhất abstraction với encapsulation:** abstraction mô tả WHAT; encapsulation giữ HOW phía sau boundary.
 - **Premature abstraction:** tạo hierarchy/factory khi chưa có pressure thật.
-- **Leaky abstraction:** contract vẫn expose vendor types hoặc vendor exceptions.
+- **Leaky abstraction:** contract vẫn expose vendor types, vendor exceptions hoặc vendor semantics.
 - **Abstraction quá generic:** `execute()` hoặc `process()` che semantic thật và làm caller khó hiểu capability.
-- **Giấu quá nhiều business logic vào adapter:** provider adapter nên che provider mechanics, không nuốt luôn business policy của checkout.
-- **Đánh giá design chỉ bằng số lượng `if`:** một `if` có thể hoàn toàn hợp lý; hãy nhìn responsibility và change impact phía sau nó.
+- **Giấu business policy vào adapter:** provider adapter nên che provider mechanics, không nuốt luôn checkout policy.
+- **Đánh giá design chỉ bằng số lượng `if`:** một `if` có thể hoàn toàn hợp lý; hãy nhìn knowledge ownership phía sau nó.
 
 ## Decision Guide
 
 Khi review một boundary, hỏi:
 
 1. Caller thực sự cần capability gì?
-2. Detail nào là implementation-specific và nên ở phía sau boundary?
-3. Change nào hiện đang lan qua quá nhiều modules?
-4. Có meaningful variability hoặc complexity thật chưa?
-5. Contract đang nói bằng ngôn ngữ application hay vendor?
-6. Nếu implementation đổi, phần business nào thực sự cần biết?
+2. Contract có nói bằng **application language** không?
+3. Detail nào là implementation-specific và nên ở phía sau boundary?
+4. Caller còn phải hiểu vendor type, error, status hoặc lifecycle nào không?
+5. Có meaningful variability hoặc complexity thật để justify indirection chưa?
+6. Nếu implementation đổi mà business requirement không đổi, caller có phải học hoặc sửa theo không?
 
-Nếu câu trả lời cho câu 6 là **“gần như không phần nào”**, đó thường là dấu hiệu một abstraction + encapsulation boundary có giá trị.
+Nếu câu trả lời cho câu 6 là **“có”**, hãy kiểm tra xem HOW có đang leak qua boundary. Nếu câu trả lời luôn là “không” nhưng abstraction lại tạo nhiều layer khó theo dõi, có thể boundary đang premature hoặc quá generic.
 
 ## Practical Takeaway
 
 Khi gặp một dependency, đừng bắt đầu bằng câu hỏi **“Có nên tạo interface không?”**. Hãy bắt đầu bằng:
 
-> **Caller thực sự cần biết điều gì, detail nào đang thay đổi độc lập, và change đó nên dừng ở boundary nào?**
+> **Caller cần biết WHAT nào, HOW nào đang leak, và boundary nào có thể giữ implementation knowledge đúng chỗ?**
 
-Khi hệ thống còn ổn định và đơn giản, direct dependency có thể đủ. Khi meaningful change pressure xuất hiện, tách application capability, encapsulate implementation detail và thu hẹp blast radius.
+Khi hệ thống còn ổn định và đơn giản, direct dependency có thể đủ. Khi meaningful change pressure hoặc knowledge leakage xuất hiện, tách application capability và encapsulate implementation detail.
 
-Đó mới là mục tiêu của abstraction và encapsulation trong production code: **kiểm soát knowledge và change**, không phải tăng số lượng layer.
+Mục tiêu của abstraction và encapsulation trong production code là **kiểm soát knowledge**, từ đó giảm change impact — không phải tăng số lượng layer.
 
 ## Self-test
 
 1. Trong payment example, phần nào là abstraction và phần nào là encapsulation?
 2. Vì sao `PaymentGateway` vẫn là leaky abstraction nếu input/output dùng Stripe types?
-3. Một concrete `EmailSender` có thể encapsulate tốt dù chưa có interface không? Vì sao?
-4. Signal nào cho thấy abstraction đã có pressure thực tế thay vì chỉ là dự đoán tương lai?
-5. Nếu một service chỉ có một stable implementation và vendor detail không leak ra ngoài, tại sao direct dependency vẫn có thể là lựa chọn hợp lý?
+3. Nếu type đã generic nhưng caller vẫn phải hiểu Stripe-specific status values, boundary đã tốt chưa?
+4. Một concrete `EmailSender` có thể encapsulate tốt dù chưa có interface không? Vì sao?
+5. Signal nào cho thấy abstraction đã có pressure thực tế thay vì chỉ là dự đoán tương lai?
 
 ## Related Knowledge
 
-- [Coupling & Cohesion](./coupling-and-cohesion.mdx) — abstraction boundary phù hợp giúp giảm direct dependency và blast radius.
+- [Coupling & Cohesion](./coupling-and-cohesion.mdx) — dùng change propagation và blast radius để chẩn đoán nơi boundary đang đặt sai trước khi chọn cách thiết kế lại.
 - [SOLID as Design Lenses](./solid-design-lenses.mdx) — DIP kiểm tra dependency direction; ISP kiểm tra contract có ép capability giả hay không.
 - [Composition vs Inheritance](./composition-vs-inheritance.mdx) — các capability abstraction thường được compose vào object thay vì encode trong hierarchy.
