@@ -95,7 +95,9 @@ Nếu đổi payment provider yêu cầu sửa checkout orchestration, provider 
 
 Coupling vì thế không chỉ là một khái niệm structural. Nó ảnh hưởng trực tiếp đến **change impact**, khả năng review, test và deploy an toàn.
 
-## Một requirement nhỏ có thể làm coupling lớn dần như thế nào?
+## Example
+
+Phần này dùng một scenario xuyên suốt để thấy coupling tăng dần dưới change pressure thay vì nhảy thẳng tới một pattern.
 
 ### Stage 1 — chỉ có Stripe
 
@@ -130,14 +132,7 @@ class CheckoutService {
 }
 ```
 
-Code vẫn chạy. Nhưng responsibility đã bắt đầu dịch chuyển.
-
-`CheckoutService` giờ biết:
-
-- checkout orchestration;
-- Stripe client;
-- PayPal client;
-- cách chọn provider.
+Code vẫn chạy. Nhưng `CheckoutService` giờ biết cả checkout orchestration, Stripe client, PayPal client và cách chọn provider.
 
 Nếu hai SDK trả về error model khác nhau, service có thể sớm phải biết thêm provider-specific mapping. Nếu provider thứ ba xuất hiện, core checkout lại có thêm một nhánh và thêm test surface.
 
@@ -147,7 +142,7 @@ Giả sử Stripe cần retry cho một nhóm lỗi, PayPal có error code khác
 
 Đây là lúc blast radius trở thành tín hiệu rõ ràng: **payment integration đang thay đổi vì lý do khác với checkout orchestration nhưng hai concern vẫn bị buộc thay đổi cùng một nơi.**
 
-## Root Problem: không phải `if/else`, mà là boundary
+### Root Problem: không phải `if/else`, mà là boundary
 
 Một chuỗi `if/else` tự nó không phải root problem. Root problem là **ownership của responsibility và dependency**.
 
@@ -160,7 +155,7 @@ Vì vậy chỉ chuyển Stripe code sang `stripe.ts` và PayPal code sang `payp
 
 <Principle label="Boundary rule">Tách file thay đổi vị trí code. Giảm coupling đòi hỏi thay đổi điều mà mỗi module cần biết về module khác.</Principle>
 
-## Better Design: phụ thuộc vào payment capability
+### Better Design: phụ thuộc vào payment capability
 
 Khi provider variability đã trở thành requirement thật, checkout có thể phụ thuộc vào capability mà nó thực sự cần:
 
@@ -200,17 +195,13 @@ class CheckoutService {
 
 Việc chọn Stripe hay PayPal có thể được thực hiện ở composition root hoặc một resolver riêng nếu hệ thống thực sự cần runtime selection. `CheckoutService` không cần biết SDK nào đang đứng sau capability.
 
-## Vì sao design mới thực sự giảm coupling?
+### Vì sao design mới thực sự giảm coupling?
 
 Điểm quan trọng không phải là "code có interface nên đẹp hơn". Dependency đã thay đổi về ý nghĩa.
 
-**Trước:**
+**Trước:** `CheckoutService → Stripe SDK / PayPal SDK / provider-specific behavior`
 
-`CheckoutService → Stripe SDK / PayPal SDK / provider-specific behavior`
-
-**Sau:**
-
-`CheckoutService → PaymentGateway capability → provider implementation`
+**Sau:** `CheckoutService → PaymentGateway capability → provider implementation`
 
 Requirement **"thêm provider mới"** trước đây buộc core checkout biết thêm một concrete implementation. Sau khi có boundary phù hợp, thay đổi chủ yếu trở thành **thêm một implementation của payment capability**.
 
@@ -222,7 +213,19 @@ Cohesion cũng tốt hơn:
 
 Điều này không đảm bảo mọi future change đều không chạm core code. Nếu business requirement thật sự thay đổi checkout contract, core vẫn phải thay đổi. Mục tiêu là **cô lập những thay đổi không thuộc responsibility của core**, không phải làm core bất biến bằng mọi giá.
 
-## Low Coupling không có nghĩa là nhiều abstraction hơn
+## When to Use
+
+Dùng coupling và cohesion như design lenses khi:
+
+- một module có nhiều **reasons to change** không liên quan;
+- business logic biết trực tiếp vendor SDK, SQL detail, messaging detail hoặc infrastructure-specific error;
+- thay implementation của dependency khiến caller phải sửa dù business requirement không đổi;
+- một requirement nhỏ kéo theo nhiều module và nhiều loại test phải thay đổi;
+- một boundary mới có thể cô lập một loại change đã xuất hiện thực tế.
+
+Không cần tạo abstraction chỉ vì dependency tồn tại. Nếu hệ thống chỉ dùng Stripe, integration nhỏ và không có pressure thực tế để thay thế hoặc cô lập complexity, direct dependency có thể là lựa chọn hợp lý.
+
+### Trade-off: low coupling không có nghĩa là nhiều abstraction hơn
 
 Boundary mang lại lợi ích nhưng cũng có cost:
 
@@ -232,13 +235,11 @@ Boundary mang lại lợi ích nhưng cũng có cost:
 - abstraction sai có thể leak vendor detail hoặc che giấu khác biệt quan trọng;
 - test setup có thể phức tạp hơn nếu architecture bị chia nhỏ quá mức.
 
-Vì vậy nếu hệ thống chỉ dùng Stripe, integration rất nhỏ và không có pressure thực tế để thay thế hoặc cô lập complexity, direct dependency có thể là lựa chọn hợp lý.
-
 Abstraction trở nên đáng giá khi nó bảo vệ một **meaningful change boundary**.
 
 <Principle label="Trade-off">Low coupling không phải ít dependency nhất. Đó là dependency structure giúp những thay đổi độc lập có thể diễn ra độc lập với chi phí hợp lý.</Principle>
 
-## Decision Guide
+### Decision Guide
 
 Khi review một module, thay vì hỏi "có nên tạo interface không?", hãy trace change impact:
 
@@ -253,39 +254,46 @@ Các câu hỏi này hữu ích hơn việc đếm số class hoặc ép mọi d
 
 ## Common Mistakes
 
-### "Class lớn nghĩa là cohesion thấp"
-
-Không nhất thiết. Size là signal để kiểm tra, không phải root cause. Hãy tìm unrelated reasons to change.
-
-### "Tách thành nhiều file sẽ giảm coupling"
-
-Không. Nếu dependency graph và knowledge giữa modules không đổi, code chỉ được phân tán sang nhiều vị trí hơn.
-
-### "Có interface là low coupling"
-
-Không. Một interface expose `StripePaymentIntent`, vendor error hoặc provider-specific option vẫn có thể là leaky abstraction. Boundary phải nói bằng capability có ý nghĩa với caller.
-
-### "Low coupling nghĩa là zero coupling"
-
-Không có collaboration nào mà hoàn toàn không có dependency. Mục tiêu là dependency phù hợp, rõ ràng và ổn định trước loại change mà hệ thống thực sự gặp.
-
-### "Cứ thêm abstraction trước để future-proof"
-
-Premature abstraction có thể tạo thêm maintenance cost cho variability chưa từng xuất hiện. Design đơn giản trước, rồi tạo boundary khi pressure và change pattern đủ rõ, thường dễ reasoning hơn.
+- **"Class lớn nghĩa là cohesion thấp":** không nhất thiết. Size là signal để kiểm tra, không phải root cause. Hãy tìm unrelated reasons to change.
+- **"Tách thành nhiều file sẽ giảm coupling":** không. Nếu dependency graph và knowledge giữa modules không đổi, code chỉ được phân tán sang nhiều vị trí hơn.
+- **"Có interface là low coupling":** không. Một interface expose `StripePaymentIntent`, vendor error hoặc provider-specific option vẫn có thể là leaky abstraction.
+- **"Low coupling nghĩa là zero coupling":** hệ thống cần dependency để collaboration. Mục tiêu là dependency phù hợp, không phải dependency biến mất.
+- **"Interface everywhere":** abstraction không bảo vệ một loại thay đổi có ý nghĩa chỉ tạo thêm indirection và maintenance cost.
 
 ## Practical Takeaway
 
-Khi requirement thay đổi, hãy **trace xem change lan tới đâu**.
+Khi requirement thay đổi, trace xem thay đổi lan tới đâu.
 
-- Nếu một module thay đổi vì nhiều lý do không liên quan, xem lại **cohesion**.
-- Nếu implementation detail thay đổi khiến business logic phải sửa, xem lại **coupling**.
-- Nếu chỉ tách file nhưng caller vẫn biết cùng implementation detail, blast radius chưa thực sự giảm.
-- Nếu một boundary không bảo vệ loại change nào có ý nghĩa, có thể bạn đang thêm abstraction quá sớm.
+- Nếu một module thay đổi vì nhiều lý do không liên quan → xem lại **cohesion**.
+- Nếu implementation detail thay đổi khiến business logic phải sửa → xem lại **coupling**.
+- Nếu chỉ tách file nhưng caller vẫn biết cùng implementation detail → boundary chưa thực sự thay đổi.
+- Chỉ thêm abstraction khi nó bảo vệ một meaningful change boundary đủ để bù lại indirection cost.
 
-Mục tiêu cuối cùng không phải "high cohesion, low coupling" như một khẩu hiệu. Mục tiêu là một codebase nơi **responsibility có ownership rõ ràng và những thay đổi độc lập có thể diễn ra với blast radius nhỏ, dễ hiểu và dễ kiểm soát**.
+Một cách nhớ ngắn:
+
+> **Cohesion giữ những thay đổi liên quan ở cùng chỗ. Coupling giữ những thay đổi không liên quan khỏi lan sang nhau.**
 
 ## Related Knowledge
 
-- [Abstraction & Encapsulation](./abstraction-and-encapsulation.mdx) — capability boundary định nghĩa WHAT mà caller cần và giữ provider-specific HOW ở phía implementation.
-- [SOLID as Design Lenses](./solid-design-lenses.mdx) — SRP và DIP cung cấp hai lens để reasoning sâu hơn về responsibility và dependency direction.
-- [Composition vs Inheritance](./composition-vs-inheritance.mdx) — composition cho phép assemble replaceable capabilities mà không tạo deep inheritance coupling.
+- [Abstraction & Encapsulation](./abstraction-and-encapsulation.mdx) — capability boundary giúp caller phụ thuộc vào WHAT thay vì implementation HOW.
+- [SOLID as Design Lenses](./solid-design-lenses.mdx) — SRP và DIP cung cấp hai lens để nhận diện low cohesion và high coupling.
+- [Composition vs Inheritance](./composition-vs-inheritance.mdx) — composition giúp capability có thể được thay thế mà không tạo deep inheritance coupling.
+
+## Self-test
+
+1. Vì sao một class lớn chưa chắc có low cohesion?
+2. Vì sao tách Stripe và PayPal sang hai file chưa chắc đã giảm coupling?
+3. Trong checkout scenario, root problem là chuỗi `if/else` hay ownership của dependency? Vì sao?
+4. Khi nào `PaymentGateway` đáng để thêm, và khi nào direct Stripe dependency vẫn có thể chấp nhận được?
+5. "Low coupling" có đồng nghĩa với càng nhiều interface càng tốt không?
+
+<details>
+<summary>Answers</summary>
+
+1. Size chỉ là signal; cần xem các phần có phục vụ cùng responsibility và thay đổi vì reasons liên quan hay không.
+2. Nếu `CheckoutService` vẫn phải biết provider detail, dependency relationship chưa thay đổi dù code nằm ở file khác.
+3. Root problem là ownership của responsibility/dependency: checkout orchestration đang sở hữu integration detail có reason to change khác.
+4. Boundary đáng thêm khi provider variability hoặc integration complexity là pressure thực tế cần cô lập; direct dependency vẫn hợp lý khi implementation nhỏ, ổn định và abstraction chưa bảo vệ thay đổi có ý nghĩa.
+5. Không. Interface chỉ có giá trị khi nó tạo meaningful boundary; abstraction thừa làm tăng indirection và maintenance cost.
+
+</details>
