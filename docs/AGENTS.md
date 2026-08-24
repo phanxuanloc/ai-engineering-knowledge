@@ -1,151 +1,110 @@
 # Docs Authoring Policy — Reader-First Public Knowledge
 
-These instructions apply to everything under `docs/` and override any broader repository rule that restricts public documentation to knowledge the learner has already demonstrated.
+These instructions apply to everything under `docs/`.
 
-## Separate public knowledge from private learning state
+## Public knowledge and private learning are separate
 
 Treat these as two independent systems:
 
-- **Public knowledge (`docs/`)** answers: what should a reader know, and how should this topic be explained so a Software Engineer can understand and apply it?
-- **Private learning progress (`learning-progress.yaml`)** answers: what has the learner actually demonstrated, understood, applied, or mastered?
+- public knowledge under `docs/` answers what a reader should know and how to understand/apply it;
+- `knowledge-progress.yaml` records the fast sharing inventory plus the learner's private learning status.
 
-A public article may be complete even when the learner has not started learning that topic. The existence, quality, or completeness of an article is never learning evidence.
+A public article may be complete before the learner studies it. Article existence, quality, reading, or publication is never learning evidence.
 
-Never expose personal learning status, confidence, checkpoints, remaining gaps, evidence, review dates, or next learning steps in public docs.
+Never expose private learning status, remaining gaps, checkpoint state, or next learning steps in public docs.
 
-## AI may generate complete articles before learning
+## Registry-first sharing workflow
 
-When the user asks to create a new topic/article, prepare docs for sharing, or expand a knowledge area, AI may create or substantially expand the canonical public article before the learner studies it.
+Use `knowledge-progress.yaml` first when answering:
 
-For a new topic:
+- what is already shared;
+- what public topic is missing;
+- what might be sensible to share next;
+- whether a broad topic already has canonical public articles.
 
-1. inspect the repository, category, canonical notes, nearby concepts, and duplicate risk;
-2. research or use reliable technical knowledge as needed;
-3. define the canonical scope and teaching job;
-4. create a complete reader-facing article rather than a checkpoint summary;
-5. add the explanation depth, examples, distinctions, trade-offs, practical scenarios, and visuals required for genuine understanding;
-6. connect related knowledge when it improves navigation and comprehension;
-7. validate the documentation normally.
+Do not reconstruct the sharing inventory from `sidebars.ts` on every request. `sidebars.ts` remains the navigation implementation, not the progress database.
 
-Do not create or update `learning-progress.yaml` merely because an article was generated, expanded, reorganized, or made public-ready.
+The registry is not sufficient for semantic duplicate detection. Before creating or substantially expanding an article:
 
-## Topic selection: advise once, then respect the user's choice
+1. read the topic entry in `knowledge-progress.yaml`;
+2. inspect the relevant Level 1 / Level 2 landing page and nearby Level 3 articles;
+3. search the proposed concept and close synonyms across docs;
+4. define one central teaching job for the article;
+5. prefer improving an existing canonical article when it already owns that teaching job;
+6. synchronize the registry when public coverage changes.
 
-Public knowledge generation is not blocked by the learner's private learning sequence.
+## Topic selection: advise once, then follow the user
 
-When the user asks to add or share a specific topic:
+When the user asks to add/share a specific topic, first inspect the registry and relevant docs. If the requested topic would materially duplicate another teaching job, sit at the wrong hierarchy level, or create a confusing public sequence, explain the issue briefly and recommend one better topic or placement.
 
-1. inspect the current public knowledge structure and nearby canonical articles first;
-2. if the requested topic would create a meaningful sequencing problem, duplicate an existing teaching job, sit at the wrong hierarchy level, or skip a public prerequisite that would make the resulting knowledge map confusing, explain the issue briefly and recommend **one** more appropriate topic or placement before editing;
-3. treat that recommendation as advice, not a gate;
-4. if the user accepts the recommendation, follow it;
-5. if the user rejects it or explicitly repeats the original request, **stop blocking on sequencing and generate the requested public knowledge** in the best canonical form possible;
-6. never require a private learning checkpoint to be completed before a public article can be created.
-
-Do not repeatedly challenge the same explicit topic choice. After one clear recommendation, the user's confirmed sharing intent wins unless the request is technically impossible, unsafe, or would corrupt the repository.
-
-## Sharing coverage and duplicate detection
-
-Use the **current repository**, not `learning-progress.yaml`, as the source of truth for what knowledge is already shared publicly.
-
-Before deciding whether a topic is missing, duplicated, or a sensible next public topic, inspect:
-
-1. `sidebars.ts` for the reader-visible knowledge hierarchy and currently published canonical articles;
-2. the relevant Level 1 / Level 2 landing page for the category's intended scope and neighboring topics;
-3. the actual relevant Level 3 knowledge articles for their teaching jobs and content coverage;
-4. repository search for the proposed concept and close synonyms, because a concept may already be covered inside an article with a different title;
-5. `docs/AGENTS.md` and relevant docs architecture skills when deciding ownership, splitting, merging, or placement.
-
-`sidebars.ts` is the primary navigation inventory, but it is **not sufficient by itself for semantic duplicate detection**. An article title may differ while its teaching job overlaps another article. Always inspect nearby article content before creating a new canonical page.
-
-Use `learning-progress.yaml` only to answer private questions such as what the learner has demonstrated, what remains to learn, or which learning checkpoint is next. Do not use it as the inventory of public sharing coverage.
-
-When asked **"đã share gì?"**, **"còn thiếu gì để share?"**, **"share gì tiếp?"**, or equivalent, reason from the public docs inventory and knowledge architecture first. Learning progress may be reported separately when relevant, but must not silently constrain the sharing recommendation.
+That recommendation is advice, not a gate. If the user rejects it or repeats the original request, generate the requested public knowledge in the best canonical form possible. Never require a private learning checkpoint before creating public docs.
 
 ## Reader-first quality bar
 
-Optimize articles for a **cold reader** who did not participate in the learning conversation.
+Optimize for a cold reader who did not participate in the learning conversation. A strong substantial Level 3 article should normally cover:
 
-A technically correct article is not sufficient if it assumes missing reasoning steps. The article should provide enough teaching depth for a new reader to understand:
+1. why the problem matters;
+2. a memorable mental model;
+3. core concepts and important distinctions;
+4. one concrete scenario when useful;
+5. progressive problem evolution when the topic benefits from it;
+6. root-cause reasoning;
+7. the better design/mechanism only after the problem is visible;
+8. why the solution works in engineering terms;
+9. trade-offs and decision guidance;
+10. common mistakes/failure modes;
+11. practical takeaways;
+12. related canonical knowledge.
 
-1. the problem or motivation behind the concept;
-2. the mental model or intuition;
-3. the important core concepts;
-4. how the parts relate or operate;
-5. at least one concrete example or scenario when useful;
-6. important distinctions that are easy to confuse;
-7. trade-offs and engineering decisions when relevant;
-8. practical application in Software Engineering, Coding Agents, AI Agents, RAG, or production systems when relevant;
-9. common failure modes or mistakes.
+This is a content contract, not a rigid heading-fill template.
 
-These do not need to become separate headings when a more natural teaching structure is clearer.
+## Navigation contract for substantial Level 3 articles
 
-## Canonical knowledge article contract
-
-Public knowledge docs are **teaching artifacts, not learning summaries**. A strong article should take a cold reader through the reasoning path, not merely list correct definitions.
-
-Use this as the default content contract for substantial Level 3 knowledge articles:
-
-1. **Why it matters / problem pressure** — establish the real engineering problem and consequence before introducing a pattern or abstraction.
-2. **Mental model** — give one memorable intuition that organizes the topic.
-3. **Core concepts and distinctions** — define the important terms and explicitly separate concepts that readers commonly confuse.
-4. **Concrete scenario** — prefer one realistic scenario that can evolve through the article instead of unrelated toy examples.
-5. **Progressive problem evolution** — when appropriate, show `simple state → requirement changes → naive solution → pain appears` so the reader can see why the problem exists.
-6. **Root-cause reasoning** — explain which responsibility, dependency, state, contract, or system property actually creates the problem.
-7. **Better design / mechanism** — introduce the improved design only after the reader can see the problem it solves.
-8. **Why it works** — connect the solution back to change impact, runtime behavior, data flow, failure isolation, correctness, or the relevant engineering consequence. Do not stop at cleaner-looking code.
-9. **Trade-offs and decision guide** — explain costs, when the technique is justified, when a simpler design is acceptable, and which questions should drive the decision.
-10. **Common mistakes / failure modes** — cover cargo-cult usage, over-engineering, misleading heuristics, and important edge cases.
-11. **Practical takeaway** — end with reusable engineering heuristics or review questions that help the reader apply the concept.
-12. **Related knowledge** — link only to canonical concepts that materially extend or clarify the article.
-
-This is a **content contract, not a mandatory heading template**. Merge, rename, reorder, or omit headings when the topic teaches more naturally another way, but do not omit an important reasoning layer merely to make the article shorter.
-
-### Navigation contract and topic ownership
-
-For substantial Level 3 knowledge articles, prefer a stable reader-facing H2 navigation contract when those sections are relevant:
+Prefer this reader-facing H2 order when the sections are relevant:
 
 `TL;DR → Why It Matters → Mental Model → Core Concepts → Example → When to Use → Common Mistakes → Decision Guide → Practical Takeaway → Self-test → Related Knowledge`
 
-This is a **navigation contract, not a content-fill template**:
+Topic-specific deep dives may be inserted where the teaching flow requires them. Scenario stages such as `Starting Point`, `Requirement Changes`, `Root Cause`, `Better Design`, and `Why It Works` should usually be H3 subsections inside `Example`.
 
-- keep these canonical H2 names and order when the article contains the corresponding material, so readers can predict where to find motivation, application guidance, mistakes, and review questions;
-- topic-specific deep dives such as `Leaky Abstraction`, `Blast Radius`, `Cache Stampede`, or `Dependency Direction` may appear as additional sections where the teaching flow needs them;
-- scenario-specific stages such as `Starting Point`, `Requirement Changes`, `Root Cause`, `Better Design`, and `Why It Works` should usually be H3 subsections inside `Example` rather than universal top-level sections;
-- do not invent empty or weak sections merely to satisfy the navigation contract;
-- visuals are evidence-driven: add a diagram, flow, table, or code block only when it materially improves understanding, not to satisfy a per-section quota.
+Do not create empty or weak sections just to satisfy the contract.
 
-Before writing adjacent articles, define **one central question / teaching job per article**. Related articles may reuse the same domain scenario, but they must not repeat the same reasoning journey.
+## Teaching progression
 
-Example distinction:
-
-- `Coupling & Cohesion` owns diagnosis: **where does change propagate, and why is the blast radius too large?**
-- `Abstraction & Encapsulation` owns boundary design: **what should the caller know, and which HOW details must stay behind the boundary?**
-
-When two articles overlap, keep enough shared context for each article to remain understandable in isolation, then link to the canonical owner instead of re-teaching the full neighboring concept. Reuse a scenario to build continuity, not to duplicate explanation.
-
-### Teaching progression rules
-
-Prefer this reasoning arc when it fits the topic:
+Prefer:
 
 `Problem → Mental Model → Concrete Evolution → Root Cause → Better Design → Why It Works → Trade-offs → Application`
 
-Follow these rules:
+Rules:
 
-- **Show why before showing the pattern.** Do not introduce `Factory`, `Repository`, `Strategy`, Dependency Injection, an interface, an agent architecture, or another abstraction as a best practice before establishing the problem it solves.
-- **Prefer progressive examples.** When one scenario can carry the article, evolve it through requirement changes instead of switching examples for every concept.
-- **Do not label the initial simple design as wrong without pressure.** A direct dependency or concrete implementation can be appropriate before meaningful variability or complexity exists.
-- **Explain the delta.** When showing before/after code or architecture, state exactly what changed in dependencies, responsibilities, behavior, blast radius, failure handling, or operational characteristics.
-- **Teach trade-offs, not dogma.** More interfaces, layers, patterns, services, agents, caches, or abstractions are not automatically better.
-- **Prefer engineering judgment over memorization.** The reader should finish knowing what signals to inspect and what decision to make, not only how to repeat a definition.
+- show why before introducing a pattern;
+- prefer one progressive scenario over unrelated toy examples;
+- do not call the simple starting design wrong before real pressure exists;
+- explain exactly what changed in dependency direction, responsibility, blast radius, behavior, failure handling, or operational properties;
+- teach trade-offs instead of dogma;
+- optimize for engineering judgment, not memorization.
 
-A compact `TL;DR` may remain at the top, but its compression must not become the depth of the whole article. Self-tests are optional; do not use learner-progress-style quizzes as a substitute for a strong reader-facing conclusion.
+## Topic ownership and duplicate prevention
 
-### MDX block safety
+Adjacent articles may reuse the same domain scenario, but they must not repeat the same reasoning journey. Keep one primary home for each definition, distinction, decision rule, or detailed mechanism, then summarize/link from neighboring articles.
 
-When authoring or rewriting `.mdx`, do not compact nested block tags onto one physical line when Docusaurus/MDX parsing depends on block boundaries.
+Example ownership:
 
-In particular, always write collapsible answers as separate block tags with blank lines around Markdown content:
+- `Coupling & Cohesion`: where change propagates and why blast radius is large;
+- `Abstraction & Encapsulation`: what the caller should know and which implementation details stay behind a boundary.
+
+## Visual routing
+
+Add a visual only when it materially improves understanding. Use the canonical visual routing from root `AGENTS.md` and the relevant project-local skill:
+
+- conceptual relationship / intuition → Excalidraw;
+- structured pipeline / topology / architecture → React Flow;
+- progressive animated explanation → Visual Explainer.
+
+Do not depict the same lesson with multiple redundant renderers.
+
+## MDX block safety
+
+For `<details>` blocks, keep physical line boundaries safe:
 
 ```mdx
 <details>
@@ -156,91 +115,35 @@ Markdown content here.
 </details>
 ```
 
-Treat **every same-line variant** as unsafe, not only the exact literal `<details><summary>Answers</summary>`. These are also forbidden:
+Never compact `<details>`, `<summary>`, Markdown body content, or `</details>` onto the same physical line.
 
-```mdx
-<details> <summary>Answers</summary>
-<details>    <summary>Answers</summary>
-<summary>Answers</summary> Markdown content
-Markdown content </details>
-```
+Before committing docs changes that touch disclosure blocks:
 
-The invariant is based on **physical line boundaries**, not the amount of whitespace between tags. `<details>`, `<summary>...</summary>`, Markdown body content, and `</details>` must remain block-safe and must never be compressed by an editor, formatter, or AI rewrite.
-
-Before committing any docs change that creates, rewrites, or touches disclosure blocks:
-
-1. run `npm run docs:format-mdx` to normalize known unsafe compact forms;
-2. inspect the resulting diff and commit any normalization that belongs to the change;
+1. run `npm run docs:format-mdx`;
+2. inspect the normalization diff;
 3. run `npm run docs:check`;
-4. run the required production build for the touched area.
-
-`npm run build` also runs the normalizer before docs validation as a CI safety net. That safety net exists to prevent deployment from failing on a whitespace-only MDX regression; it is **not** permission to leave malformed source in the repository. Source files should be committed in canonical block-safe form.
-
-When touching files that contain `<details>` blocks, preserve or normalize this safe form before committing. A build or docs rewrite is not complete until this invariant has been checked.
-
-## Do not over-compress at capture time
-
-Do not turn a rich learning/discussion session into a public article containing only the learner's demonstrated bullet points.
-
-Learning evidence defines what may be recorded as progress. It does **not** cap the explanatory depth of public documentation.
-
-Prefer the minimum explanation required for genuine understanding, not the minimum text required to record facts.
-
-When a concept would otherwise jump too quickly from definition to conclusion, add the missing reasoning bridge, for example:
-
-`Problem → Intuition → Mental Model → Concrete Example → Technical Explanation → Engineering Consequence`.
-
-Do not copy the learning transcript into docs. Synthesize the best reusable explanation that emerged from discussion.
+4. run the required production build.
 
 ## Docs-first learning workflow
 
-A normal workflow may be:
+A normal workflow is:
 
-`Topic selected → AI generates public docs → learner reads → discuss/question/challenge → docs improve → learner applies/reasons → private evidence is recorded`.
+`Topic selected → AI generates public docs → learner reads → discuss/challenge → docs improve → learner applies/reasons → private learning state may advance`
 
-During discussion, treat reader confusion as documentation feedback. If a clarification, better example, corrected distinction, or improved diagram would help future readers, update the canonical public article rather than leaving the improvement only in chat.
+Treat learner confusion as documentation feedback when the clarification would help future readers.
 
-## Knowledge articles are not progress records
-
-Use the term **knowledge article** for reader-facing files under `docs/`. Existing filenames/templates may retain historical names until changed deliberately, but authoring decisions must follow the public-knowledge model.
-
-Do not infer any of the following:
-
-- article exists → learner understands it;
-- article is comprehensive → learner has learned it;
-- category coverage is complete → learner completed the category;
-- AI generated an example → learner demonstrated that reasoning.
-
-Documentation coverage and learning progress are independent axes.
-
-## Related knowledge may include not-yet-learned topics
-
-A public article must remain self-contained enough for its reader. It may explain and link to other canonical public knowledge even if the learner has not personally studied those targets yet.
-
-Do not create links merely to fill a graph. Link when the target materially improves understanding. Avoid placeholders and broken links.
-
-## Preserve private evidence discipline
-
-AI-generated content, reading, understanding, and application are different states:
-
-`AI generated ≠ learner read ≠ learner understood ≠ learner applied`.
-
-Only `learning-progress.yaml` records personal learning state, and only real evidence may change it. Valid evidence may include demonstrated explanation, correct reasoning, distinctions, corrected misunderstanding, scenario decisions, experiments, or practical application.
+Publishing docs changes `sharing` in `knowledge-progress.yaml`; it never changes `learning.status` by itself.
 
 ## Checkpoint behavior
 
 When the learner says `chốt kiến thức`:
 
 1. inspect the canonical article and the session;
-2. identify whether the discussion revealed a reusable correction or teaching improvement;
-3. update public docs when that improves the reader-facing article, even if the added explanation is broader than the exact words the learner demonstrated;
-4. separately inventory only real learner evidence;
-5. update `learning-progress.yaml` only from that evidence;
-6. never reduce or constrain the article to match the learner's current evidence;
-7. if the article is already public-ready, the checkpoint may update only private progress.
+2. improve the public article if discussion exposed a reusable teaching improvement;
+3. separately determine whether actual learner evidence supports a private learning-state change;
+4. update only `learning.status` / `next_checkpoint` when justified;
+5. synchronize `sharing` only if public coverage changed.
 
-## Existing documentation rules still apply
+Keep the distinction explicit:
 
-Continue following the repository's existing rules for canonical-note selection, duplicate prevention, MDX structure, Docusaurus behavior, diagrams, visual routing, accessibility, language, links, validation, and design.
-
-Where a parent rule says public docs may only contain learned knowledge, only learned topics may be linked, or docs creation must automatically create progress entries, this file supersedes that restriction for work under `docs/`.
+`AI generated ≠ learner read ≠ learner understood ≠ learner applied`.

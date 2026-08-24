@@ -5,6 +5,16 @@ import process from 'node:process';
 const root = process.cwd();
 const docsRoot = path.join(root, 'docs');
 const registryPath = path.join(root, 'knowledge-progress.yaml');
+const requiredHeadings = [
+  'TL;DR',
+  'Mental Model',
+  'Core Concepts',
+  'Example',
+  'When to Use',
+  'Common Mistakes',
+  'Related Knowledge',
+  'Self-test',
+];
 const errors = [];
 
 function relative(file) {
@@ -19,18 +29,18 @@ function walk(directory) {
 }
 
 const registry = fs.readFileSync(registryPath, 'utf8');
-const topicMatches = [...registry.matchAll(/^  ([a-z0-9-]+):\n/gm)];
-const topics = topicMatches.map((match) => match[1]);
+const topics = [...registry.matchAll(/^  ([a-z0-9-]+):\n/gm)].map((match) => match[1]);
+if (topics.length === 0) errors.push('knowledge-progress.yaml: no topics found');
 
-if (topics.length === 0) {
-  errors.push('knowledge-progress.yaml: no topics found');
-}
-
-const registryPaths = new Set(
-  [...registry.matchAll(/^ {6}(?:landing: |- )(docs\/[^\n]+\.mdx)\s*$/gm)].map((match) => match[1].trim()),
+const landingPaths = new Set(
+  [...registry.matchAll(/^ {6}landing: (docs\/[^\n]+\.mdx)\s*$/gm)].map((match) => match[1].trim()),
 );
+const articlePaths = new Set(
+  [...registry.matchAll(/^ {8}- (docs\/[^\n]+\.mdx)\s*$/gm)].map((match) => match[1].trim()),
+);
+const publishedPaths = new Set([...landingPaths, ...articlePaths]);
 
-for (const note of registryPaths) {
+for (const note of publishedPaths) {
   if (!fs.existsSync(path.join(root, note))) {
     errors.push(`knowledge-progress.yaml: missing published path ${note}`);
   }
@@ -63,8 +73,20 @@ for (const file of walk(docsRoot).filter((file) => file.endsWith('.mdx'))) {
     const link = match[1].split('#')[0];
     if (/^(?:https?:|\/)/u.test(link)) continue;
     const target = path.resolve(path.dirname(file), link);
-    if (!fs.existsSync(target)) {
-      errors.push(`${relative(file)}: broken internal link ${link}`);
+    if (!fs.existsSync(target)) errors.push(`${relative(file)}: broken internal link ${link}`);
+  }
+}
+
+for (const note of articlePaths) {
+  const notePath = path.join(root, note);
+  if (!fs.existsSync(notePath)) continue;
+  const source = fs.readFileSync(notePath, 'utf8');
+  const isStructuralLandingPage = /<LandingCardGrid(?:\s|>)/u.test(source);
+  if (isStructuralLandingPage) continue;
+
+  for (const heading of requiredHeadings) {
+    if (!source.includes(`## ${heading}`)) {
+      errors.push(`${note}: missing required heading "${heading}"`);
     }
   }
 }
@@ -75,4 +97,4 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
-console.log(`Documentation consistency check passed: ${topics.length} registry topics, ${registryPaths.size} published paths.`);
+console.log(`Documentation consistency check passed: ${topics.length} registry topics, ${publishedPaths.size} published paths.`);
