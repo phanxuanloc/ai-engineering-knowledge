@@ -153,8 +153,15 @@ Chat scale tốt khi bạn tách đúng state ownership: **WebSocket vận chuy�
 4. Vì sao per-conversation ordering thường phù hợp hơn global ordering?
 5. Reconnect cần làm gì ngoài mở lại WebSocket?
 
-<details><summary>Answers</summary>
-1. WebSocket vận chuyển realtime; registry tìm live route; Message Store giữ durable history. 2. Sender server không biết recipient nằm trên instance khác và local state không hỗ trợ failover. 3. Persisted là durable accept; delivered là tới live connection; read cần acknowledgment/user action riêng. 4. Nó bảo vệ invariant có ý nghĩa với coordination scope nhỏ hơn. 5. Fetch missed history từ cursor rồi hợp nhất với live stream.
+<details>
+<summary>Answers</summary>
+
+1. WebSocket vận chuyển realtime; registry tìm live route; Message Store giữ durable history.
+2. Sender server không biết recipient nằm trên instance khác và local state không hỗ trợ failover.
+3. Persisted là durable accept; delivered là tới live connection; read cần acknowledgment/user action riêng.
+4. Nó bảo vệ invariant có ý nghĩa với coordination scope nhỏ hơn.
+5. Fetch missed history từ cursor rồi hợp nhất với live stream.
+
 </details>
 
 ## Related Knowledge
