@@ -14,16 +14,42 @@ import {FlowExplainer} from '@site/src/components/VisualExplainer';
 ## TL;DR
 
 <TLDR>
-Một release an toàn phải test đúng integrated snapshot sẽ được deploy, có chiến lược phục hồi phù hợp và trace được từ version tới artifact đang chạy. PR CI pass riêng lẻ hoặc QA pass trên một tổ hợp khác không chứng minh production candidate an toàn.
+Release an toàn không chỉ là “CI xanh”. Team phải chứng minh đúng integrated snapshot sẽ được deploy, biết cách phục hồi khi production lỗi, và trace được từ release version tới source commit rồi tới immutable artifact đang chạy. PR CI pass riêng lẻ hoặc QA pass trên một tổ hợp code khác không đủ để chứng minh production candidate an toàn.
 </TLDR>
+
+## Why It Matters
+
+Một change có thể pass unit test, pass PR CI và thậm chí QA pass, nhưng production vẫn lỗi nếu artifact cuối cùng không phải đúng snapshot đã được kiểm tra. Đây là lỗi về **release integrity**, không chỉ là lỗi test coverage.
+
+Một release pipeline tốt cần trả lời được ba câu hỏi:
+
+1. **What exactly did we test?** — commit hoặc integrated snapshot nào đã được validate?
+2. **What exactly did we ship?** — artifact immutable nào được deploy?
+3. **How do we recover?** — rollback artifact, revert source hay roll forward bằng fix mới?
+
+Nếu không trả lời được ba câu này, production đang phụ thuộc vào giả định thay vì traceable evidence.
 
 ## Mental Model
 
 <Principle label="Release invariant">{'Test what you ship, ship what you tested, và luôn biết chính xác artifact nào đang chạy.'}</Principle>
 
+Hãy hình dung release như một chuỗi custody:
+
+```text
+Source change → integrated commit → CI result → immutable artifact → deployment → runtime
+```
+
+Mỗi bước phải chỉ tới bước trước một cách xác định được. Nếu pipeline build lại artifact khác sau QA, nếu deploy bằng mutable tag như `latest`, hoặc nếu shared testing branch chứa tổ hợp khác production candidate, chuỗi custody bị đứt.
+
+## Core Concepts
+
+### PR CI không chứng minh integrated state cuối cùng
+
+Hai PR có thể cùng pass trên cùng base commit nhưng xung đột logic khi cả hai được merge. Vì vậy, protected branch và merge queue giúp kiểm tra candidate trên latest integration state trước khi merge.
+
 <FlowExplainer
   title="PR CI vs merge queue vs main CI"
-  description="Một PR pass riêng lẻ chưa chứng minh trạng thái cuối cùng của main vẫn pass khi nhiều PR cùng được merge."
+  description="Đi từng bước để thấy vì sao một PR pass riêng lẻ vẫn chưa chứng minh trạng thái cuối cùng của main an toàn."
   scenarios={[
     {
       id: 'ci-queue',
@@ -38,70 +64,57 @@ Một release an toàn phải test đúng integrated snapshot sẽ được depl
         {id: 'prod', label: 'Production', detail: 'Deploy', role: 'database'},
       ],
       steps: [
-        {title: '1 · Validate the PR', from: 'pr', to: 'pr-ci', message: 'build + tests', description: 'PR CI kiểm tra thay đổi riêng lẻ trước khi merge.'},
-        {title: '2 · Validate against latest main', from: 'pr-ci', to: 'queue', message: 'queue candidate', description: 'Merge queue thử PR trên trạng thái main mới nhất để tránh race giữa nhiều PR.'},
-        {title: '3 · Integrate safely', from: 'queue', to: 'main', message: 'merge', description: 'Protected main chỉ nhận thay đổi khi required checks đã đạt.'},
-        {title: '4 · Re-test integrated state', from: 'main', to: 'main-ci', message: 'final CI', description: 'Main CI kiểm tra tổ hợp cuối cùng, không chỉ từng PR độc lập.'},
-        {title: '5 · Deploy', from: 'main-ci', to: 'prod', message: 'CD', description: 'CD chỉ chạy sau khi integrated state pass.'},
+        {title: '1 · Validate the PR', from: 'pr', to: 'pr-ci', message: 'build + tests', description: 'PR CI kiểm tra change trước khi integration.'},
+        {title: '2 · Rebase candidate on latest main', from: 'pr-ci', to: 'queue', message: 'queue candidate', description: 'Merge queue tạo candidate dựa trên trạng thái main mới nhất thay vì base cũ.'},
+        {title: '3 · Integrate safely', from: 'queue', to: 'main', message: 'merge', description: 'Protected main chỉ nhận candidate đã pass required checks.'},
+        {title: '4 · Validate integrated state', from: 'main', to: 'main-ci', message: 'final CI', description: 'Main CI kiểm tra tổ hợp code thực sự tồn tại sau merge.'},
+        {title: '5 · Deploy validated state', from: 'main-ci', to: 'prod', message: 'CD', description: 'CD chỉ deploy artifact build từ integrated state đã được xác nhận.'},
       ],
     },
   ]}
 />
 
-## Core Concepts
+### Build once, promote the same artifact
 
-### CI, protected main and merge queue
+Một anti-pattern phổ biến là build artifact mới ở từng environment. Source commit có thể giống nhau nhưng dependency resolution, build timestamp, generated files hoặc base image có thể khác.
 
-Feature lớn không nhất thiết cần branch lớn. Có thể chia thành nhiều atomic change và dùng feature flag hoặc backward-compatible change để merge sớm. Với schema/API migration, pattern đã học là **expand → migrate → contract**: thêm shape mới tương thích trước, migrate consumer/data, cuối cùng mới xóa shape cũ.
+Model an toàn hơn là:
 
-### Rollback, revert and roll forward
+```text
+commit A → build image digest D → test D → staging D → production D
+```
 
-`git revert` sửa source history bằng một commit đảo thay đổi. **Deployment rollback** đưa production về artifact/version trước. Chúng là hai việc khác nhau.
+Environment config có thể khác, nhưng **artifact identity không đổi**. Điều này làm cho câu “ship what you tested” có ý nghĩa kỹ thuật thật sự.
 
-<FlowExplainer
-  title="Production incident — rollback or roll forward?"
-  description="Mục tiêu là restore service an toàn và nhanh nhất, không phải luôn rollback bằng Git."
-  scenarios={[
-    {
-      id: 'rollback',
-      label: 'Rollback is fast',
-      nodes: [
-        {id: 'd', label: 'Release D', detail: 'Production broken', role: 'client'},
-        {id: 'c', label: 'Release C', detail: 'Known good artifact', role: 'service'},
-        {id: 'source', label: 'Source fix', detail: 'revert or new fix', role: 'network'},
-        {id: 'prod', label: 'Production', detail: 'Stable again', role: 'database'},
-      ],
-      steps: [
-        {title: '1 · Restore service', from: 'd', to: 'c', message: 'rollback artifact', description: 'Nếu rollback artifact nhanh và an toàn, đưa production về known-good version trước.'},
-        {title: '2 · Repair source history', from: 'c', to: 'source', message: 'revert / fix', description: 'Sau khi service ổn định, xử lý commit gây lỗi trong source.'},
-        {title: '3 · Deploy corrected build', from: 'source', to: 'prod', message: 'redeploy', description: 'CI pass rồi deploy lại phiên bản đã sửa.'},
-      ],
-    },
-    {
-      id: 'roll-forward',
-      label: 'Rollback is risky',
-      nodes: [
-        {id: 'd', label: 'Release D', detail: 'Bug + hard DB rollback', role: 'client'},
-        {id: 'e', label: 'Release E', detail: 'Small known fix', role: 'service'},
-        {id: 'prod', label: 'Production', detail: 'Recovered', role: 'database'},
-      ],
-      steps: [
-        {title: '1 · Avoid unsafe rollback', from: 'd', to: 'e', message: 'small fix', description: 'Nếu rollback DB khó nhưng fix đã rõ và nhỏ, tạo phiên bản E thay vì ép quay về C.'},
-        {title: '2 · Roll forward', from: 'e', to: 'prod', message: 'deploy E', description: 'Deploy fix mới để phục hồi service.'},
-      ],
-    },
-  ]}
-/>
+### Rollback, revert và roll forward là ba cơ chế khác nhau
 
-### Tag, SemVer and release traceability
+- **Deployment rollback**: production chạy lại artifact/version trước đó.
+- **Git revert**: tạo commit mới đảo source change.
+- **Roll forward**: build và deploy version mới chứa fix.
 
-Trong Semantic Versioning, `fix` tăng `PATCH`, `feat` tăng `MINOR`, còn breaking change tăng `MAJOR`.
+Rollback thường nhanh nhất khi artifact cũ còn tương thích với data/schema hiện tại. Roll forward có thể an toàn hơn khi schema đã migrate theo chiều không backward-compatible hoặc fix mới rất nhỏ và rõ.
 
-Pre-release có thể dùng `alpha`, `beta`, `rc`, ví dụ `v5.0.0-rc.1 → v5.0.0-rc.2 → v5.0.0`. Git tag là mốc cố định vào một commit; release chính thức thường phù hợp với annotated tag.
+### Feature flag tách deploy khỏi release
+
+Với Trunk-Based Development, code có thể được merge và deploy sớm nhưng capability vẫn ẩn sau feature flag. Điều này giảm branch lifetime mà vẫn cho phép business release vào thời điểm riêng.
+
+Feature flag không thay thế testing. Nó chỉ giảm blast radius và cho phép activation/deactivation độc lập với source integration.
+
+### Backward-compatible migration giảm rollback risk
+
+Khi đổi API hoặc database schema, pattern **expand → migrate → contract** giúp old/new code cùng tồn tại trong giai đoạn chuyển tiếp:
+
+1. **Expand** — thêm field/table/API shape mới nhưng giữ compatibility.
+2. **Migrate** — chuyển data/consumer dần sang shape mới.
+3. **Contract** — chỉ xóa shape cũ sau khi không còn dependency.
+
+Nếu deploy theo kiểu “rename/drop ngay”, artifact cũ có thể không còn chạy được và rollback trở nên nguy hiểm.
+
+### Traceability nối source với runtime
 
 <ReactFlowDiagram
   ariaLabel="Production release traceability from version to Git tag, commit and immutable artifact"
-  caption="Version giúp con người nhận diện release; commit SHA xác định source; image digest xác định artifact thực sự đang chạy."
+  caption="Version giúp con người gọi tên release; commit SHA xác định source; image digest xác định artifact thực sự đang chạy."
   controls={false}
   direction="LR"
   fullscreen
@@ -124,15 +137,21 @@ Pre-release có thể dùng `alpha`, `beta`, `rc`, ví dụ `v5.0.0-rc.1 → v5.
   ]}
 />
 
-Conventional Commits như `fix:`, `feat:` và `BREAKING CHANGE` có thể cung cấp metadata để automation tính version/changelog. Branch naming như `feat/*`, `fix/*`, `docs/*`, `chore/*` là team convention; tên branch không tự quyết định workflow.
+Semantic Versioning giúp gọi tên compatibility contract: `PATCH` cho backward-compatible bug fix, `MINOR` cho backward-compatible feature, `MAJOR` cho breaking change. Nhưng version chỉ là human-facing label; incident response cần thêm commit SHA và artifact digest.
 
 ## Example
 
-Một team có `main` và shared `testing` branch. Feature 1, 2, 3 được merge vào `testing` để QA, nhưng sau đó chỉ feature 1 và 3 được merge riêng vào `main`.
+### Starting Point
+
+Một team có `main` và shared `testing` branch. Feature 1, 2, 3 được merge vào `testing` để QA.
+
+### Requirement Changes
+
+Sau QA, product quyết định chỉ release feature 1 và 3. Team merge riêng 1 và 3 vào `main` rồi deploy.
 
 <FlowExplainer
   title="Why the shared testing branch can lie"
-  description="Đi từng bước để thấy QA đã xác nhận một code snapshot, nhưng production lại nhận một snapshot khác."
+  description="QA đã xác nhận một snapshot, nhưng production candidate lại là snapshot khác."
   scenarios={[
     {
       id: 'shared-testing-mismatch',
@@ -153,51 +172,91 @@ Một team có `main` và shared `testing` branch. Feature 1, 2, 3 được merg
         {id: 'deploy', source: 'candidate', target: 'risk'},
       ],
       steps: [
-        {title: '1 · Test the shared branch', edgeId: 'test', from: 'testing', to: 'qa', message: 'QA test', description: 'QA xác nhận snapshot main + feature 1 + 2 + 3 trên shared testing branch.'},
-        {title: '2 · Select a smaller release', edgeId: 'select', from: 'qa', to: 'scope', message: 'approve 1 + 3', description: 'Sau khi QA pass, team quyết định chỉ release feature 1 và 3; feature 2 bị loại khỏi scope.'},
-        {title: '3 · Build a different candidate', edgeId: 'merge', from: 'scope', to: 'candidate', message: 'merge separately', description: 'Feature 1 và 3 được merge riêng vào main, tạo snapshot main + feature 1 + 3.'},
-        {title: '4 · Expose the mismatch', edgeId: 'deploy', from: 'candidate', to: 'risk', message: 'not the tested snapshot', description: 'Production candidate không phải snapshot QA đã test. Dependency ẩn vào feature 2 có thể làm production lỗi dù testing từng pass.'},
+        {title: '1 · Test the shared branch', edgeId: 'test', from: 'testing', to: 'qa', message: 'QA test', description: 'QA xác nhận snapshot main + feature 1 + 2 + 3.'},
+        {title: '2 · Select a smaller release', edgeId: 'select', from: 'qa', to: 'scope', message: 'approve 1 + 3', description: 'Feature 2 bị loại khỏi release scope sau khi QA pass.'},
+        {title: '3 · Build a different candidate', edgeId: 'merge', from: 'scope', to: 'candidate', message: 'merge separately', description: 'Main giờ chứa 1 + 3, không phải snapshot từng được QA xác nhận.'},
+        {title: '4 · Expose the mismatch', edgeId: 'deploy', from: 'candidate', to: 'risk', message: 'not the tested snapshot', description: 'Dependency ẩn vào feature 2 có thể làm production lỗi dù shared testing branch từng pass.'},
       ],
     },
   ]}
 />
 
-Rủi ro là trạng thái đã test là `main + 1 + 2 + 3`, còn trạng thái release là `main + 1 + 3`. Final release candidate phải được test đúng với tổ hợp code sẽ release.
+### Root Cause
+
+QA evidence gắn với `main + 1 + 2 + 3`, trong khi production candidate là `main + 1 + 3`. Team đã kiểm thử **feature presence**, nhưng không kiểm thử **release identity**.
+
+### Better Design
+
+Tạo final release candidate trước, chạy required integration/QA checks trên đúng candidate đó, build immutable artifact một lần rồi promote chính artifact ấy tới production.
+
+Nếu team cần chọn scope linh hoạt, short-lived branch + feature flags thường an toàn hơn một shared testing branch dùng như “giỏ feature”.
+
+### Why It Works
+
+Release candidate, test result và artifact identity đều nối tới cùng một source state. Khi incident xảy ra, team biết chính xác release nào đang chạy và có thể quyết định rollback hay roll forward dựa trên compatibility thực tế thay vì đoán.
 
 ## When to Use
 
-- Dùng merge queue khi nhiều PR có thể pass riêng nhưng xung đột trên latest `main`.
-- Re-test integrated state trước deployment khi release được tạo từ nhiều change độc lập.
-- Rollback artifact khi có known-good version và rollback tương thích với data/schema hiện tại.
-- Roll forward khi rollback rủi ro nhưng fix mới nhỏ, rõ và nhanh hơn.
-- Dùng immutable digest và release metadata khi cần audit hoặc điều tra production.
+- Dùng **merge queue** khi nhiều PR merge gần nhau và latest-main interaction có thể tạo lỗi.
+- Re-test **integrated state** khi production candidate được hình thành từ nhiều change độc lập.
+- Dùng **build once, promote** khi cần confidence rằng staging và production dùng cùng binary/image.
+- Dùng **feature flag** khi muốn merge/deploy sớm nhưng release business độc lập.
+- Dùng **rollback artifact** khi known-good version còn tương thích với data/schema hiện tại.
+- **Roll forward** khi rollback rủi ro hơn một fix mới nhỏ và rõ.
+- Ghi **version + commit SHA + artifact digest + deployment metadata** khi cần audit và incident traceability.
 
 ## Common Mistakes
 
 - Test một tổ hợp trên shared testing branch nhưng release một tổ hợp khác mà không có final validation.
+- Build lại artifact riêng cho production sau khi staging đã test artifact khác.
 - Nhầm deployment rollback với `git revert`.
-- Tin PR CI riêng lẻ mà không kiểm tra trạng thái tích hợp cuối.
-- Chỉ dùng mutable Docker tag như `latest` mà không trace được release → tag → commit → immutable artifact.
+- Tin PR CI riêng lẻ nhưng không kiểm tra integrated state cuối cùng.
+- Dùng mutable Docker tag như `latest` làm release identity duy nhất.
+- Thiết kế migration khiến version cũ không còn tương thích nhưng vẫn giả định “rollback luôn an toàn”.
+- Dùng feature flag như lý do để bỏ qua integration test hoặc observability.
+
+## Decision Guide
+
+Trước khi deploy, kiểm tra:
+
+1. **Candidate identity** — commit SHA hoặc release branch/tag nào đang được release?
+2. **Validation identity** — CI/QA đã chạy trên đúng candidate đó chưa?
+3. **Artifact identity** — artifact/image digest nào được build và test?
+4. **Promotion integrity** — staging và production có dùng cùng artifact không?
+5. **Recovery path** — rollback artifact có tương thích schema/data không? Nếu không, roll forward plan là gì?
+6. **Runtime traceability** — từ production có truy ngược được version → commit → artifact không?
+
+## Practical Takeaway
+
+Release safety là bài toán **identity + validation + recovery**. Team trưởng thành không chỉ hỏi “test pass chưa?” mà hỏi “đúng cái sẽ ship đã pass chưa?”.
+
+Một release pipeline tốt nên giữ invariant:
+
+```text
+validated source state == artifact source state == deployed artifact identity
+```
+
+Khi invariant này rõ ràng, rollback, incident investigation và audit đều đơn giản hơn đáng kể.
+
+## Self-test
+
+1. Vì sao hai PR cùng pass CI vẫn có thể làm `main` lỗi sau khi merge?
+2. Deployment rollback và `git revert` khác nhau thế nào?
+3. Vì sao build lại image cho production làm yếu traceability dù source commit giống staging?
+4. Shared testing branch đã QA pass nhưng production release subset feature khác. Cần làm gì trước deploy?
+
+<details>
+<summary>Answers</summary>
+
+1. Chúng có thể xung đột logic khi cùng tồn tại trên latest integration state; merge queue/main CI kiểm tra tổ hợp cuối.
+2. Rollback đổi artifact đang chạy; `git revert` tạo commit mới để sửa source history.
+3. Build mới có thể khác dependency/base image/generated output; staging evidence không còn gắn chắc với production artifact.
+4. Tạo đúng final candidate, chạy validation/QA trên candidate đó, build immutable artifact và deploy chính artifact đã được xác nhận.
+
+</details>
 
 ## Related Knowledge
 
 - [Git Workflows](./git-workflows.mdx) — branch model quyết định integrated state được hình thành ở đâu.
 - [Git History & Change Integration](./git-history-and-change-integration.mdx) — `revert` và merge strategy sửa source history như thế nào.
 - [API Communication Fundamentals](./api-communication-fundamentals.mdx) — backward-compatible evolution giúp thay đổi nhỏ được merge và deploy an toàn hơn.
-
-## Self-test
-
-1. Vì sao PR CI pass chưa chắc đủ khi nhiều PR merge gần nhau?
-2. Deployment rollback và `git revert` khác nhau thế nào?
-3. Vì sao testing snapshot khác release snapshot là một rủi ro?
-4. Release traceability tốt cần nối được những mốc nào?
-
-<details>
-<summary>Answers</summary>
-
-1. Các PR có thể pass riêng nhưng tổ hợp cuối trên main lại xung đột logic; merge queue/main CI kiểm tra integrated state mới nhất.
-2. Deployment rollback đổi artifact đang chạy; `git revert` tạo commit mới để sửa source history.
-3. Dependency hoặc interaction với feature bị loại có thể khiến tổ hợp production chưa từng được QA xác nhận.
-4. Ít nhất cần trace release version → Git tag → commit SHA → immutable artifact/image digest → production runtime.
-
-</details>
