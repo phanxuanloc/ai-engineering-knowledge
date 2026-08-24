@@ -4,13 +4,24 @@ description: "Topic landing page cho delivery, runtime infrastructure và cloud 
 slug: /software-engineering/devops-cloud-and-infrastructure
 ---
 
+import {KnowledgeMap} from '@site/src/components/Learning';
+
 # DevOps, Cloud & Infrastructure
 
 DevOps, Cloud & Infrastructure covers the operational boundary that takes software from build artifacts to repeatable runtime environments and production delivery.
 
 ## Topic Overview
 
-This Level-2 page defines the topic boundary and navigation role without pre-populating detailed lessons that have not been captured as Level 3.
+<KnowledgeMap
+  label="DevOps Cloud and Infrastructure topic map"
+  levels={[
+    [{title: 'Build', description: 'Turn source changes into reproducible artifacts.'}],
+    [{title: 'Provision', description: 'Create runtime infrastructure from explicit configuration.'}],
+    [{title: 'Deploy', description: 'Promote a known artifact through controlled environments.'}],
+    [{title: 'Run', description: 'Provide compute, network, storage and configuration at runtime.'}],
+    [{title: 'Operate', description: 'Scale, recover and evolve production infrastructure safely.'}],
+  ]}
+/>
 
 ## Lessons
 
