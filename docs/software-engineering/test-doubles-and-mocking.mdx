@@ -1,6 +1,6 @@
 ---
 title: Test Doubles & Mocking
-description: Phân biệt Stub, Mock và Fake theo mục đích kiểm soát dependency và quan sát behavior trong test.
+description: Chọn Stub, Mock hay Fake theo câu hỏi test cần trả lời và risk không được phép mock away.
 tags: [testing, mocking, test-doubles, software-engineering]
 ---
 
@@ -8,94 +8,477 @@ tags: [testing, mocking, test-doubles, software-engineering]
 
 ## TL;DR
 
-Test double thay dependency thật trong test để kiểm soát scenario hoặc quan sát behavior mà không kéo toàn bộ production system vào test. Mental model ngắn: **Stub tạo scenario, Mock kiểm tra interaction, Fake cung cấp implementation đơn giản có behavior/state thật**.
+Test double thay một dependency thật trong test để **kiểm soát scenario**, **quan sát interaction** hoặc **cung cấp implementation nhẹ** mà không kéo toàn bộ production system vào boundary đang test.
+
+Mental model ngắn:
+
+- **Stub** → đưa dữ liệu vào để tạo scenario.
+- **Mock** → quan sát một interaction/side effect có ý nghĩa.
+- **Fake** → dùng implementation đơn giản nhưng có behavior/state thật.
+
+Điểm quan trọng nhất không phải thuộc lòng tên gọi, mà là:
+
+> **Dependency này đang được thay để làm gì, và việc thay nó có loại bỏ chính risk cần chứng minh không?**
+
+## Why It Matters
+
+Một Unit Test thường cần isolate code khỏi payment provider, email service, database hoặc external API. Test doubles giúp việc đó khả thi.
+
+Nhưng mocking cũng là một trong những nguồn tạo test suite “xanh nhưng không đáng tin”. Ví dụ:
+
+- mock repository trả đúng object nên test pass, nhưng SQL mapping production lại sai;
+- verify hàng chục internal method calls khiến refactor nhỏ làm test vỡ dù behavior không đổi;
+- mock payment provider trong test orchestration là hợp lý, nhưng mock database để chứng minh transaction rollback lại loại bỏ chính behavior cần kiểm tra;
+- một Fake in-memory repository chạy tốt nhưng vô tình che mất unique constraint, locking hoặc transaction semantics của database thật.
+
+Vì vậy test double không phải mục tiêu. Nó là **boundary tool**.
+
+Câu hỏi tốt hơn “có nên mock dependency này không?” là:
+
+> **Test đang cần control gì, observe gì, và production behavior nào vẫn phải giữ thật?**
 
 ## Mental Model
 
-| Câu hỏi của test | Test double phù hợp |
-| --- | --- |
-| “Dependency phải trả về X để tạo scenario này” | **Stub** |
-| “Interaction/side effect này có xảy ra không?” | **Mock** |
-| “Cần một implementation nhẹ nhưng chạy thật” | **Fake** |
+Hãy hình dung test theo cấu trúc:
 
-Tên gọi giữa framework có thể khác nhau. Điều quan trọng là vai trò mà test double đang đảm nhiệm.
+```text
+Given controlled world
+→ When system under test acts
+→ Then observable behavior is verified
+```
+
+Test doubles thường đóng hai vai chính:
+
+- ở phía **Given**, chúng tạo một thế giới deterministic;
+- ở phía **Then**, chúng giúp quan sát interaction khi interaction chính là behavior cần bảo vệ.
+
+| Câu hỏi của test | Vai trò phù hợp | Ví dụ |
+| --- | --- | --- |
+| “Dependency phải trả về X để tạo scenario này” | **Stub** | Payment trả `DECLINED` |
+| “Interaction này có xảy ra không?” | **Mock** | Email không được gửi |
+| “Cần collaborator có state/behavior thật nhưng nhẹ” | **Fake** | Repository dùng `Map` |
+
+Tên API giữa Jest, Mockito, Sinon hay unittest.mock có thể khác nhau. Một object do framework gọi là “mock” về API vẫn có thể đang **đóng vai Stub** nếu ta chỉ configure return value.
+
+Phân loại theo **purpose in the test**, không theo class name của framework.
 
 ## Core Concepts
 
-### Stub — control output
+### Stub — control the scenario
 
-Stub chủ yếu trả về dữ liệu được định trước để ép code vào một scenario cụ thể.
+Stub cung cấp output được định trước để đưa system under test vào một branch cụ thể.
 
-Ví dụ: `PaymentGateway.charge()` luôn trả `PAYMENT_FAILED`, hoặc `InventoryService.getStock()` trả `0`. Test dùng output này như phần **Given** của scenario.
+Ví dụ:
 
-### Mock — verify interaction
+```ts
+const paymentGateway = {
+  charge: async () => ({status: 'DECLINED'}),
+};
+```
 
-Mock phù hợp khi interaction hoặc side effect chính là behavior cần kiểm chứng.
+Ở đây test không quan tâm `charge()` được implement thế nào. Nó chỉ cần tạo điều kiện:
 
-Ví dụ payment fail thì `EmailService.send()` không được gọi, hoặc order không được persist. Khi đó test có thể verify số lần gọi hoặc việc interaction không xảy ra.
+```text
+Given payment is declined
+```
 
-Không nên verify mọi internal method call. Nếu implementation refactor nhưng observable behavior vẫn đúng mà hàng loạt tests vỡ, suite có thể đang coupled quá chặt với implementation details.
+để kiểm tra checkout xử lý failure đúng.
+
+Stub phù hợp khi dependency chỉ là **source of input** cho behavior đang test.
+
+### Mock — verify meaningful interaction
+
+Mock phù hợp khi interaction với dependency là observable behavior quan trọng.
+
+Ví dụ requirement:
+
+> Nếu payment thất bại thì không được gửi receipt email.
+
+Khi đó việc `EmailService.sendReceipt()` **không được gọi** mang business meaning:
+
+```ts
+expect(emailService.sendReceipt).not.toHaveBeenCalled();
+```
+
+Mock đặc biệt hữu ích cho side effects như:
+
+- gửi email/SMS;
+- publish event;
+- charge payment;
+- persist command khi persistence action chính là outcome cần kiểm tra;
+- gọi external API khi interaction contract là phần behavior cần bảo vệ.
+
+Nhưng verify interaction chỉ nên dùng khi interaction thực sự có ý nghĩa ở boundary hiện tại.
 
 ### Fake — lightweight working implementation
 
-Fake là implementation đơn giản nhưng có behavior thật, thường giữ state trong memory.
+Fake là implementation đơn giản nhưng hoạt động thật trong phạm vi test.
 
-Ví dụ `FakeOrderRepository` có thể implement `save()` và `findById()` bằng một `Map`. Nó không chứng minh PostgreSQL behavior, nhưng hữu ích khi test cần stateful collaborator mà không cần infrastructure thật.
+Ví dụ:
+
+```ts
+class FakeOrderRepository implements OrderRepository {
+  private readonly orders = new Map<string, Order>();
+
+  async save(order: Order) {
+    this.orders.set(order.id, order);
+  }
+
+  async findById(id: string) {
+    return this.orders.get(id) ?? null;
+  }
+}
+```
+
+Fake hữu ích khi test cần:
+
+- state qua nhiều operation;
+- behavior giống collaborator thật ở mức domain contract;
+- setup nhẹ hơn infrastructure production;
+- assertions trên state thay vì interaction detail.
+
+Nhưng Fake chỉ chứng minh behavior của **Fake**, không tự chứng minh implementation production tương đương ở mọi khía cạnh.
 
 ### Một dependency không có test-double type cố định
 
-Cùng một `OrderRepository` có thể là Mock trong test chỉ cần verify `save()` không được gọi, hoặc là Fake trong test muốn kiểm tra repository state sau operation. Chọn theo câu hỏi test cần trả lời, không theo loại dependency.
+Cùng một `OrderRepository` có thể đóng vai khác nhau trong các test khác nhau.
+
+Trong test A:
+
+```ts
+expect(orderRepository.save).not.toHaveBeenCalled();
+```
+
+Repository đang đóng vai **Mock** vì test quan sát interaction.
+
+Trong test B:
+
+```ts
+const stored = await fakeOrderRepository.findById(order.id);
+expect(stored?.status).toBe('PAID');
+```
+
+Repository đang là **Fake** vì test quan sát state của implementation nhẹ.
+
+Trong test C, nếu repository chỉ trả một order predefined để tạo scenario, nó có thể đang đóng vai **Stub**.
+
+Do đó đừng gắn nhãn “repository = mock” hoặc “API client = stub” một cách cố định.
+
+### State verification và interaction verification
+
+Hai kiểu assertion phổ biến:
+
+**State verification** hỏi:
+
+> Sau operation, state/output observable có đúng không?
+
+Ví dụ:
+
+```ts
+expect(order.status).toBe('PAID');
+```
+
+**Interaction verification** hỏi:
+
+> System under test có cộng tác với dependency theo cách cần thiết không?
+
+Ví dụ:
+
+```ts
+expect(eventBus.publish).toHaveBeenCalledWith(
+  expect.objectContaining({type: 'OrderPaid'}),
+);
+```
+
+State verification thường ít coupled với implementation hơn. Interaction verification nên dành cho interaction có semantic meaning, đặc biệt side effect hoặc outgoing command.
+
+### Contract của test double phải đủ trung thực
+
+Một test double càng đơn giản càng dễ dùng, nhưng càng có risk **drift khỏi production behavior**.
+
+Ví dụ Fake repository dùng `Map` có thể không mô phỏng:
+
+- unique constraint;
+- foreign key;
+- transaction isolation;
+- locking;
+- query ordering;
+- nullable/default behavior;
+- serialization format.
+
+Nếu correctness phụ thuộc các behavior đó, boundary phải chuyển lên Integration Test với implementation thật hoặc environment realistic hơn.
 
 ### Đừng mock away chính risk
 
-Nếu requirement là chứng minh PostgreSQL transaction thực sự rollback, mock repository sẽ loại bỏ chính behavior cần kiểm chứng. Khi risk nằm ở infrastructure boundary thật, chuyển lên Integration Test thay vì cố mock mọi thứ.
+Đây là distinction quan trọng nhất.
+
+Nếu test cần chứng minh:
+
+> PostgreSQL transaction thực sự rollback khi insert thứ hai fail
+
+thì mock repository không đủ. Nó loại PostgreSQL ra khỏi boundary.
+
+Nếu test cần chứng minh:
+
+> Checkout service không tạo order khi payment provider trả `DECLINED`
+
+thì stub payment provider lại rất hợp lý, vì test đang kiểm tra orchestration logic chứ không kiểm tra Stripe/PayPal internals.
+
+Một test double tốt loại bỏ **irrelevant complexity**. Một test double xấu loại bỏ **relevant risk**.
 
 ## Example
 
-Scenario: inventory còn hàng nhưng payment thất bại, vì vậy order không được lưu và email không được gửi.
+Ta dùng một checkout flow để thấy cách test doubles xuất hiện tự nhiên theo câu hỏi test.
 
-| Dependency | Test double | Vai trò |
+### Starting Point — checkout có nhiều collaborator
+
+```ts
+class CheckoutService {
+  constructor(
+    private readonly inventory: InventoryService,
+    private readonly payment: PaymentGateway,
+    private readonly orders: OrderRepository,
+    private readonly email: EmailService,
+  ) {}
+
+  async checkout(input: CheckoutInput) {
+    const stock = await this.inventory.getStock(input.productId);
+    if (stock <= 0) return {status: 'OUT_OF_STOCK'};
+
+    const payment = await this.payment.charge(input.payment);
+    if (payment.status !== 'SUCCESS') {
+      return {status: 'PAYMENT_FAILED'};
+    }
+
+    const order = await this.orders.save(Order.paid(input));
+    await this.email.sendReceipt(order);
+
+    return {status: 'SUCCESS'};
+  }
+}
+```
+
+Ta muốn kiểm tra scenario:
+
+> Inventory còn hàng nhưng payment fail, vì vậy order không được lưu và receipt không được gửi.
+
+### Given — dùng Stub để tạo thế giới test
+
+Để ép code đi vào đúng branch:
+
+```ts
+inventory.getStock.mockResolvedValue(10);
+payment.charge.mockResolvedValue({status: 'DECLINED'});
+```
+
+`InventoryService` và `PaymentGateway` đang đóng vai **Stub** vì chúng chỉ cung cấp dữ liệu cho Given:
+
+```text
+inventory = IN_STOCK
+payment = DECLINED
+```
+
+Ta không cần gọi warehouse hay payment provider thật để chứng minh branch orchestration này.
+
+### Then — dùng Mock khi interaction là outcome
+
+Requirement nói order không được persist và email không được gửi:
+
+```ts
+expect(orders.save).not.toHaveBeenCalled();
+expect(email.sendReceipt).not.toHaveBeenCalled();
+```
+
+Ở đây `OrderRepository` và `EmailService` đóng vai **Mock** vì test đang verify interaction.
+
+Toàn scenario:
+
+| Dependency | Vai trò | Tại sao |
 | --- | --- | --- |
-| `InventoryService` | **Stub** | Trả `IN_STOCK` để tạo scenario |
-| `PaymentGateway` | **Stub** | Trả `PAYMENT_FAILED` |
-| `OrderRepository` | **Mock** | Verify `save()` không được gọi |
-| `EmailService` | **Mock** | Verify `send()` không được gọi |
+| `InventoryService` | Stub | Tạo `IN_STOCK` |
+| `PaymentGateway` | Stub | Tạo `DECLINED` |
+| `OrderRepository` | Mock | Verify không persist |
+| `EmailService` | Mock | Verify không gửi receipt |
 
-Nếu thay `OrderRepository` bằng một Fake có state, test cũng có thể assert repository vẫn rỗng. Cả hai cách đều có thể hợp lý nếu chúng trả lời đúng câu hỏi của test.
+### Alternative — Fake repository để verify state
+
+Nếu test quan tâm state hơn interaction, có thể dùng `FakeOrderRepository`:
+
+```ts
+const orders = new FakeOrderRepository();
+
+await checkout.checkout(input);
+
+expect(await orders.count()).toBe(0);
+```
+
+Cách này giảm coupling với chi tiết `save()` có được gọi hay không. Nếu implementation sau này đổi từ `save()` sang `upsert()` nhưng business outcome vẫn là repository rỗng khi payment fail, state-based assertion vẫn giữ ý nghĩa.
+
+### Requirement Changes — transaction trở thành risk
+
+Sau đó system yêu cầu:
+
+> Order và ledger entry phải commit atomically.
+
+Ta có thể viết mock:
+
+```ts
+expect(transaction.commit).not.toHaveBeenCalled();
+```
+
+nhưng assertion đó chỉ chứng minh application gọi API mock theo expectation. Nó không chứng minh PostgreSQL thực sự rollback data.
+
+Lúc này test double không còn đủ evidence. Boundary cần mở rộng:
+
+```text
+Checkout/Application
+      ↓
+Real Repository
+      ↓
+Real Test Database
+```
+
+và dùng Integration Test để assert state cuối cùng trong database.
+
+Đây là dấu hiệu quan trọng: **không phải cứ có dependency là phải thay bằng test double**.
+
+### Why this design works
+
+Các test doubles đang được dùng theo đúng responsibility:
+
+- Stub loại bỏ dependency behavior không liên quan để tạo deterministic branch;
+- Mock quan sát side effect có semantic meaning;
+- Fake cung cấp stateful collaborator nhẹ;
+- real infrastructure được giữ lại khi chính infrastructure semantics là risk.
+
+Nhờ vậy test vừa nhanh ở boundary nhỏ, vừa không giả vờ cung cấp confidence mà nó không có.
 
 ## When to Use
 
-- Dùng **Stub** để tạo deterministic scenario từ dependency.
-- Dùng **Mock** khi interaction hoặc side effect mang business meaning cần bảo vệ.
-- Dùng **Fake** khi cần behavior/state thật nhưng production dependency quá nặng cho test boundary hiện tại.
-- Mock external systems như payment provider, email provider hoặc LLM API khi mục tiêu test là logic orchestration bên trong service.
+### Use a Stub when
+
+- cần dependency trả một giá trị cụ thể để tạo scenario;
+- output của dependency là input cho business logic;
+- behavior thật của dependency không phải risk đang kiểm tra;
+- muốn test deterministic failure/success branch khó tạo bằng service thật.
+
+Ví dụ: payment `DECLINED`, inventory `0`, feature flag `false`, LLM trả structured output cụ thể.
+
+### Use a Mock when
+
+- interaction hoặc outgoing side effect chính là behavior cần bảo vệ;
+- cần verify “đã gửi / không gửi”, “đã publish / không publish”, “đã charge / không charge”;
+- collaborator không có state thuận tiện để inspect;
+- interaction là part of contract, không chỉ là implementation detail.
+
+### Use a Fake when
+
+- cần collaborator có state qua nhiều operations;
+- muốn test gần behavior hơn so với predefined stub;
+- production dependency quá nặng cho boundary hiện tại;
+- fake contract đủ trung thực cho risk đang kiểm tra.
+
+### Keep the real dependency when
+
+- dependency semantics chính là thứ cần chứng minh;
+- risk nằm ở SQL, transaction, schema, serializer, framework wiring hoặc protocol behavior;
+- fake/mock có khả năng drift khỏi production theo cách quan trọng;
+- integration cost chấp nhận được so với confidence cần có.
 
 ## Common Mistakes
 
-- **Mock mọi dependency theo thói quen:** làm test bám implementation hơn behavior.
-- **Verify mọi method call:** tạo brittle tests khi refactor nội bộ.
-- **Dùng mock DB để chứng minh DB behavior:** mock không chứng minh schema, transaction hay SQL thật.
-- **Nghĩ mỗi dependency chỉ có một test-double type:** cùng dependency có thể đóng vai Stub, Mock hoặc Fake tùy câu hỏi test.
+### Mock mọi dependency theo thói quen
+
+Dependency injection không đồng nghĩa mọi collaborator phải mock. Nếu test có thể dùng real lightweight implementation hoặc Fake rõ ràng hơn, mock không phải lựa chọn mặc định.
+
+### Verify mọi method call
+
+Test kiểu:
+
+```ts
+expect(a.step1).toHaveBeenCalledTimes(1);
+expect(b.step2).toHaveBeenCalledAfter(a.step1);
+expect(c.step3).toHaveBeenCalledWith(...);
+```
+
+có thể đang encode implementation sequence thay vì behavior. Refactor nội bộ sẽ làm test brittle dù output không đổi.
+
+### Dùng mock DB để chứng minh DB behavior
+
+Mock không chứng minh transaction, SQL, constraint hoặc isolation. Nếu các behavior đó là risk, dùng Integration Test.
+
+### Tin rằng Fake giống production
+
+Fake càng đơn giản càng có thể bỏ qua constraint hoặc concurrency semantics. Fake phải có scope rõ ràng; đừng suy rộng evidence quá mức.
+
+### Gắn một loại test double cố định cho dependency
+
+`PaymentGateway` có thể là Stub trong test orchestration, Mock trong test cần verify không double-charge, hoặc real sandbox client trong integration/contract test. Vai trò phụ thuộc câu hỏi test.
+
+### Mock framework internals thay vì domain boundary
+
+Mock sâu ORM internals, HTTP library internals hoặc private helper thường khiến test coupled vào implementation. Ưu tiên boundary có semantic meaning trong domain/application.
+
+### Assert interaction khi state/output đã đủ
+
+Nếu observable state đã chứng minh behavior, verify thêm internal calls có thể chỉ tạo redundancy và brittleness.
+
+## Decision Guide
+
+Khi cân nhắc một test double, hỏi theo thứ tự:
+
+1. **Test đang cố chứng minh behavior nào?** Viết rõ outcome trước.
+2. **Dependency này cần được control hay observe?** Control thường dẫn tới Stub; observe interaction thường dẫn tới Mock.
+3. **Có cần stateful collaborator nhẹ không?** Nếu có, Fake có thể phù hợp.
+4. **Production semantics của dependency có phải risk không?** Nếu có, đừng thay nó bằng double ở test duy nhất dùng để chứng minh risk đó.
+5. **Assertion đang bám business behavior hay implementation detail?** Nếu refactor nội bộ làm test fail dù behavior giữ nguyên, xem lại mock interaction.
+6. **Fake/mock có thể drift khỏi real system ở điểm nào?** Bù bằng Integration/Contract Test nơi cần thiết.
+
+Có thể dùng heuristic:
+
+```text
+Need controlled input?        → Stub
+Need meaningful interaction?  → Mock
+Need lightweight real state?  → Fake
+Need real dependency semantics?→ Integration with real dependency
+```
+
+## Practical Takeaway
+
+Khi review test dùng mocks, đừng chỉ hỏi “mock này setup đúng chưa?”. Hãy hỏi:
+
+- double này đang là Stub, Mock hay Fake theo **purpose thực tế**?
+- test cần control scenario hay verify interaction?
+- interaction được verify có business meaning không?
+- có assertion nào bám quá sâu vào implementation detail không?
+- Fake có khác production ở constraint/transaction/concurrency nào quan trọng không?
+- dependency thật có đang bị mock away dù chính nó là source of risk không?
+
+Test doubles tốt giúp test **nhỏ hơn nhưng vẫn trung thực với câu hỏi cần trả lời**. Mục tiêu không phải isolate mọi thứ; mục tiêu là isolate những thứ không cần thiết mà vẫn giữ lại đủ production behavior để evidence có giá trị.
+
+## Self-test
+
+1. Muốn `PaymentGateway` luôn trả `DECLINED` để tạo failure branch thì dependency đang đóng vai gì?
+2. Muốn chứng minh receipt không được gửi sau payment failure thì vì sao Mock có thể phù hợp?
+3. Một in-memory `OrderRepository` dùng `Map` là Fake, nhưng nó không chứng minh được những behavior production nào?
+4. Vì sao verify mọi internal method call thường làm test brittle?
+5. Khi requirement là PostgreSQL rollback atomically, vì sao mock repository không đủ?
+6. Cùng một `OrderRepository` có thể là Stub, Mock hoặc Fake trong các test khác nhau như thế nào?
+
+<details>
+<summary>Answers</summary>
+
+1. Stub, vì nó cung cấp output predefined để tạo scenario.
+2. Vì “không gửi receipt” là outgoing interaction/side effect có business meaning cần verify.
+3. Nó không tự chứng minh SQL, schema constraints, transaction, locking, isolation hoặc các semantics database thật khác.
+4. Vì test encode implementation sequence; refactor nội bộ có thể làm test fail dù observable behavior vẫn đúng.
+5. Vì rollback là behavior của database/transaction boundary thật; mock loại bỏ chính behavior cần chứng minh.
+6. Stub khi trả predefined order/state, Mock khi verify interaction như `save()` không được gọi, Fake khi cung cấp implementation stateful nhẹ để inspect state sau operation.
+
+</details>
 
 ## Related Knowledge
 
 - [Testing Fundamentals](./testing-fundamentals)
 - [Database Design](./database-design-foundations)
 - [API Communication](./api-communication-fundamentals)
-
-## Self-test
-
-1. Muốn `PaymentGateway` luôn trả `PAYMENT_FAILED` để tạo scenario thì dùng gì?
-2. Muốn kiểm tra `EmailService.send()` không được gọi thì dùng gì?
-3. Fake khác Stub ở điểm cốt lõi nào?
-4. Vì sao không nên mock repository khi chính transaction rollback là risk cần chứng minh?
-
-<details>
-<summary>Answers</summary>
-
-1. Stub.
-2. Mock.
-3. Fake có implementation/state hoạt động thực sự; Stub chủ yếu cung cấp output được định trước.
-4. Vì mock loại bỏ database behavior khỏi test, nên không thể chứng minh transaction thật sự rollback.
-
-</details>
