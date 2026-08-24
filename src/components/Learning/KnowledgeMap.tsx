@@ -9,6 +9,10 @@ export type KnowledgeMapNode = {
 
 export function KnowledgeMap({levels, label}: {levels: KnowledgeMapNode[][]; label: string}) {
   const nodeCount = levels.reduce((total, level) => total + level.length, 0);
+  const shouldStack = levels.length >= 5;
+  const trackClassName = shouldStack
+    ? `${styles.mapTrack} ${styles.mapTrackStacked}`
+    : styles.mapTrack;
 
   return (
     <figure className={styles.knowledgeMap} aria-label={label}>
@@ -17,7 +21,7 @@ export function KnowledgeMap({levels, label}: {levels: KnowledgeMapNode[][]; lab
         <span className={styles.mapHeaderMeta}>{levels.length} layers · {nodeCount} concepts</span>
       </div>
 
-      <div className={styles.mapTrack}>
+      <div className={trackClassName}>
         {levels.map((level, levelIndex) => (
           <div className={styles.mapLevelGroup} key={level.map((node) => node.title).join('-')}>
             <div className={styles.mapIndexRow} aria-hidden="true">

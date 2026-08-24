@@ -37,6 +37,7 @@ Use progressive disclosure for hierarchy depth: domain-level categories stay exp
 
 - Do not publish a raw prose mental map such as `A → B → C` or a sentence whose only visual structure is bold text and arrow characters when a real relationship exists.
 - For a compact sequence, dependency chain, set of conceptual layers, or diagnostic progression, use the shared `KnowledgeMap` surface so hierarchy, connectors, stage indices and responsive behavior are consistent across topics.
+- `KnowledgeMap` may stay horizontal only while the stages remain comfortably readable. The shared component uses horizontal layout for up to four layers and recomposes five or more layers into a vertical flow instead of compressing node width or font size.
 - Use React Flow, FlowExplainer, Excalidraw, or another routed visual instead when the topic has branching topology, runtime behavior, lifecycle state, or a conceptual relationship that `KnowledgeMap` would oversimplify.
 - Keep overview labels concise. Detailed explanation belongs in Level 3; the Level-2 visual should orient, not teach every mechanism.
 - A specialized existing overview visual may remain if it already satisfies the semantic and readability bar. Consistency means a shared visual language, not forcing every topic into the same geometry.
