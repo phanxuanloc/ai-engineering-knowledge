@@ -150,8 +150,14 @@ Feed design là bài toán **placement of computation**. Đừng tranh luận on
 3. Queue giúp fan-out ở điểm nào và tạo trade-off gì?
 4. Feed generation khác ranking thế nào?
 
-<details><summary>Answers</summary>
-1. Chuyển cost sang write để precompute và làm read nhanh. 2. Cần xét thêm post/read frequency, freshness và capacity. 3. Queue đưa fan-out khỏi synchronous request nhưng tạo eventual-consistency/backlog lag. 4. Generation tạo candidate set; ranking sắp thứ tự và chọn top results.
+<details>
+<summary>Answers</summary>
+
+1. Chuyển cost sang write để precompute và làm read nhanh.
+2. Cần xét thêm post/read frequency, freshness và capacity.
+3. Queue đưa fan-out khỏi synchronous request nhưng tạo eventual-consistency/backlog lag.
+4. Generation tạo candidate set; ranking sắp thứ tự và chọn top results.
+
 </details>
 
 ## Related Knowledge
