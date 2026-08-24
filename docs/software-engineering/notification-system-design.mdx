@@ -137,8 +137,15 @@ Thiết kế notification từ failure semantics, không từ Queue technology. 
 4. ACK và DLQ có vai trò gì?
 5. Vì sao at-least-once cần idempotent processing?
 
-<details><summary>Answers</summary>
-1. Provider failure không nên làm business operation hợp lệ phụ thuộc vào nó. 2. Logical notification là side effect cần đạt; attempt là một lần thử. 3. Provider chưa gửi hoặc đã gửi nhưng response bị mất. 4. ACK xác nhận processing theo policy; DLQ cô lập failures vượt retry budget để điều tra/replay. 5. Work có thể redeliver nên cùng logical item không được tạo side effect ngoài ý muốn.
+<details>
+<summary>Answers</summary>
+
+1. Provider failure không nên làm business operation hợp lệ phụ thuộc vào nó.
+2. Logical notification là side effect cần đạt; attempt là một lần thử.
+3. Provider chưa gửi hoặc đã gửi nhưng response bị mất.
+4. ACK xác nhận processing theo policy; DLQ cô lập failures vượt retry budget để điều tra/replay.
+5. Work có thể redeliver nên cùng logical item không được tạo side effect ngoài ý muốn.
+
 </details>
 
 ## Related Knowledge
