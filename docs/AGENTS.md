@@ -29,6 +29,39 @@ For a new topic:
 
 Do not create or update `learning-progress.yaml` merely because an article was generated, expanded, reorganized, or made public-ready.
 
+## Topic selection: advise once, then respect the user's choice
+
+Public knowledge generation is not blocked by the learner's private learning sequence.
+
+When the user asks to add or share a specific topic:
+
+1. inspect the current public knowledge structure and nearby canonical articles first;
+2. if the requested topic would create a meaningful sequencing problem, duplicate an existing teaching job, sit at the wrong hierarchy level, or skip a public prerequisite that would make the resulting knowledge map confusing, explain the issue briefly and recommend **one** more appropriate topic or placement before editing;
+3. treat that recommendation as advice, not a gate;
+4. if the user accepts the recommendation, follow it;
+5. if the user rejects it or explicitly repeats the original request, **stop blocking on sequencing and generate the requested public knowledge** in the best canonical form possible;
+6. never require a private learning checkpoint to be completed before a public article can be created.
+
+Do not repeatedly challenge the same explicit topic choice. After one clear recommendation, the user's confirmed sharing intent wins unless the request is technically impossible, unsafe, or would corrupt the repository.
+
+## Sharing coverage and duplicate detection
+
+Use the **current repository**, not `learning-progress.yaml`, as the source of truth for what knowledge is already shared publicly.
+
+Before deciding whether a topic is missing, duplicated, or a sensible next public topic, inspect:
+
+1. `sidebars.ts` for the reader-visible knowledge hierarchy and currently published canonical articles;
+2. the relevant Level 1 / Level 2 landing page for the category's intended scope and neighboring topics;
+3. the actual relevant Level 3 knowledge articles for their teaching jobs and content coverage;
+4. repository search for the proposed concept and close synonyms, because a concept may already be covered inside an article with a different title;
+5. `docs/AGENTS.md` and relevant docs architecture skills when deciding ownership, splitting, merging, or placement.
+
+`sidebars.ts` is the primary navigation inventory, but it is **not sufficient by itself for semantic duplicate detection**. An article title may differ while its teaching job overlaps another article. Always inspect nearby article content before creating a new canonical page.
+
+Use `learning-progress.yaml` only to answer private questions such as what the learner has demonstrated, what remains to learn, or which learning checkpoint is next. Do not use it as the inventory of public sharing coverage.
+
+When asked **"đã share gì?"**, **"còn thiếu gì để share?"**, **"share gì tiếp?"**, or equivalent, reason from the public docs inventory and knowledge architecture first. Learning progress may be reported separately when relevant, but must not silently constrain the sharing recommendation.
+
 ## Reader-first quality bar
 
 Optimize articles for a **cold reader** who did not participate in the learning conversation.
