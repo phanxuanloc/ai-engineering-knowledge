@@ -16,6 +16,7 @@ Treat `DESIGN.md` as the canonical visual specification. Read it completely befo
 5. Keep prose readable before making it futuristic: bounded line length, clear H1/H2/H3 hierarchy, restrained cards, calm inactive states, and no light text on pale surfaces.
 6. Route educational visual changes through `docs-diagram` and the selected renderer skill. UI styling must not change diagram semantics.
 7. Recompose at mobile breakpoints; do not merely shrink desktop UI. Keep touch targets, menu scrolling, and visible focus states.
+8. For mobile text inputs, search fields, and textareas that can receive focus, keep the effective font size at least `16px`. iOS Safari automatically zooms focused form controls below `16px`, which can make fixed overlays appear oversized, push adjacent controls off-screen, and create apparent horizontal overflow. Do not work around that zoom with `overflow-x: hidden`; prevent it at the input typography boundary.
 
 ## Canonical landing-page hierarchy
 
@@ -34,5 +35,6 @@ Treat `DESIGN.md` as the canonical visual specification. Read it completely befo
 - Test light and dark themes plus desktop and mobile widths.
 - Verify domain categories stay expanded, level-2 groups remain visible, level-3 article lists collapse/expand predictably, and long sidebars remain usable.
 - Check text/background contrast, inline code, links, active navigation, TOC, cards, code blocks, and diagram surfaces.
+- On iOS/Safari-targeted UI, verify focused inputs do not trigger browser auto-zoom and fixed overlays remain within the visible viewport.
 - Run `npm run docs:check`, `npm run typecheck`, `npm run build`, and `git diff --check`.
 - Never claim visual QA without inspecting actual renders.
