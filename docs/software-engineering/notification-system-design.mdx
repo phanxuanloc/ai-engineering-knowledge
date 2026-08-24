@@ -12,139 +12,137 @@ import {FlowExplainer} from '@site/src/components/VisualExplainer';
 ## TL;DR
 
 <TLDR>
-
-Notification System tách business transaction khỏi email, push hoặc SMS delivery bằng event/intent và Queue. Mô hình thực dụng là **at-least-once delivery + ACK sau processing + idempotent processing**, vì timeout có thể làm kết quả remote trở nên ambiguous và retry có thể gửi trùng.
-
+Notification System nên tách business transaction khỏi email, push hoặc SMS delivery bằng durable intent + Queue. Mô hình thực dụng là **at-least-once delivery + ACK sau processing + idempotent processing**, vì timeout có thể tạo ambiguous outcome và retry có thể gửi trùng.
 </TLDR>
+
+## Why It Matters
+
+Nếu checkout chỉ được coi là thành công sau khi email provider trả `200 OK`, một provider chậm có thể kéo dài request, giữ resource và thậm chí làm team nghĩ phải rollback business operation đã commit hợp lệ. Nhưng nếu bỏ retry hoàn toàn, transient failure lại làm notification biến mất.
+
+Notification delivery vì vậy có reliability boundary khác business transaction. Hệ thống phải chịu được provider timeout, Worker crash, duplicate delivery, poison message và traffic spike mà không biến mọi lỗi delivery thành lỗi business.
+
+Điểm khó nhất không phải enqueue message. Điểm khó là **biến retry thành behavior an toàn khi không thể luôn biết remote side effect đã xảy ra hay chưa**.
 
 ## Mental Model
 
-Notification không phải phần kéo dài của synchronous business request. Nó là một side-effect pipeline độc lập:
-
 `business success → durable notification intent → Queue → Worker → provider → delivery state`
 
-<Principle label="Reliability rule">Retry chỉ an toàn khi duplicate đã được xem là behavior bình thường và có cách nhận diện cùng logical notification.</Principle>
+<Principle label="Reliability rule">Retry chỉ an toàn khi duplicate đã được coi là normal behavior và cùng logical notification có stable identity.</Principle>
 
 <FlowExplainer
   title="Timeout không chứng minh notification chưa được gửi"
-  description="Trace tập trung vào ambiguous outcome: provider đã tạo side effect nhưng ACK bị mất, khiến Queue redeliver cùng logical notification."
+  description="Provider có thể đã tạo side effect nhưng response bị mất, khiến Queue redeliver cùng logical notification."
   scenarios={[
-    {
-      id: 'ambiguous-timeout',
-      label: 'Timeout + retry',
-      layout: 'compact',
-      nodes: [
-        {id: 'business', label: 'Business Service', detail: 'Commits operation', role: 'service'},
-        {id: 'queue', label: 'Queue', detail: 'At-least-once work', role: 'data'},
-        {id: 'worker', label: 'Notification Worker', detail: 'Stable notification_id', role: 'service'},
-        {id: 'provider', label: 'Email Provider', detail: 'External side effect', role: 'network'},
-        {id: 'dedupe', label: 'Delivery State', detail: 'Attempts + dedupe', role: 'database'},
-      ],
-      edges: [
-        {id: 'business-queue', source: 'business', target: 'queue'},
-        {id: 'queue-worker', source: 'queue', target: 'worker'},
-        {id: 'worker-provider', source: 'worker', target: 'provider'},
-        {id: 'provider-worker', source: 'provider', target: 'worker'},
-        {id: 'worker-dedupe', source: 'worker', target: 'dedupe'},
-      ],
-      steps: [
-        {title: '1 · Persist delivery intent', edgeId: 'business-queue', from: 'business', to: 'queue', message: 'notification_id', description: 'Business success tạo durable intent thay vì chờ external provider trong transaction.'},
-        {title: '2 · Consume attempt', edgeId: 'queue-worker', from: 'queue', to: 'worker', message: 'attempt #1', description: 'Worker xử lý một attempt của cùng logical notification.'},
-        {title: '3 · Provider sends', edgeId: 'worker-provider', from: 'worker', to: 'provider', message: 'send email', description: 'Provider có thể đã tạo side effect thành công.'},
-        {title: '4 · ACK is lost', edgeId: 'provider-worker', from: 'provider', to: 'worker', message: 'timeout', description: 'Worker không biết provider chưa gửi hay response thành công đã bị mất.'},
-        {title: '5 · Record ambiguous attempt', edgeId: 'worker-dedupe', from: 'worker', to: 'dedupe', message: 'same logical ID', description: 'Stable identity giữ retry gắn với notification cũ, không biến nó thành side effect mới.'},
-        {title: '6 · Queue redelivers', edgeId: 'queue-worker', from: 'queue', to: 'worker', message: 'attempt #2', repeat: 2, description: 'Vì Worker chưa ACK, Queue có thể giao lại cùng work; retry chỉ an toàn khi idempotency/deduplication được enforce.'},
-      ],
-    },
+    {id: 'ambiguous-timeout', label: 'Timeout + retry', layout: 'compact', nodes: [
+      {id: 'business', label: 'Business Service', detail: 'Commits operation', role: 'service'},
+      {id: 'queue', label: 'Queue', detail: 'At-least-once work', role: 'data'},
+      {id: 'worker', label: 'Notification Worker', detail: 'Stable notification_id', role: 'service'},
+      {id: 'provider', label: 'Provider', detail: 'External side effect', role: 'network'},
+      {id: 'state', label: 'Delivery State', detail: 'Attempts + dedupe', role: 'database'},
+    ], steps: [
+      {title: '1 · Persist intent', from: 'business', to: 'queue', message: 'notification_id', description: 'Business success tạo durable delivery intent thay vì chờ provider.'},
+      {title: '2 · Consume attempt', from: 'queue', to: 'worker', message: 'attempt #1', description: 'Worker xử lý một attempt của cùng logical notification.'},
+      {title: '3 · Provider sends', from: 'worker', to: 'provider', message: 'send', description: 'Provider có thể đã tạo side effect thành công.'},
+      {title: '4 · Response lost', from: 'provider', to: 'worker', message: 'timeout', description: 'Worker không biết side effect chưa xảy ra hay response đã bị mất.'},
+      {title: '5 · Keep stable identity', from: 'worker', to: 'state', message: 'same notification_id', description: 'Retry vẫn thuộc logical notification cũ.'},
+      {title: '6 · Redelivery', from: 'queue', to: 'worker', message: 'attempt #2', repeat: 2, description: 'At-least-once delivery yêu cầu dedupe/idempotency ở processing boundary.'},
+    ]},
   ]}
 />
 
 ## Core Concepts
 
-### Intent trước delivery
+### Intent tách business correctness khỏi delivery reliability
 
-Business operation nên ghi nhận rằng notification *cần được gửi*, thay vì giữ transaction mở trong lúc gọi provider. Intent/event là boundary giữa business correctness và delivery reliability: order có thể đã commit dù email provider đang chậm hoặc unavailable.
+Business operation nên persist việc notification **cần được gửi**, thay vì giữ transaction mở trong lúc gọi provider. Order/reservation có thể đã đúng dù provider đang unavailable.
 
-Queue buffer spike và decouple producer khỏi Worker. Tuy nhiên, Queue chỉ giữ/phân phối work; notification status cần durable state riêng nếu hệ thống phải audit, retry hoặc cho biết kết quả.
+### Logical notification khác delivery attempt
 
-### Delivery state phải phân biệt attempt và logical notification
-
-Một notification logic có thể có nhiều attempts. Nếu mỗi retry bị xem như notification mới, deduplication trở nên khó. Stable notification ID giúp Worker, logs và provider request cùng tham chiếu một logical side effect, trong khi attempt count/backoff mô tả lịch sử thực thi.
+Một notification logic có thể có nhiều attempts. Stable `notification_id` giữ retries gắn với cùng side effect, còn attempt count/backoff mô tả lịch sử thực thi. Nếu mỗi retry sinh identity mới, deduplication gần như mất ý nghĩa.
 
 ### Timeout tạo ambiguous outcome
 
-Worker gửi request tới provider nhưng timeout trước khi nhận ACK. Có ít nhất hai khả năng:
-
-- Provider chưa gửi; retry là cần thiết.
-- Provider đã gửi nhưng response bị mất; retry có thể tạo duplicate.
-
-Do đó timeout không tương đương failure chắc chắn. Queue-level exactly-once claim cũng không loại bỏ ambiguity ở network/provider boundary.
+Provider timeout có ít nhất hai khả năng: provider chưa gửi, hoặc provider đã gửi nhưng response bị mất. Vì thế “timeout = chưa gửi” là giả định nguy hiểm. Queue exactly-once cũng không tự xóa ambiguity ở external provider boundary.
 
 ### ACK, retry budget và DLQ
 
-Worker chỉ ACK work sau khi processing đạt trạng thái được policy coi là thành công. Transient failure có thể retry với backoff để tránh dồn tải lại ngay lập tức. Khi vượt retry budget, đưa item vào DLQ giúp cô lập poison/repeated failures để điều tra hoặc replay có chủ đích; DLQ không phải nơi “ném lỗi rồi quên”.
+Worker ACK sau khi processing đạt trạng thái success theo policy. Transient failure retry với backoff/jitter; permanent hoặc repeated failure vượt budget đi DLQ. DLQ cần ownership, observability và replay procedure — không phải “thùng rác cuối pipeline”.
 
-### Idempotency và deduplication
+### Idempotency là end-to-end concern
 
-Idempotent processing nghĩa là cùng logical notification được xử lý lặp lại mà không tạo thêm side effect ngoài ý muốn. Có thể dựa trên stable notification ID, deduplication state hoặc provider-supported idempotency khi boundary đó cung cấp guarantee phù hợp. Design phải nêu idempotency được enforce ở đâu; chỉ gắn một ID mà không kiểm tra/use nó chưa tạo guarantee.
+Idempotent processing có thể dựa trên stable notification ID, delivery-state dedupe hoặc provider-supported idempotency. Chỉ tạo một ID nhưng không check/use nó chưa tạo guarantee.
 
-### Delivery guarantee là end-to-end property
+### Delivery guarantees cần đọc theo boundary
 
-- **At-most-once:** giảm duplicate nhưng có thể mất notification.
-- **At-least-once:** giảm nguy cơ mất work nhưng duplicate có thể xuất hiện.
-- **Exactly-once:** không nên tuyên bố end-to-end chỉ vì Queue deduplicate; provider và network vẫn có ambiguous outcomes.
+At-most-once giảm duplicate nhưng có thể mất work. At-least-once giảm mất work nhưng duplicate là expected. “Exactly-once end-to-end” thường không nên tuyên bố nếu external side effect vẫn có network ambiguity.
 
 ## Example
 
-Sau khi reservation thành công:
+### Starting Point
 
-1. Hệ thống tạo một durable notification intent với stable `notification_id`.
-2. Worker consume intent và gọi email provider.
-3. Provider đã gửi email nhưng response về Worker bị timeout.
-4. Queue redeliver work vì chưa ACK.
-5. Worker dùng cùng logical ID/deduplication rule để retry mà không coi đây là một email hoàn toàn mới.
-6. Nếu transient failure kéo dài quá retry budget, work chuyển DLQ cùng đủ context để điều tra/replay.
+Checkout gọi email provider synchronously sau khi tạo order.
 
-Điểm khó nhất không phải enqueue, mà là xử lý vùng không chắc chắn giữa “provider có thể đã làm” và “Worker chưa nhận được xác nhận”.
+### Requirement Changes
+
+Provider latency tăng, traffic spike và timeout bắt đầu làm checkout chậm dù order đã được persist đúng.
+
+### Naive Fix
+
+Thêm retry trực tiếp trong request. Khi provider đã gửi nhưng response bị mất, retry tạo email duplicate.
+
+### Root Cause
+
+Business transaction và external side effect có failure semantics khác nhau; timeout không cho caller biết chắc side effect đã xảy ra hay chưa.
+
+### Better Design
+
+Persist durable notification intent với stable ID, enqueue work, Worker delivery async, ACK sau processing, retry bounded với backoff, dedupe/idempotency tại side-effect boundary và DLQ cho failures cần điều tra.
+
+### Why It Works
+
+Business path không phụ thuộc provider latency. Retry trở thành normal mechanism thay vì exceptional hack, và duplicate risk được quản lý bằng stable logical identity cùng explicit delivery state.
 
 ## When to Use
 
-- Tách email, push, SMS khỏi latency và availability của business request.
-- Dùng Queue để buffer spike và cho phép Worker scale độc lập.
-- Dùng at-least-once khi mất notification tệ hơn duplicate và processing có idempotency/deduplication.
-- Dùng retry với backoff cho transient failures; dùng DLQ sau bounded retry budget.
-- Persist delivery state khi cần audit, support hoặc replay.
+Dùng async notification pipeline khi side effect không cần hoàn tất trước business response, provider có latency/failure độc lập hoặc traffic cần buffer. Synchronous delivery vẫn có thể hợp với workflow nhỏ khi caller thực sự cần immediate provider result và chấp nhận coupling đó.
 
 ## Common Mistakes
 
-- **Gọi provider trong DB transaction dài:** remote latency/failure giữ resource và trộn hai reliability boundary.
-- **ACK trước khi xử lý xong:** Worker crash có thể làm mất work.
-- **Retry mọi lỗi vô hạn:** tạo retry storm và che poison message.
-- **Coi timeout là chưa gửi:** có thể gửi duplicate khi ACK bị mất.
-- **Tuyên bố exactly-once từ Queue:** bỏ qua provider side effect và network ambiguity.
-- **Có DLQ nhưng không có ownership:** failure chỉ bị di chuyển, không được xử lý.
+- Gọi provider trong DB transaction dài.
+- ACK trước khi processing hoàn tất.
+- Retry mọi lỗi vô hạn.
+- Coi timeout là “chưa gửi”.
+- Tuyên bố exactly-once chỉ vì Queue deduplicate.
+- Có DLQ nhưng không có owner/replay procedure.
 
-## Related Knowledge
+## Decision Guide
 
-- [System Design Fundamentals](./system-design-fundamentals.mdx) — đặt Queue, durable state và correctness vào đúng trách nhiệm.
-- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — giải thích timeout, retry và `Idempotency-Key` trên remote boundary.
-- [Database Design Foundations](./database-design-foundations.mdx) — làm rõ transaction boundary khi business commit và external side effect không thể nằm trong một atomic DB transaction đơn giản.
+1. Notification có cần hoàn tất trước business response không?
+2. Intent được persist ở đâu để không mất sau process crash?
+3. Logical ID và attempt ID có được phân biệt không?
+4. Provider có native idempotency/dedupe không?
+5. Error nào retryable, backoff/budget bao nhiêu?
+6. ACK xảy ra ở boundary nào?
+7. DLQ được monitor, triage và replay ra sao?
+
+## Practical Takeaway
+
+Thiết kế notification từ failure semantics, không từ Queue technology. Hãy coi duplicate và timeout ambiguity là normal distributed behavior, rồi dùng **durable intent + stable identity + bounded retry + idempotent processing** để side-effect pipeline có thể phục hồi mà không kéo business transaction vào cùng failure domain.
 
 ## Self-test
 
 1. Vì sao notification delivery nên tách khỏi business transaction?
-2. Logical notification và delivery attempt khác nhau thế nào?
+2. Logical notification và attempt khác nhau thế nào?
 3. Timeout từ provider tạo hai possible outcomes nào?
-4. ACK nên xảy ra khi nào và DLQ dùng cho việc gì?
+4. ACK và DLQ có vai trò gì?
 5. Vì sao at-least-once cần idempotent processing?
 
-<details>
-<summary>Answers</summary>
-
-1. Provider latency/failure không nên kéo dài hoặc rollback business operation đã hợp lệ.
-2. Logical notification là side effect cần đạt; attempt là một lần thử thực thi side effect đó.
-3. Provider chưa gửi, hoặc provider đã gửi nhưng response/ACK bị mất.
-4. ACK sau processing theo success policy; DLQ cô lập item vượt retry budget để điều tra/replay.
-5. Work có thể được redeliver, nên cùng logical item phải không tạo duplicate side effect ngoài ý muốn.
-
+<details><summary>Answers</summary>
+1. Provider failure không nên làm business operation hợp lệ phụ thuộc vào nó. 2. Logical notification là side effect cần đạt; attempt là một lần thử. 3. Provider chưa gửi hoặc đã gửi nhưng response bị mất. 4. ACK xác nhận processing theo policy; DLQ cô lập failures vượt retry budget để điều tra/replay. 5. Work có thể redeliver nên cùng logical item không được tạo side effect ngoài ý muốn.
 </details>
+
+## Related Knowledge
+
+- [System Design Fundamentals](./system-design-fundamentals.mdx)
+- [API Communication Fundamentals](./api-communication-fundamentals.mdx)
+- [Database Design Foundations](./database-design-foundations.mdx)
