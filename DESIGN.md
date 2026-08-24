@@ -31,6 +31,17 @@ Use progressive disclosure for hierarchy depth: domain-level categories stay exp
 - Landing navigation uses `LandingCardGrid` and `LandingCard`; page-specific card systems are not created unless the shared abstraction cannot represent a genuine teaching need.
 - Landing pages orient and route. They do not duplicate the full teaching content of their child lessons.
 
+### Level-2 Topic Overview contract
+
+`Topic Overview` is the visual orientation surface for a Level-2 topic. It must let a cold reader understand the topic's major parts and relationship within roughly five seconds.
+
+- Do not publish a raw prose mental map such as `A → B → C` or a sentence whose only visual structure is bold text and arrow characters when a real relationship exists.
+- For a compact sequence, dependency chain, set of conceptual layers, or diagnostic progression, use the shared `KnowledgeMap` surface so hierarchy, connectors, stage indices and responsive behavior are consistent across topics.
+- Use React Flow, FlowExplainer, Excalidraw, or another routed visual instead when the topic has branching topology, runtime behavior, lifecycle state, or a conceptual relationship that `KnowledgeMap` would oversimplify.
+- Keep overview labels concise. Detailed explanation belongs in Level 3; the Level-2 visual should orient, not teach every mechanism.
+- A specialized existing overview visual may remain if it already satisfies the semantic and readability bar. Consistency means a shared visual language, not forcing every topic into the same geometry.
+- On mobile, recompose the map vertically before shrinking text. The overview must remain readable without zooming or horizontal panning.
+
 ## Article hierarchy
 
 - H1 establishes the topic with generous whitespace and compact supporting metadata.
