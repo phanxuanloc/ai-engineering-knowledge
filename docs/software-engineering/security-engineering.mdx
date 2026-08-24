@@ -6,8 +6,7 @@ sidebar_position: 8
 tags: [security, least-privilege, authorization, trust-boundary, defense-in-depth]
 ---
 
-import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
-import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+import {KnowledgeMap, LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 
 # Security Engineering
 
@@ -15,25 +14,14 @@ Security Engineering bắt đầu từ **thứ cần bảo vệ** và các đư�
 
 ## Topic Overview
 
-Mental map: **Assets → Threats → Attack Surface → Controls → Residual Risk**. Thiết kế tốt không chỉ ngăn failure mà còn giới hạn blast radius khi một control thất bại.
-
-<ReactFlowDiagram
-  ariaLabel="Security Engineering topic overview"
-  direction="LR"
-  kind="flow"
-  interactive={false}
-  nodes={[
-    {id: 'assets', label: 'Assets', role: 'source', emphasis: true},
-    {id: 'threats', label: 'Threats', role: 'process'},
-    {id: 'surface', label: 'Attack Surface', role: 'process'},
-    {id: 'controls', label: 'Controls', role: 'process'},
-    {id: 'risk', label: 'Residual Risk', role: 'state'},
-  ]}
-  edges={[
-    {source: 'assets', target: 'threats'},
-    {source: 'threats', target: 'surface'},
-    {source: 'surface', target: 'controls'},
-    {source: 'controls', target: 'risk'},
+<KnowledgeMap
+  label="Security Engineering topic map"
+  levels={[
+    [{title: 'Assets', description: 'Identify the data, capability and system behavior that must be protected.'}],
+    [{title: 'Threats', description: 'Identify actors, misuse cases and failure paths that can harm those assets.'}],
+    [{title: 'Attack Surface', description: 'Locate exposed entry points and trust boundaries where threats can reach the system.'}],
+    [{title: 'Controls', description: 'Apply prevention, detection and containment controls at the right boundaries.'}],
+    [{title: 'Residual Risk', description: 'Evaluate what remains possible and limit blast radius when a control fails.'}],
   ]}
 />
 

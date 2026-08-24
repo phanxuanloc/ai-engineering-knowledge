@@ -5,8 +5,7 @@ tags: [networking, web, http, tcp, dns]
 slug: /software-engineering/networking-and-web-fundamentals
 ---
 
-import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
-import {FlowExplainer} from '@site/src/components/VisualExplainer';
+import {KnowledgeMap, LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 
 # Networking & Web Fundamentals
 
@@ -14,39 +13,15 @@ Networking & Web Fundamentals giúp debug theo **boundary đầu tiên mà reque
 
 ## Topic Overview
 
-Mental map: **Resolve Destination → Reach Destination → Establish Communication → Process Request → Response**. Đây là logical lifecycle, không phải topology bắt buộc của mọi hệ thống.
-
-<FlowExplainer
-  title="Journey of a web request"
-  description="Follow the request through the major boundaries without pretending every responsibility is a separate network hop."
-  stepDurationMs={2400}
-  scenarios={[{
-    id: 'request-overview',
-    label: 'HTTPS request',
-    layout: 'compact',
-    nodes: [
-      {id: 'client', label: 'Client', detail: 'domain + request', role: 'client'},
-      {id: 'dns', label: 'Resolve', detail: 'domain → IP', role: 'network'},
-      {id: 'network', label: 'Reach', detail: 'route · policy · NAT if needed', role: 'network'},
-      {id: 'transport', label: 'Connect', detail: 'TCP · TLS', role: 'service'},
-      {id: 'app', label: 'Process', detail: 'HTTP · app · data as needed', role: 'service'},
-      {id: 'result', label: 'Response', detail: 'HTTP result', role: 'client'},
-    ],
-    edges: [
-      {id: 'e1', source: 'client', target: 'dns'},
-      {id: 'e2', source: 'dns', target: 'network'},
-      {id: 'e3', source: 'network', target: 'transport'},
-      {id: 'e4', source: 'transport', target: 'app'},
-      {id: 'e5', source: 'app', target: 'result'},
-    ],
-    steps: [
-      {title: 'Resolve', description: 'Find the destination IP.', from: 'client', to: 'dns', active: ['client','dns']},
-      {title: 'Reach', description: 'Routing and policy allow traffic toward the destination.', from: 'dns', to: 'network', active: ['network']},
-      {title: 'Connect', description: 'Transport and TLS establish the communication channel.', from: 'network', to: 'transport', active: ['transport']},
-      {title: 'Process', description: 'The server-side HTTP/application boundary handles the request.', from: 'transport', to: 'app', active: ['app']},
-      {title: 'Respond', description: 'The result returns to the client.', from: 'app', to: 'result', active: ['result']},
-    ],
-  }]}
+<KnowledgeMap
+  label="Networking and Web Fundamentals topic map"
+  levels={[
+    [{title: 'Resolve Destination', description: 'Translate the domain into the destination IP with DNS.'}],
+    [{title: 'Reach Destination', description: 'Routing, firewall policy and NAT determine whether traffic can reach the target.'}],
+    [{title: 'Establish Communication', description: 'TCP and TLS establish a usable transport and secure channel.'}],
+    [{title: 'Process Request', description: 'HTTP, application logic and downstream data dependencies handle the request.'}],
+    [{title: 'Return Response', description: 'The HTTP result travels back through the network path to the client.'}],
+  ]}
 />
 
 ## Lessons

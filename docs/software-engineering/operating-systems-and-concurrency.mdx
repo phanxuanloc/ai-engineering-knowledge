@@ -4,8 +4,7 @@ description: Topic landing page cho execution, shared-state correctness, waiting
 slug: /software-engineering/operating-systems-and-concurrency
 ---
 
-import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
-import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+import {KnowledgeMap, LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 
 # Operating Systems & Concurrency
 
@@ -13,19 +12,15 @@ Operating Systems & Concurrency explains **where work executes, what it shares, 
 
 ## Topic Overview
 
-After identifying the execution boundary, use four diagnostic lenses: **shared state, waiting, memory and CPU**. They are independent lenses, not a mandatory runtime sequence.
-
-<ReactFlowDiagram
-  ariaLabel="Operating Systems and Concurrency topic overview"
-  direction="TB"
-  interactive={false}
-  kind="relationship"
-  nodes={[
-    {id: 'execution', label: 'Execution Boundary', detail: 'process · thread · concurrent work', role: 'process', emphasis: true},
-    {id: 'lenses', label: 'Diagnostic Lenses', detail: 'shared state · waiting · memory · CPU', role: 'group', size: 'wide'},
+<KnowledgeMap
+  label="Operating Systems and Concurrency topic map"
+  levels={[
+    [{title: 'Execution Boundary', description: 'Start with processes, threads and concurrent work to locate where execution happens.'}],
+    [{title: 'Shared State', description: 'Reason about interleaving, synchronization, race conditions and correctness.'}],
+    [{title: 'Waiting Model', description: 'Distinguish blocking, non-blocking and async I/O behavior when work waits.'}],
+    [{title: 'Memory', description: 'Inspect stack, heap, virtual memory, leaks and out-of-memory pressure.'}],
+    [{title: 'CPU Scheduling', description: 'Understand runnable work, context switching and worker sizing under finite CPU.'}],
   ]}
-  edges={[{source: 'execution', target: 'lenses', type: 'straight'}]}
-  caption="First locate the execution boundary; then diagnose correctness and capacity through the relevant resource lens."
 />
 
 ## Lessons
