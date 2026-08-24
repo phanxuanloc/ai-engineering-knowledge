@@ -13,16 +13,34 @@ import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 ## TL;DR
 
 <TLDR>
-Workflow quyết định change đi qua branch và quality gate nào; merge strategy quyết định history còn lại sau integration. Rewrite chỉ phù hợp với local/private history, còn shared history nên được sửa bằng commit mới như `revert`.
+Git có nhiều command trông giống “undo” hoặc “merge code”, nhưng chúng tác động lên các lớp khác nhau. Workflow quyết định change đi qua branch và quality gate nào; merge strategy quyết định history còn lại sau integration; restore/reset/revert lại xử lý working tree, local history hoặc shared history. Quy tắc an toàn nhất là xác định đúng phạm vi trước khi chạy command.
 </TLDR>
+
+## Why It Matters
+
+Một lệnh Git sai hiếm khi chỉ gây “history xấu”. Nó có thể làm mất local work, rewrite commit mà đồng đội đang dựa vào, khiến một fix khó backport, hoặc biến `main` thành history khó điều tra khi production có sự cố.
+
+Vấn đề thường không nằm ở việc quên syntax. Vấn đề là dùng đúng command cho sai **scope**. Ví dụ, `git reset --hard` có thể hợp lý khi muốn bỏ toàn bộ local experiment, nhưng là lựa chọn nguy hiểm nếu mục tiêu thực ra chỉ là bỏ một file khỏi staging. Tương tự, rebase rất hữu ích để dọn private branch nhưng không nên là cách mặc định để “sửa” shared `main`.
 
 ## Mental Model
 
-<Principle label="Decision rule">{'Trước khi chạy command, hỏi hai câu: đang sửa working tree, local history hay shared history; và cần giữ topology, commit granularity hay chỉ logical outcome?'}</Principle>
+<Principle label="Decision rule">{'Trước khi chạy Git command, xác định hai thứ: đang thay đổi working tree, local history hay shared history; và sau integration muốn giữ topology, commit granularity hay chỉ logical outcome.'}</Principle>
+
+Có thể hình dung repository như ba lớp:
+
+1. **Working state** — file đang sửa và staging area.
+2. **Local history** — commit của branch bạn còn kiểm soát.
+3. **Shared history** — commit đã public và có thể đã trở thành dependency của người khác.
+
+Càng đi từ working state sang shared history, chi phí rewrite càng lớn. Vì vậy, local history có thể được làm sạch mạnh tay hơn; shared history nên ưu tiên thay đổi theo kiểu **append-only**, điển hình là `git revert`.
+
+## Core Concepts
+
+### Integration strategy quyết định history shape
 
 <ReactFlowDiagram
   ariaLabel="Merge, squash, rebase and cherry-pick change Git history in different ways"
-  caption="Chọn strategy theo giá trị cần giữ: topology branch, commit granularity, linear history hay một fix cụ thể."
+  caption="Các strategy đều có thể đưa cùng logical change vào main, nhưng giữ lại thông tin history khác nhau."
   controls={false}
   direction="TB"
   fullscreen
@@ -33,10 +51,10 @@ Workflow quyết định change đi qua branch và quality gate nào; merge stra
   nodes={[
     {id: 'feature', eyebrow: 'SOURCE', label: 'Feature commits', detail: 'A · B · C', role: 'source', size: 'compact'},
     {id: 'decision', eyebrow: 'INTEGRATION', label: 'Choose history strategy', detail: 'What should main remember?', role: 'decision', emphasis: true, size: 'standard'},
-    {id: 'squash', eyebrow: 'OPTION', label: 'Squash', detail: 'A+B+C -> S', role: 'process', size: 'compact'},
+    {id: 'squash', eyebrow: 'OPTION', label: 'Squash', detail: 'A+B+C → S', role: 'process', size: 'compact'},
     {id: 'rebase', eyebrow: 'OPTION', label: 'Rebase + merge', detail: "A' · B' · C'", role: 'process', size: 'compact'},
-    {id: 'merge', eyebrow: 'OPTION', label: 'Merge commit', detail: 'Branch topology', role: 'process', size: 'compact'},
-    {id: 'cherry', eyebrow: 'OPTION', label: 'Cherry-pick', detail: 'One selected commit', role: 'process', size: 'compact'},
+    {id: 'merge', eyebrow: 'OPTION', label: 'Merge commit', detail: 'Keep branch topology', role: 'process', size: 'compact'},
+    {id: 'cherry', eyebrow: 'OPTION', label: 'Cherry-pick', detail: 'Select one commit', role: 'process', size: 'compact'},
     {id: 'main', eyebrow: 'RESULT', label: 'main history', detail: 'Intentional, reviewable history', role: 'output', size: 'standard'},
   ]}
   edges={[
@@ -52,68 +70,134 @@ Workflow quyết định change đi qua branch và quality gate nào; merge stra
   ]}
 />
 
-## Core Concepts
+- **Squash merge** gom nhiều commit của một PR thành một commit logic. Nó tối ưu cho history theo business change hơn là theo từng bước phát triển.
+- **Rebase + merge** giữ nhiều commit có ý nghĩa nhưng đặt chúng nối tiếp trên latest target branch, tạo linear history.
+- **Merge commit** giữ lại topology và thời điểm hai nhánh được tích hợp.
+- **Fast-forward** chỉ di chuyển branch pointer khi target chưa diverge.
+- **Cherry-pick** copy một commit cụ thể sang branch khác; phù hợp cho backport có chủ đích, không phải cách đồng bộ branch tổng quát.
 
-### Merge strategy and history shape
+### Rewrite history khác với sửa history
 
-- **Squash merge:** nhiều commit tạm của một PR trở thành một commit logic sạch.
-- **Rebase + merge:** giữ các commit có ý nghĩa nhưng làm history tuyến tính.
-- **Merge commit:** giữ topology của branch và merge event.
-- **Fast-forward:** chỉ di chuyển pointer khi history chưa phân nhánh.
-- **Cherry-pick:** lấy một commit cụ thể sang branch khác; hữu ích cho backport fix.
+`rebase`, `commit --amend` và `reset` có thể tạo hoặc trỏ tới commit khác. Với private branch, điều đó thường ổn vì chỉ bạn phụ thuộc vào history cũ. Với shared branch, rewrite làm commit identity thay đổi và có thể phá assumptions của người khác.
 
-### Rewrite vs preserve history
+Khi history đã shared, **revert** thường an toàn hơn: Git tạo commit mới có patch đảo thay đổi cũ. History nói rõ “change từng tồn tại và sau đó bị đảo”, thay vì giả vờ change chưa từng xuất hiện.
 
-Local/private history chưa public có thể dùng `rebase`, `amend`, `reset` hoặc interactive rebase. Shared history đã public nên ưu tiên `revert`. Sau rebase trên branch cá nhân đã push, ưu tiên `git push --force-with-lease` thay vì `--force`.
+### Restore, reset và revert không phải ba biến thể của cùng một lệnh
 
-Các command đã học theo mental model:
+- `git restore <file>` phục hồi nội dung file trong working tree; `git restore --staged <file>` bỏ file khỏi staging nhưng giữ code.
+- `git reset --soft` di chuyển `HEAD` nhưng giữ thay đổi staged.
+- `git reset --mixed` di chuyển `HEAD`, giữ code nhưng bỏ staging.
+- `git reset --hard` di chuyển `HEAD` và đồng bộ cả index/working tree; local changes có thể mất.
+- `git revert <commit>` tạo commit mới đảo logical change, phù hợp với shared history.
 
-- `git restore` xử lý file/working tree; `git restore --staged` bỏ file khỏi staging nhưng giữ code.
-- `git reset --soft` bỏ commit nhưng giữ code staged; `--mixed` giữ code unstaged; `--hard` bỏ cả code.
-- `git commit --amend` viết lại commit cuối.
-- interactive rebase dùng `pick`, `reword`, `squash`, `fixup`, `drop`; `--autosquash` kết hợp với `fixup!` để dọn branch.
-- `git stash` cất tạm working changes; `apply` giữ stash, `pop` lấy ra và bỏ stash khi thành công.
-- `git reflog` là safety net local khi reset/rebase/amend nhầm.
-- `git fetch` cập nhật remote-tracking refs mà không tự tích hợp; `git pull` fetch rồi merge/rebase theo config.
-- `origin/main` là remote-tracking branch local, không phải branch trực tiếp “nằm trên GitHub”.
+### Rebase là công cụ chuyển base, không phải “merge sạch hơn” một cách tuyệt đối
+
+Rebase tạo commit mới dựa trên base mới. Nó hữu ích để cập nhật feature branch và làm history tuyến tính trước khi merge. Nhưng rebase không loại bỏ conflict; nó chỉ giải conflict trong quá trình replay commit. Với branch public có nhiều người cùng làm, rebase có thể tạo coordination cost lớn hơn lợi ích từ linear history.
 
 ## Example
 
-Một feature branch có ba commit thử nghiệm `A`, `B`, `C`. Nếu cả PR là một logical change, squash tạo một commit `S` dễ revert. Nếu từng commit đã sạch và có giá trị review độc lập, rebase + merge giữ granularity đó trong linear history. Nếu branch topology cần được bảo toàn, dùng merge commit.
+### Starting Point
+
+Bạn có feature branch:
+
+```text
+main:    M1 ── M2
+               \
+feature:        A ── B ── C
+```
+
+`A` tạo API skeleton, `B` sửa typo và `C` hoàn thiện validation.
+
+### Requirement Changes
+
+Team muốn đưa feature vào `main`, nhưng cũng muốn history dễ debug và dễ revert. Có ba cách hợp lý tùy chất lượng commit hiện tại.
+
+### Option 1 — Squash một logical change
+
+Nếu `A/B/C` chỉ là các bước tạm để hoàn thành cùng một capability, squash thành `S` giúp `main` giữ một commit có nghĩa:
+
+```text
+main: M1 ── M2 ── S
+```
+
+Khi production cần đảo toàn bộ feature, revert `S` đơn giản và rõ ràng.
+
+### Option 2 — Giữ commit granularity bằng rebase + merge
+
+Nếu `A`, `B`, `C` đều độc lập, test được và có message tốt, rebase lên latest `main` rồi merge có thể giữ ba decision points nhưng vẫn linear:
+
+```text
+main: M1 ── M2 ── A' ── B' ── C'
+```
+
+### Option 3 — Giữ topology bằng merge commit
+
+Nếu branch đại diện cho một integration event quan trọng, merge commit giữ lại quan hệ branch:
+
+```text
+main:    M1 ── M2 ──────── X
+               \           /
+feature:        A ── B ── C
+```
+
+Không có option nào “đẹp nhất” cho mọi repo. Câu hỏi là **history cần giúp team làm việc gì sau này**.
+
+### Recovery scenario
+
+Sau khi merge, production phát hiện `C` gây regression. Nếu commit đã shared, không reset `main` về `M2`. Hãy revert commit hoặc revert squash/merge tương ứng để tạo một commit sửa mới. Nếu trước đó bạn lỡ reset/rebase local branch, `git reflog` có thể giúp tìm lại commit cũ miễn object chưa bị garbage-collected.
 
 ## When to Use
 
-- Dùng squash khi PR là một logical change nhưng intermediate commits không có giá trị lâu dài.
-- Dùng rebase + merge khi muốn history tuyến tính và vẫn giữ các commit có ý nghĩa.
-- Dùng merge commit khi merge event hoặc topology branch là thông tin quan trọng.
-- Dùng cherry-pick khi chỉ cần mang một fix cụ thể sang release line khác.
-- Dùng `revert` cho shared history; chỉ rewrite khi ownership và phạm vi ảnh hưởng đã rõ.
+- **Squash** khi một PR là một logical change và intermediate commits không có giá trị lâu dài.
+- **Rebase + merge** khi các commit đã sạch, có ý nghĩa, và team muốn linear history.
+- **Merge commit** khi topology hoặc merge event là thông tin cần giữ.
+- **Cherry-pick** khi cần mang đúng một fix sang release line khác.
+- **Rebase/amend/reset** khi đang làm việc với local/private history và hiểu rõ ảnh hưởng.
+- **Revert** khi thay đổi đã nằm trong shared history hoặc production path.
 
 ## Common Mistakes
 
-- Rebase hoặc force-push shared `main` thay vì dùng `revert`.
-- Dùng `git reset --hard` như undo mặc định khi chỉ cần `restore` hoặc `reset --mixed/soft`.
-- Dùng `--force` sau rebase thay vì `--force-with-lease`.
-- Chọn merge strategy trước khi xác định branch đích và release path.
+- Rebase hoặc force-push shared `main` chỉ để history nhìn tuyến tính hơn.
+- Dùng `git reset --hard` như “undo mặc định” dù mục tiêu chỉ là unstage hoặc phục hồi một file.
+- Dùng `git push --force` sau rebase thay vì `--force-with-lease`, bỏ qua khả năng remote đã có commit mới.
+- Cherry-pick hàng loạt để đồng bộ branch, tạo duplicate commits và provenance khó hiểu.
+- Squash mọi PR dù các commit bên trong thực sự là các migration step độc lập cần trace/revert riêng.
+- Chọn merge strategy trước khi hiểu workflow, release line và rollback model của repository.
+
+## Decision Guide
+
+Trước khi chọn command hoặc merge strategy, hỏi:
+
+1. **Phạm vi nào đang thay đổi?** Working tree, staging, private history hay shared history?
+2. **Change đã public chưa?** Nếu rồi, ưu tiên append-only repair bằng commit mới.
+3. **Main cần nhớ gì?** Một logical change, từng atomic commit hay branch topology?
+4. **Có cần backport không?** Nếu chỉ một fix cần sang release line khác, cherry-pick có thể hợp lý.
+5. **Có cần recover không?** Trước thao tác destructive, kiểm tra branch/tag/reflog và trạng thái uncommitted work.
+
+## Practical Takeaway
+
+Đừng học Git theo kiểu “lệnh nào dùng để undo”. Hãy học theo **scope + history semantics**. `restore` sửa file state, `reset` dịch chuyển local history, `revert` sửa shared history bằng commit mới; còn squash/rebase/merge commit quyết định main sẽ nhớ change theo hình dạng nào.
+
+Khi review team convention, mục tiêu không phải history càng tuyến tính càng tốt. Mục tiêu là history đủ rõ để review, bisect, revert, backport và điều tra production với chi phí thấp.
+
+## Self-test
+
+1. Một PR có 12 commit kiểu `wip`, `fix typo`, `try again` nhưng tạo đúng một capability. Strategy nào thường hợp lý nhất?
+2. Vì sao `git revert` phù hợp hơn `git reset --hard` cho commit đã merge vào shared `main`?
+3. Khi nào merge commit có giá trị hơn squash?
+4. Sau rebase private branch đã push, vì sao `--force-with-lease` an toàn hơn `--force`?
+
+<details>
+<summary>Answers</summary>
+
+1. Squash merge thường phù hợp vì main chỉ cần nhớ một logical change.
+2. `revert` tạo commit mới và không rewrite history mà người khác có thể đã dựa vào; `reset --hard` dịch chuyển local ref và còn có thể xóa working changes.
+3. Khi branch topology hoặc merge event là thông tin quan trọng cần giữ để audit/debug.
+4. `--force-with-lease` từ chối overwrite nếu remote đã thay đổi ngoài expectation của bạn.
+
+</details>
 
 ## Related Knowledge
 
 - [Git Workflows](./git-workflows.mdx) — chọn branch model và integration path trước khi chọn history shape.
 - [Release Safety & Traceability](./release-safety-and-traceability.mdx) — nối integrated commit với CI, artifact và production runtime.
-
-## Self-test
-
-1. Khi nào squash phù hợp hơn rebase + merge?
-2. `restore`, `reset` và `revert` tác động lên ba phạm vi nào?
-3. Vì sao shared history nên ưu tiên `revert`?
-4. Khi nào cherry-pick hợp lý?
-
-<details>
-<summary>Answers</summary>
-
-1. Khi toàn bộ PR là một logical change nhưng các commit trung gian chỉ phục vụ quá trình phát triển.
-2. `restore` chủ yếu xử lý file/working tree; `reset` di chuyển HEAD/index trong local history; `revert` tạo commit mới đảo thay đổi trong shared history.
-3. Vì `revert` không rewrite commit mà người khác có thể đã dựa vào.
-4. Khi cần mang một commit cụ thể, thường là fix, sang branch hoặc release line khác mà không lấy toàn bộ branch.
-
-</details>
