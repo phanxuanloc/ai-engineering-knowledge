@@ -50,6 +50,7 @@
 .mapTrackStacked {
   display: grid;
   gap: 1.55rem;
+  justify-items: center;
 }
 
 .mapLevelGroup {
@@ -59,6 +60,11 @@
   min-width: 0;
   flex-direction: column;
   gap: .55rem;
+}
+
+.mapTrackStacked .mapLevelGroup {
+  width: min(100%, 46rem);
+  flex: none;
 }
 
 .mapLevelGroup:not(:last-child)::after {
@@ -119,6 +125,10 @@
   height: 100%;
 }
 
+.mapTrackStacked .mapLevel {
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+}
+
 .mapNode {
   position: relative;
   display: flex;
@@ -130,11 +140,16 @@
   padding: .95rem 1rem .95rem 1.1rem;
   overflow: hidden;
   color: inherit;
+  text-align: left;
   text-decoration: none;
   background: color-mix(in srgb, var(--learning-surface) 96%, transparent);
   border: 1px solid var(--learning-border);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgb(15 23 42 / 5%);
+}
+
+.mapTrackStacked .mapNode {
+  width: 100%;
 }
 
 .mapNode::before {
@@ -198,6 +213,12 @@
     transform: rotate(135deg);
   }
 
+  .mapLevelGroup,
+  .mapTrackStacked .mapLevelGroup {
+    width: min(100%, 42rem);
+    justify-self: center;
+  }
+
   .mapNode {
     min-height: 5.2rem;
   }
@@ -213,8 +234,14 @@
     display: none;
   }
 
-  .mapLevel {
+  .mapLevel,
+  .mapTrackStacked .mapLevel {
     grid-template-columns: 1fr;
+  }
+
+  .mapLevelGroup,
+  .mapTrackStacked .mapLevelGroup {
+    width: 100%;
   }
 
   .mapNode {
