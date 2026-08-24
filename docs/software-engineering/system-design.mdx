@@ -4,7 +4,7 @@ description: Topic landing page từ fundamentals tới representative productio
 slug: /software-engineering/system-design
 ---
 
-import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+import {KnowledgeMap, LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 
 # System Design
 
@@ -12,7 +12,16 @@ System Design là reasoning process để biến requirements thành architectur
 
 ## Topic Overview
 
-Mental map: **Requirements → Workload / bottleneck → Building blocks → Trade-offs → Failure & recovery**. Các case studies áp dụng cùng reasoning process vào constraints khác nhau.
+<KnowledgeMap
+  label="System Design topic map"
+  levels={[
+    [{title: 'Requirements', description: 'Clarify user-visible behavior, scale targets and constraints.'}],
+    [{title: 'Workload & Bottleneck', description: 'Find the dominant read, write, latency, throughput or consistency pressure.'}],
+    [{title: 'Building Blocks', description: 'Choose storage, cache, queue, compute and communication boundaries.'}],
+    [{title: 'Trade-offs', description: 'Make cost, consistency, latency and complexity decisions explicit.'}],
+    [{title: 'Failure & Recovery', description: 'Design degraded behavior, retry, isolation and recovery paths.'}],
+  ]}
+/>
 
 ## Lessons
 
