@@ -33,6 +33,8 @@
   position: relative;
 }
 .reactFlowCanvas:fullscreen { width: 100vw; height: 100vh !important; border: 0; border-radius: 0; }
+.reactFlowCanvas :global(.react-flow__pane) { touch-action: pan-y; }
+.reactFlowCanvas:fullscreen :global(.react-flow__pane) { touch-action: none; }
 .fullscreenButton { position: absolute; z-index: 5; top: .65rem; right: .65rem; display: grid; width: 30px; height: 30px; padding: 0; place-items: center; color: var(--ifm-font-color-base); font-size: 1rem; line-height: 1; cursor: pointer; background: color-mix(in srgb, var(--diagram-surface) 94%, transparent); border: 1px solid var(--learning-border); border-radius: 6px; }
 .fullscreenButton:hover { background: var(--learning-subtle-surface); }
 .fullscreenButton:focus-visible { outline: 2px solid var(--learning-active); outline-offset: 2px; }
@@ -76,7 +78,7 @@
 }
 
 @media (max-width: 700px) {
-  .reactFlowCanvas { min-height: 340px; touch-action: none; }
+  .reactFlowCanvas { min-height: 340px; }
   .excalidrawFigure figcaption,
   .reactFlowFigure figcaption { text-align: left; }
   .excalidrawFigure picture,
