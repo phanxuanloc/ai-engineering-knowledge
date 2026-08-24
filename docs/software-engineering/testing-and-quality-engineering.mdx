@@ -4,17 +4,27 @@ description: "Topic landing page cho software testing boundaries và quality fee
 slug: /software-engineering/testing-and-quality-engineering
 ---
 
+import {KnowledgeMap, LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+
 # Testing & Quality Engineering
 
 Testing & Quality Engineering giúp đặt test ở boundary nhỏ nhất có thể chứng minh behavior cần bảo vệ, rồi bổ sung broader tests khi cần xác nhận integration hoặc user journey.
 
 ## Topic Overview
 
-Mental map: **Unit → Integration → End-to-End** tăng scope và confidence theo boundary, nhưng thường cũng tăng setup cost, execution time và độ khó khi debug failure.
+<KnowledgeMap
+  label="Testing and Quality Engineering topic map"
+  levels={[
+    [{title: 'Unit Boundary', description: 'Fast, local feedback around one behavior or responsibility.'}],
+    [{title: 'Integration Boundary', description: 'Verify contracts and collaboration across real components.'}],
+    [{title: 'End-to-End Boundary', description: 'Protect critical user journeys across the deployed system.'}],
+    [{title: 'Quality Feedback', description: 'Use the smallest sufficient boundary, then widen only for real risk.'}],
+  ]}
+/>
 
 ## Lessons
 
-- [Testing Fundamentals](./testing-fundamentals) — chọn Unit, Integration hay E2E theo risk boundary.
-- [Test Doubles & Mocking](./test-doubles-and-mocking) — phân biệt Stub, Mock và Fake theo mục đích của test.
-
-Các lesson được giữ tách biệt để mỗi mental model có một canonical home ngắn, dễ tra cứu thay vì dồn toàn bộ Testing & Quality Engineering vào một bài dài.
+<LandingCardGrid>
+  <LandingCard eyebrow="01" title="Testing Fundamentals" description="Chọn Unit, Integration hay E2E theo risk boundary." to="./testing-fundamentals" />
+  <LandingCard eyebrow="02" title="Test Doubles & Mocking" description="Phân biệt Stub, Mock và Fake theo mục đích của test." to="./test-doubles-and-mocking" />
+</LandingCardGrid>
