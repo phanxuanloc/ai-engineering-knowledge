@@ -4,7 +4,7 @@ description: "Topic landing page cho production visibility và user-visible reli
 slug: /software-engineering/observability-and-reliability
 ---
 
-import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+import {KnowledgeMap, LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 
 # Observability & Reliability
 
@@ -12,7 +12,16 @@ Observability & Reliability connects **understanding production behavior** with 
 
 ## Topic Overview
 
-Mental map: telemetry provides evidence about system behavior; SLI/SLO turn user-visible outcomes into reliability targets; incidents and failures feed improvements back into the system.
+<KnowledgeMap
+  label="Observability and Reliability topic map"
+  levels={[
+    [{title: 'Telemetry', description: 'Collect logs, metrics and traces as evidence of system behavior.'}],
+    [{title: 'Understand Behavior', description: 'Correlate signals to explain what the system is doing and why.'}],
+    [{title: 'SLI & SLO', description: 'Translate user-visible outcomes into measurable reliability targets.'}],
+    [{title: 'Incident Response', description: 'Detect, diagnose and restore service when outcomes degrade.'}],
+    [{title: 'Improve', description: 'Feed production evidence back into design, alerts and reliability controls.'}],
+  ]}
+/>
 
 ## Lessons
 
