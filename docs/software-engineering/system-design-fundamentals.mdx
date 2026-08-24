@@ -1,6 +1,6 @@
 ---
 title: System Design Fundamentals
-description: Mental model và learning map để đi từ requirements, workload và bottleneck tới system design phù hợp.
+description: Mental model để đi từ requirements, workload và bottleneck tới architecture, correctness và trade-offs phù hợp.
 tags: [system-design, distributed-systems, scalability, reliability]
 ---
 
@@ -13,21 +13,31 @@ import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 <TLDR>
 
-System Design không bắt đầu bằng việc chọn technology. Hãy đi theo chuỗi **requirements → workload/bottleneck → architectural property → building block → trade-off**, rồi tách capacity, correctness, durability và realtime delivery thành các vấn đề riêng vì chúng cần những cơ chế khác nhau.
+System Design không bắt đầu bằng việc chọn technology. Hãy đi theo chuỗi **requirements → workload/bottleneck → system property → building block → trade-off**, rồi tách capacity, correctness, durability và realtime delivery thành các trách nhiệm riêng vì chúng cần những cơ chế khác nhau.
 
 </TLDR>
+
+## Why It Matters
+
+Một architecture có thể chứa Load Balancer, Cache, Queue, Database và nhiều services nhưng vẫn là design yếu nếu không trả lời được **mỗi component đang giải quyết vấn đề gì**.
+
+Ví dụ, concert booking nhận `100,000 req/s` cho 500 ghế. Queue có thể absorb burst và bảo vệ Worker khỏi traffic spike, nhưng không tự ngăn hai Worker cùng bán một ghế. Correctness phải được bảo vệ tại nơi giữ authoritative state bằng transaction, atomic conditional update hoặc cơ chế coordination tương đương.
+
+Ngược lại, Product API có `50,000 reads/s` với dữ liệu đổi vài lần mỗi ngày thường không cần Queue để lookup nhanh hơn. Bottleneck nằm ở repeated reads nên cache gần read path mới trực tiếp tạo ra property cần thiết.
+
+System Design vì thế là quá trình nối **pressure thực tế** với **property cần đạt**, thay vì ghép một danh sách technology quen thuộc.
 
 ## Mental Model
 
 Một bản design tốt phải nối được từng quyết định kỹ thuật với vấn đề mà nó giải quyết:
 
 1. Hệ thống phải làm gì và property nào không được vi phạm?
-2. Read path, write path hoặc async path nào chịu tải chính?
-3. State nào là durable source of truth, state nào chỉ là fast copy hoặc routing state?
+2. Read path, write path, async path hoặc realtime path nào chịu tải chính?
+3. State nào là durable source of truth, state nào chỉ là fast copy hoặc coordination state?
 4. Failure nào có thể xảy ra giữa các bước và retry sẽ tạo hệ quả gì?
 5. Building block được chọn tạo ra property nào và thêm trade-off nào?
 
-<Principle label="Decision rule">Queue và scaling giải quyết capacity; correctness cần consistency control riêng; realtime transport không thay thế durable storage.</Principle>
+<Principle label="Decision rule">Queue và horizontal scaling chủ yếu giải quyết capacity; correctness cần consistency control riêng; realtime transport không thay thế durable storage.</Principle>
 
 <FlowExplainer
   title="Cùng một request path, ba trách nhiệm khác nhau"
@@ -56,9 +66,22 @@ Một bản design tốt phải nối được từng quyết định kỹ thu�
 
 ## Core Concepts
 
-### Requirements và workload trước architecture
+### Requirements và workload đi trước architecture
 
-**Functional requirements** mô tả hệ thống làm gì. **Non-functional requirements** mô tả scale, latency, availability, durability và correctness. Sau đó mới ước lượng read/write ratio, peak traffic, data size, hot-key risk và những operation cần atomicity. Không có workload thì “scale tốt” chỉ là một tuyên bố mơ hồ.
+**Functional requirements** mô tả hệ thống phải làm gì. **Non-functional requirements** mô tả latency, availability, durability, consistency, scale và cost. Sau đó mới ước lượng read/write ratio, peak traffic, data size, hot-key risk và operation nào cần atomicity.
+
+Không có workload thì “scale tốt” chỉ là một tuyên bố mơ hồ. `1,000 req/s` đều trên hàng triệu users khác hoàn toàn `1,000 req/s` tập trung vào một hot key.
+
+### Tách path theo responsibility
+
+Một hệ thống thường có nhiều path với pressure khác nhau:
+
+- **Read path:** latency, cacheability, hot keys, query pattern.
+- **Write path:** durability, contention, invariant, write amplification.
+- **Async path:** buffering, retry, idempotency, backlog, replay.
+- **Realtime path:** connection state, routing, ordering, reconnect.
+
+Scale từng path theo bottleneck thật thay vì ép mọi traffic đi qua cùng một architecture.
 
 ### Phân loại state theo trách nhiệm
 
@@ -69,43 +92,79 @@ Một bản design tốt phải nối được từng quyết định kỹ thu�
   <ConceptCard title="Buffered work">Queue giữ work intent để decouple producer/consumer và absorb burst, nhưng không tự bảo vệ business invariant.</ConceptCard>
 </ConceptGrid>
 
-### Sáu deep dive đã học
+### Capacity không đồng nghĩa correctness
 
-- [URL Shortener](./url-shortener-system-design.mdx) — thiết kế read-heavy redirect path, key generation, cache và hot-key skew.
-- [Distributed Rate Limiter](./distributed-rate-limiter-system-design.mdx) — thiết kế global quota với shared state và atomic check-and-increment.
-- [Notification System](./notification-system-design.mdx) — thiết kế async delivery, retry, acknowledgement, DLQ và idempotency.
-- [Chat System](./chat-system-design.mdx) — tách realtime WebSocket delivery, distributed connection routing và durable message storage.
-- [Feed / Timeline System](./feed-timeline-system-design.mdx) — trade-off Fan-out on Write, Fan-out on Read, Queue/Workers và hybrid strategy.
-- [Distributed Cache](./distributed-cache-design.mdx) — Cache-Aside, TTL/invalidation, Hot Key, Cache Stampede và write strategies.
+Thêm instances, partition hoặc Queue có thể tăng throughput. Nhưng những kỹ thuật đó không tự đảm bảo uniqueness, balance không âm, không double booking hay quota toàn cục. Correctness phải được encode tại boundary có đủ authority để enforce invariant.
 
-Đây là **Learning Map của phần đã được checkpoint**, không phải danh sách mọi System Design có thể tồn tại.
+### Failure là một phần của normal design
+
+Distributed call có thể timeout sau khi remote side effect đã xảy ra. Worker có thể crash sau processing nhưng trước ACK. Cache có thể mất toàn bộ entries. Connection registry có thể stale. Vì vậy design phải mô tả retry, idempotency, fallback, recovery và degraded mode như normal behavior, không phải phần “xử lý sau”.
 
 ## Example
 
-Với Product API có `50,000 reads/s` nhưng dữ liệu chỉ đổi vài lần mỗi ngày, bottleneck là repeated Database reads. Cache trực tiếp tối ưu read path; Queue không làm lookup đồng bộ nhanh hơn. Ngược lại, với concert booking có `100,000 req/s` cho 500 ghế, Queue giúp absorb burst nhưng atomic reservation tại source of truth mới bảo vệ correctness.
+Giả sử thiết kế ticket booking:
 
-Hai case dùng building block khác nhau vì vấn đề cần giải quyết khác nhau, không phải vì một architecture “hiện đại” hơn architecture còn lại.
+### Starting Point
+
+API nhận booking và ghi trực tiếp Database. Với traffic bình thường, design đơn giản này có thể đủ.
+
+### Requirement Changes
+
+Flash sale tạo burst lớn. Request thread và Database connection bắt đầu saturate dù tổng số ghế rất ít.
+
+### Naive Fix
+
+Thêm Queue để absorb burst. Throughput ổn hơn, nhưng nhiều Workers vẫn có thể tranh cùng ghế.
+
+### Root Cause
+
+Capacity pressure và seat invariant là hai vấn đề khác nhau. Queue xử lý arrival rate; nó không sở hữu authoritative seat state.
+
+### Better Design
+
+API persist/emit booking intent, Queue buffer work, Workers xử lý async, còn Database dùng atomic conditional reservation hoặc transaction để chỉ một booking thắng. Notification chạy ở side-effect pipeline riêng với idempotency.
+
+### Why It Works
+
+Mỗi mechanism giờ gắn với đúng property: Queue bảo vệ capacity, Database bảo vệ correctness, durable state giữ kết quả qua failure, notification pipeline chịu trách nhiệm delivery/retry.
 
 ## When to Use
 
-- Dùng framework này khi bắt đầu một design mới hoặc review một architecture proposal.
-- Tách read, write, async và realtime path khi mỗi path có workload hoặc failure mode khác nhau.
-- Truy ngược từng component về property mà nó tạo ra; component không có trách nhiệm rõ là signal của over-design.
-- Mở deep dive tương ứng khi vấn đề chính là read-heavy lookup, global quota, reliable side effect, realtime messaging, feed generation hoặc cache behavior.
+Dùng framework này khi bắt đầu design mới, review architecture proposal hoặc debug production bottleneck. Nó đặc biệt hữu ích khi một team đang tranh luận “có nên thêm Cache/Queue/service khác không?” nhưng chưa thống nhất system property nào đang thiếu.
+
+Không cần distributed architecture phức tạp nếu workload nhỏ, consistency boundary đơn giản và một process + Database đã đáp ứng requirements. Simplicity cũng là một system property vì nó giảm operational surface và failure modes.
 
 ## Common Mistakes
 
-- **Chọn technology trước bottleneck:** thêm cache, Queue hoặc microservice mà chưa biết property cần cải thiện.
-- **Coi một building block giải quyết mọi thứ:** Queue không thay atomicity; WebSocket không thay Message Store; cache không phải source of truth.
+- **Chọn technology trước bottleneck:** thêm Cache, Queue hoặc microservice mà chưa biết property cần cải thiện.
+- **Coi một building block giải quyết mọi thứ:** Queue không thay atomicity; WebSocket không thay Message Store; Cache không phải source of truth.
 - **Chỉ nhìn average traffic:** peak burst và hot-key skew có thể làm một shard quá tải dù aggregate capacity còn dư.
 - **Bỏ qua ambiguous failure:** timeout không chứng minh remote side effect chưa xảy ra; retry có thể tạo duplicate.
 - **Đòi global guarantee khi scope nhỏ hơn đã đủ:** global ordering hoặc global coordination thường đắt hơn per-conversation/per-user scope.
+- **Scale quá sớm:** phân tán state trước khi có bottleneck thực tế làm tăng consistency và operational cost mà chưa tạo value.
 
-## Related Knowledge
+## Decision Guide
 
-- [Coupling & Cohesion](./coupling-and-cohesion.mdx) — nối responsibility và dependency ở code level với blast radius của các thay đổi architecture.
-- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — bổ sung semantics của timeout, retry, idempotency và remote failure trên communication boundary.
-- [Database Design Foundations](./database-design-foundations.mdx) — đi sâu vào atomic conditional update, transaction boundary và isolation tại source of truth.
+Khi review một design, đi theo thứ tự:
+
+1. **Requirement:** user/business cần behavior và guarantee nào?
+2. **Workload:** peak QPS, read/write ratio, payload size, growth, skew và burst nằm ở đâu?
+3. **Invariant:** fact nào tuyệt đối không được sai hoặc mất?
+4. **Critical path:** latency được quyết định bởi read, write, async hay realtime path nào?
+5. **State ownership:** source of truth, fast copy, coordination state và buffered work nằm đâu?
+6. **Failure:** timeout, partial failure, retry và instance loss tạo duplicate/stale/lost work thế nào?
+7. **Building block:** component được thêm có trực tiếp tạo property cần thiết không?
+8. **Trade-off:** latency, availability, consistency, cost và complexity đổi ra sao?
+
+Nếu không thể nối một component với một câu trả lời ở trên, hãy xem lại liệu component đó có thật sự cần thiết.
+
+## Practical Takeaway
+
+Một System Design tốt không phải design có nhiều boxes. Nó là design mà bạn có thể giải thích ngắn gọn:
+
+`pressure → property → mechanism → new trade-off`.
+
+Hãy giữ source of truth rõ ràng, scale đúng path chịu tải, enforce invariant tại nơi có authority và coi failure/retry là behavior bình thường. Từ mental model đó, các bài cụ thể như URL Shortener, Rate Limiter, Notification, Chat, Feed và Distributed Cache chỉ là những biến thể của cùng phương pháp reasoning.
 
 ## Self-test
 
@@ -113,15 +172,25 @@ Hai case dùng building block khác nhau vì vấn đề cần giải quyết kh
 2. Capacity, correctness, durability và realtime delivery khác nhau ở trách nhiệm nào?
 3. Vì sao Queue không ngăn double booking?
 4. Cache, coordination state và durable state khác nhau thế nào?
-5. Khi nào nên mở từng deep dive trong Learning Map?
+5. Vì sao một architecture đơn giản đôi khi tốt hơn một distributed architecture?
 
 <details>
 <summary>Answers</summary>
 
-1. Requirements → workload/bottleneck → architectural property → building block → trade-off.
+1. Requirements → workload/bottleneck → system property → building block → trade-off.
 2. Capacity xử lý lượng work; correctness bảo vệ invariant; durability giữ state qua failure; realtime delivery vận chuyển dữ liệu với latency thấp.
 3. Queue buffer và phân phối work, nhưng nhiều Worker vẫn có thể tranh cùng business state nếu source of truth không enforce atomicity.
-4. Cache là fast copy; coordination state giúp nhiều instance thống nhất một rule/routing decision; durable state giữ business fact lâu dài.
-5. URL Shortener cho read-heavy lookup; Rate Limiter cho global quota; Notification cho retryable side effect; Chat cho realtime delivery; Feed/Timeline cho fan-out trade-off; Distributed Cache cho cache freshness và failure modes.
+4. Cache là fast copy; coordination state giúp nhiều instance thống nhất rule/routing decision; durable state giữ business fact lâu dài.
+5. Nếu requirements đã được đáp ứng, simplicity giảm coordination, failure modes, operational cost và change surface.
 
 </details>
+
+## Related Knowledge
+
+- [URL Shortener System Design](./url-shortener-system-design.mdx) — read-heavy lookup, key generation, cache và hot-key skew.
+- [Distributed Rate Limiter](./distributed-rate-limiter-system-design.mdx) — global quota, shared state và atomic allowance decision.
+- [Notification System Design](./notification-system-design.mdx) — async delivery, retry, acknowledgement, DLQ và idempotency.
+- [Chat System Design](./chat-system-design.mdx) — realtime delivery, connection routing và durable history.
+- [Feed / Timeline System Design](./feed-timeline-system-design.mdx) — fan-out timing, write amplification và hybrid strategy.
+- [Distributed Cache Design](./distributed-cache-design.mdx) — Cache-Aside, freshness, hot key và cache stampede.
+- [Database Design Foundations](./database-design-foundations.mdx) — atomicity, transaction boundary và source-of-truth reasoning.
