@@ -47,6 +47,11 @@
   padding: 1.3rem;
 }
 
+.mapTrackStacked {
+  display: grid;
+  gap: 1.55rem;
+}
+
 .mapLevelGroup {
   position: relative;
   display: flex;
@@ -77,6 +82,21 @@
   border-top: 1.5px solid var(--learning-active);
   border-right: 1.5px solid var(--learning-active);
   transform: rotate(45deg);
+}
+
+.mapTrackStacked .mapLevelGroup:not(:last-child)::after {
+  top: auto;
+  right: 50%;
+  bottom: -1.05rem;
+  width: 1px;
+  height: .7rem;
+}
+
+.mapTrackStacked .mapLevelGroup:not(:last-child)::before {
+  top: auto;
+  right: calc(50% - 3px);
+  bottom: -1.07rem;
+  transform: rotate(135deg);
 }
 
 .mapIndexRow {
