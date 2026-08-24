@@ -1,0 +1,206 @@
+schema_version: 1
+
+# Canonical registry for public sharing coverage and private learning state.
+# `sharing` answers what is already published for readers.
+# `learning.status` answers only the learner state for that broad topic.
+# Valid learning statuses: not_started | learning | understood
+# Publishing docs never changes learning.status by itself.
+
+topics:
+  evaluation:
+    title: Evaluation
+    category: AI Fundamentals
+    sharing:
+      status: published
+      landing: docs/ai-fundamentals/evaluation.mdx
+      articles:
+        - docs/ai-fundamentals/evaluation-fundamentals.mdx
+        - docs/ai-fundamentals/evaluation-methods-and-evaluators.mdx
+        - docs/ai-fundamentals/evaluation-dataset-and-test-cases.mdx
+        - docs/ai-fundamentals/evaluation-metrics-and-aggregation.mdx
+        - docs/ai-fundamentals/evaluation-reliability-and-statistical-confidence.mdx
+        - docs/ai-fundamentals/evaluation-regression-gates-and-production-workflow.mdx
+    learning:
+      status: understood
+      next_checkpoint: null
+
+  context-engineering:
+    title: Context Engineering
+    category: AI Coding
+    sharing:
+      status: published
+      landing: docs/ai-coding/context-engineering-map.mdx
+      articles:
+        - docs/ai-coding/context-engineering.mdx
+        - docs/ai-coding/context-optimization.mdx
+        - docs/ai-coding/context-operations.mdx
+        - docs/ai-coding/practical-context-manager.mdx
+    learning:
+      status: understood
+      next_checkpoint: null
+
+  programming-and-code-design:
+    title: Programming & Code Design
+    category: Software Engineering
+    sharing:
+      status: published
+      landing: docs/software-engineering/programming-and-code-design.mdx
+      articles:
+        - docs/software-engineering/coupling-and-cohesion.mdx
+        - docs/software-engineering/abstraction-and-encapsulation.mdx
+        - docs/software-engineering/solid-design-lenses.mdx
+        - docs/software-engineering/composition-vs-inheritance.mdx
+    learning:
+      status: learning
+      next_checkpoint: composition-over-inheritance-independent-application
+
+  algorithms-and-data-structures:
+    title: Algorithms & Data Structures
+    category: Software Engineering
+    sharing:
+      status: published
+      landing: docs/software-engineering/algorithms-and-data-structures.mdx
+      articles:
+        - docs/software-engineering/search-and-ranking-fundamentals.mdx
+        - docs/software-engineering/hashing-and-hash-table-fundamentals.mdx
+        - docs/software-engineering/stack-and-queue-fundamentals.mdx
+        - docs/software-engineering/trees-graphs-and-traversal-fundamentals.mdx
+    learning:
+      status: learning
+      next_checkpoint: sorting-fundamentals
+
+  databases:
+    title: Databases
+    category: Software Engineering
+    sharing:
+      status: published
+      landing: docs/software-engineering/databases.mdx
+      articles:
+        - docs/software-engineering/database-design-foundations.mdx
+    learning:
+      status: learning
+      next_checkpoint: sql-vs-nosql-and-data-modeling
+
+  networking-and-web-fundamentals:
+    title: Networking & Web Fundamentals
+    category: Software Engineering
+    sharing:
+      status: published
+      landing: docs/software-engineering/networking-and-web-fundamentals.mdx
+      articles:
+        - docs/software-engineering/network-addressing-and-routing.mdx
+        - docs/software-engineering/transport-tls-and-http.mdx
+        - docs/software-engineering/proxies-load-balancing-and-client-ip.mdx
+        - docs/software-engineering/cors-caching-and-cdn.mdx
+    learning:
+      status: learning
+      next_checkpoint: websocket-and-realtime-communication-fundamentals
+
+  api-and-integration:
+    title: API & Integration
+    category: Software Engineering
+    sharing:
+      status: published
+      landing: docs/software-engineering/api-and-integration.mdx
+      articles:
+        - docs/software-engineering/api-communication-fundamentals.mdx
+    learning:
+      status: learning
+      next_checkpoint: null
+
+  testing-and-quality-engineering:
+    title: Testing & Quality Engineering
+    category: Software Engineering
+    sharing:
+      status: published
+      landing: docs/software-engineering/testing-and-quality-engineering.mdx
+      articles:
+        - docs/software-engineering/testing-fundamentals.mdx
+        - docs/software-engineering/test-doubles-and-mocking.mdx
+    learning:
+      status: learning
+      next_checkpoint: test-design-and-coverage
+
+  security-engineering:
+    title: Security Engineering
+    category: Software Engineering
+    sharing:
+      status: published
+      landing: docs/software-engineering/security-engineering.mdx
+      articles:
+        - docs/software-engineering/threat-modeling-and-attack-surface.mdx
+        - docs/software-engineering/secrets-and-credential-security.mdx
+    learning:
+      status: not_started
+      next_checkpoint: null
+
+  system-design:
+    title: System Design
+    category: Software Engineering
+    sharing:
+      status: published
+      landing: docs/software-engineering/system-design.mdx
+      articles:
+        - docs/software-engineering/system-design-fundamentals.mdx
+        - docs/software-engineering/url-shortener-system-design.mdx
+        - docs/software-engineering/distributed-rate-limiter-system-design.mdx
+        - docs/software-engineering/notification-system-design.mdx
+        - docs/software-engineering/chat-system-design.mdx
+        - docs/software-engineering/feed-timeline-system-design.mdx
+        - docs/software-engineering/distributed-cache-design.mdx
+    learning:
+      status: learning
+      next_checkpoint: null
+
+  development-workflows:
+    title: Development Workflows
+    category: Software Engineering
+    sharing:
+      status: published
+      landing: docs/software-engineering/development-workflows.mdx
+      articles:
+        - docs/software-engineering/git-workflows.mdx
+        - docs/software-engineering/git-history-and-change-integration.mdx
+        - docs/software-engineering/release-safety-and-traceability.mdx
+    learning:
+      status: understood
+      next_checkpoint: null
+
+  devops-cloud-and-infrastructure:
+    title: DevOps, Cloud & Infrastructure
+    category: Software Engineering
+    sharing:
+      status: published
+      landing: docs/software-engineering/devops-cloud-and-infrastructure.mdx
+      articles: []
+    learning:
+      status: not_started
+      next_checkpoint: null
+
+  observability-and-reliability:
+    title: Observability & Reliability
+    category: Software Engineering
+    sharing:
+      status: published
+      landing: docs/software-engineering/observability-and-reliability.mdx
+      articles:
+        - docs/software-engineering/observability-and-reliability-fundamentals.mdx
+    learning:
+      status: learning
+      next_checkpoint: null
+
+  operating-systems-and-concurrency:
+    title: Operating Systems & Concurrency
+    category: Software Engineering
+    sharing:
+      status: published
+      landing: docs/software-engineering/operating-systems-and-concurrency.mdx
+      articles:
+        - docs/software-engineering/process-thread-and-concurrency.mdx
+        - docs/software-engineering/synchronization-and-deadlocks.mdx
+        - docs/software-engineering/async-io-and-event-loop.mdx
+        - docs/software-engineering/memory-management.mdx
+        - docs/software-engineering/cpu-scheduling-and-context-switching.mdx
+    learning:
+      status: learning
+      next_checkpoint: inter-process-communication-and-synchronization-primitives
