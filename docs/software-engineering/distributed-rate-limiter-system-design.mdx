@@ -135,8 +135,14 @@ Distributed Rate Limiter là bài toán **coordination scope + atomicity + produ
 3. Fixed Window và Token Bucket khác nhau ở burst semantics nào?
 4. Vì sao fail-open/fail-closed không có một default đúng cho mọi API?
 
-<details><summary>Answers</summary>
-1. Mỗi instance cấp allowance riêng. 2. Hai server có thể cùng đọc 99 và cùng allow; check-and-consume phải atomic. 3. Fixed Window có boundary burst; Token Bucket biểu diễn burst bằng capacity và sustained rate bằng refill. 4. Hai lựa chọn đánh đổi availability với quota/security/cost correctness khác nhau.
+<details>
+<summary>Answers</summary>
+
+1. Mỗi instance cấp allowance riêng.
+2. Hai server có thể cùng đọc 99 và cùng allow; check-and-consume phải atomic.
+3. Fixed Window có boundary burst; Token Bucket biểu diễn burst bằng capacity và sustained rate bằng refill.
+4. Hai lựa chọn đánh đổi availability với quota/security/cost correctness khác nhau.
+
 </details>
 
 ## Related Knowledge
