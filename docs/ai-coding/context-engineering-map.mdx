@@ -5,8 +5,7 @@ tags: [context-engineering, learning-map, ai-agent]
 sidebar_position: 2
 ---
 
-import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
-import {ReactFlowDiagram} from '@site/src/components/Diagrams';
+import {KnowledgeMap, LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 
 # Context Engineering
 
@@ -14,33 +13,20 @@ Context Engineering là việc quyết định **information nào cần xuất h
 
 ## Topic Overview
 
-**Mental model:** Context Window là cái bàn; Context là những thứ đặt trên bàn; Context Engineering là chọn đúng thứ cần đặt lên bàn cho quyết định hiện tại.
-
-<ReactFlowDiagram
-  ariaLabel="Context Engineering lifecycle overview"
-  direction="TB"
-  kind="lifecycle"
-  layout="primary-path"
-  primaryPath={['sources','retrieve','select','prepare','window','llm','refresh']}
-  nodes={[
-    {id: 'sources', label: 'Sources', detail: 'Code · Memory · Docs · Tools · State', role: 'source', size: 'wide'},
-    {id: 'retrieve', label: 'Retrieve', detail: 'Find candidates', role: 'process'},
-    {id: 'select', label: 'Select', detail: 'Useful for current decision?', role: 'process'},
-    {id: 'prepare', label: 'Optimize & Assemble', detail: 'Quality · Budget · Role · Order', role: 'process', size: 'wide'},
-    {id: 'window', label: 'Context Window', detail: 'Limited invocation capacity', role: 'constraint', emphasis: true},
-    {id: 'llm', label: 'Reason / Act', detail: 'Answer or tool action', role: 'model'},
-    {id: 'refresh', label: 'Update State', detail: 'Preserve findings · refresh stale context', role: 'state', size: 'wide'},
+<KnowledgeMap
+  label="Context Engineering topic map"
+  levels={[
+    [{title: 'Sources', description: 'Code · Memory · Docs · Tools · State'}],
+    [{title: 'Retrieve', description: 'Find candidate context for the current task.'}],
+    [{title: 'Select', description: 'Keep only information that is useful for the current decision.'}],
+    [{title: 'Optimize & Assemble', description: 'Balance quality, budget, role and ordering before the invocation.'}],
+    [{title: 'Context Window', description: 'The limited workspace available to one model invocation.'}],
+    [{title: 'Reason / Act', description: 'Use the selected context to answer, decide or call tools.'}],
+    [{title: 'Preserve State', description: 'Carry forward useful findings, decisions and refreshed context.'}],
   ]}
-  edges={[
-    {source: 'sources', target: 'retrieve'},
-    {source: 'retrieve', target: 'select'},
-    {source: 'select', target: 'prepare'},
-    {source: 'prepare', target: 'window'},
-    {source: 'window', target: 'llm'},
-    {source: 'llm', target: 'refresh'},
-  ]}
-  caption="The lifecycle selects and prepares evidence for one decision, then preserves useful state for the next invocation."
 />
+
+Context Window là **cái bàn**; Context là những thứ đặt trên bàn; Context Engineering là **chọn đúng thứ cần đặt lên bàn cho quyết định hiện tại**.
 
 ## Lessons
 
