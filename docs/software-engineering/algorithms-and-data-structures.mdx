@@ -4,7 +4,7 @@ description: Topic landing page cho các mental model tổ chức, tìm kiếm v
 slug: /software-engineering/algorithms-and-data-structures
 ---
 
-import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+import {KnowledgeMap, LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 
 # Algorithms & Data Structures
 
@@ -12,7 +12,16 @@ Algorithms & Data Structures giúp chọn representation và traversal strategy 
 
 ## Topic Overview
 
-Mental map hiện tại đi từ **find/order → direct lookup → linear access discipline → connected structures & traversal**.
+<KnowledgeMap
+  label="Algorithms and Data Structures topic map"
+  levels={[
+    [{title: 'Find & Order', description: 'Start from the lookup or ranking operation the system must support.'}],
+    [{title: 'Direct Lookup', description: 'Use hashing when key-based access should be close to constant time.'}],
+    [{title: 'Access Discipline', description: 'Use stack or queue semantics when ordering of work matters.'}],
+    [{title: 'Connected Structures', description: 'Model relationships explicitly with trees or graphs.'}],
+    [{title: 'Traversal', description: 'Choose BFS, DFS or another traversal from the search objective.'}],
+  ]}
+/>
 
 ## Lessons
 
