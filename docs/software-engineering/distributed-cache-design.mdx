@@ -150,8 +150,15 @@ Hãy thiết kế cache bằng bốn câu hỏi: **copy của cái gì, fresh đ
 4. Khi nào write-behind hợp hơn write-through?
 5. Durable queue giúp write-behind giữ data bằng cách nào?
 
-<details><summary>Answers</summary>
-1. Hot Key là traffic skew; Stampede là concurrent rebuild sau miss/expire. 2. Permission có thể stale cho tới expiration nên cần explicit invalidation/update. 3. Nó coalesce nhiều rebuilds thành một origin load. 4. Khi eventual consistency chấp nhận được và throughput/latency quan trọng, với durability được bảo vệ. 5. Event được persist/replay trước khi consumer flush backing store async.
+<details>
+<summary>Answers</summary>
+
+1. Hot Key là traffic skew; Stampede là concurrent rebuild sau miss/expire.
+2. Permission có thể stale cho tới expiration nên cần explicit invalidation/update.
+3. Nó coalesce nhiều rebuilds thành một origin load.
+4. Khi eventual consistency chấp nhận được và throughput/latency quan trọng, với durability được bảo vệ.
+5. Event được persist/replay trước khi consumer flush backing store async.
+
 </details>
 
 ## Related Knowledge
