@@ -1,6 +1,6 @@
 ---
 title: API Communication Fundamentals
-description: Mental model thực dụng để phân biệt REST, gRPC và GraphQL và chọn đúng approach theo communication boundary.
+description: Hiểu cách chọn REST, gRPC và GraphQL theo communication boundary, runtime behavior và constraint thực tế.
 tags: [api, rest, grpc, graphql]
 ---
 
@@ -12,17 +12,40 @@ import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 ## TL;DR
 
-API cho phép các phần mềm hoặc service giao tiếp với nhau. REST, gRPC và GraphQL không có một “kẻ thắng” tuyệt đối:
+REST, gRPC và GraphQL không phải ba phiên bản tốt–xấu của cùng một thứ. Chúng tối ưu cho những **communication problem** khác nhau:
 
-- **REST → Resource:** “Tôi đang thao tác resource nào?”
-- **gRPC → Service / Method:** “Tôi đang gọi method nào của service?”
-- **GraphQL → Data Shape:** “Client cần những field và relationship nào?”
+- **REST → Resource:** caller thao tác resource nào qua HTTP semantics?
+- **gRPC → Service / Method:** service đang gọi typed remote method nào?
+- **GraphQL → Data Shape:** client cần chính xác fields và relationships nào?
 
-Điểm quan trọng nhất là chọn theo constraint của từng **communication boundary**. Một hệ thống hoàn toàn có thể dùng REST hoặc GraphQL ở client boundary và gRPC giữa các internal services.
+Đừng chọn một API style cho toàn hệ thống rồi ép mọi boundary đi theo. Hãy nhìn **consumer, contract, runtime behavior, data shape, failure model và operational cost** của từng boundary. Một system hoàn toàn có thể dùng REST hoặc GraphQL ở client-facing boundary và gRPC giữa internal services.
+
+## Why It Matters
+
+Một API không chỉ là syntax để gửi JSON từ A sang B. Nó là **contract tại một communication boundary**.
+
+Contract đó ảnh hưởng trực tiếp đến:
+
+- client phải biết gì để gọi đúng;
+- server expose capability dưới dạng resource, method hay schema;
+- payload được shape ở phía nào;
+- compatibility được duy trì ra sao khi hệ thống evolve;
+- timeout, retry, streaming và remote failure được xử lý thế nào;
+- team phải quan sát, debug và vận hành interaction đó ra sao.
+
+Ví dụ, một e-commerce platform có thể đồng thời có ba nhu cầu:
+
+1. third-party developers cần một public CRUD API dễ hiểu;
+2. `Order Service` cần gọi `Payment Service` với typed contract giữa Java và Go;
+3. mobile dashboard cần lấy User, Order và Reward với data shape thay đổi theo từng screen.
+
+Nếu chỉ hỏi “REST, gRPC hay GraphQL cái nào tốt hơn?”, câu hỏi đã thiếu context. Câu hỏi đúng hơn là:
+
+> **Boundary này đang tối ưu cho kiểu communication nào, và trade-off nào quan trọng nhất?**
 
 ## Mental Model
 
-Có thể nhớ bằng ba câu hỏi:
+Có thể nhớ ba style bằng ba câu hỏi:
 
 <Comparison items={[
   {title: 'REST → Resource', description: '“Tôi đang thao tác resource nào?” Ví dụ: GET /users/123/orders?status=PAID'},
@@ -30,126 +53,15 @@ Có thể nhớ bằng ba câu hỏi:
   {title: 'GraphQL → Data Shape', description: '“Client cần những field và relationship nào?” Ví dụ: user { orders { id total } }'},
 ]} />
 
-Điểm dễ nhầm nhất không nằm ở syntax mà ở **runtime behavior**. Hãy quan sát message thực sự chạy như thế nào trước, rồi mới nhìn topology của cả hệ thống.
+Mental model này không có nghĩa REST chỉ làm CRUD, gRPC chỉ dùng nội bộ hoặc GraphQL luôn gom nhiều service. Nó chỉ chỉ ra **abstraction chính mà caller nhìn thấy**.
 
-### Watch the communication happen
+Một distinction quan trọng khác:
 
-<FlowExplainer
-  title="REST vs gRPC vs GraphQL — runtime behavior"
-  description="Mỗi scenario trả lời một câu hỏi khác nhau: request quay về thế nào, RPC đi qua remote boundary ra sao, stream giữ connection mở thế nào, và GraphQL fan-out rồi compose dữ liệu như thế nào."
-  scenarios={[
-    {
-      id: 'rest',
-      label: 'REST',
-      nodes: [
-        {id: 'client', label: 'Client', detail: 'Web / Mobile', role: 'client'},
-        {id: 'server', label: 'REST API', detail: 'Resource endpoint', role: 'service'},
-        {id: 'db', label: 'Database', detail: 'Application data', role: 'database'},
-      ],
-      steps: [
-        {title: '1 · Resource request', from: 'client', to: 'server', message: 'GET /users/123', description: 'Client gửi HTTP request tới resource endpoint.'},
-        {title: '2 · Server reads data', from: 'server', to: 'db', message: 'read user', description: 'Server xử lý request và lấy dữ liệu cần thiết.'},
-        {title: '3 · Response returns', from: 'server', to: 'client', message: '200 OK + JSON', description: 'Kết quả quay lại client theo request-response model.'},
-      ],
-    },
-    {
-      id: 'grpc-unary',
-      label: 'gRPC Unary',
-      nodes: [
-        {id: 'caller', label: 'Order Service', detail: 'Generated client', role: 'client'},
-        {id: 'network', label: 'HTTP/2', detail: 'Remote boundary', role: 'network'},
-        {id: 'payment', label: 'Payment Service', detail: 'RPC implementation', role: 'service'},
-      ],
-      steps: [
-        {title: '1 · Call generated method', from: 'caller', to: 'network', message: 'GetPaymentRequest', description: 'Call site có thể giống local method, nhưng generated client vẫn serialize request để gửi qua network.'},
-        {title: '2 · Cross remote boundary', from: 'network', to: 'payment', message: 'protobuf request', description: 'RPC đi qua network nên latency, timeout và service unavailable vẫn tồn tại.'},
-        {title: '3 · Typed response', from: 'payment', to: 'network', message: 'GetPaymentResponse', description: 'Server trả typed response qua cùng remote boundary.'},
-        {title: '4 · Deserialize result', from: 'network', to: 'caller', message: 'typed result', description: 'Generated client deserialize response và trả kết quả cho caller.'},
-      ],
-    },
-    {
-      id: 'grpc-stream',
-      label: 'gRPC Streaming',
-      nodes: [
-        {id: 'client', label: 'Streaming Client', detail: 'Long-lived RPC', role: 'client'},
-        {id: 'channel', label: 'HTTP/2 Stream', detail: 'Connection stays open', role: 'network'},
-        {id: 'server', label: 'gRPC Server', detail: 'Stream handler', role: 'service'},
-      ],
-      edges: [
-        {id: 'client-channel', source: 'client', target: 'channel'},
-        {id: 'channel-server', source: 'channel', target: 'server'},
-      ],
-      steps: [
-        {title: '1 · Open stream once', from: 'client', to: 'channel', message: 'stream open', description: 'Client mở một RPC stream; đây không phải ba request-response độc lập.'},
-        {title: '2 · Send multiple chunks', from: 'client', to: 'server', message: 'chunk 1 · chunk 2 · chunk 3', repeat: true, description: 'Nhiều message tiếp tục chạy trên cùng long-lived stream.'},
-        {title: '3 · Receive multiple results', from: 'server', to: 'client', message: 'result 1 · result 2 · result 3', repeat: true, description: 'Với bidirectional streaming, server cũng có thể gửi nhiều message ngược lại trong khi stream vẫn mở.'},
-      ],
-    },
-    {
-      id: 'graphql',
-      label: 'GraphQL',
-      nodes: [
-        {id: 'client', label: 'Client', detail: 'Chooses fields', role: 'client', column: 0, row: 1},
-        {id: 'graphql', label: 'GraphQL Server', detail: 'Schema + resolvers', role: 'service', column: 1, row: 1},
-        {id: 'db', label: 'Database', detail: 'Resolver source', role: 'database', column: 2, row: 0},
-        {id: 'rest-source', label: 'REST Service', detail: 'Resolver dependency', role: 'data', column: 2, row: 1},
-        {id: 'grpc-source', label: 'gRPC Service', detail: 'Resolver dependency', role: 'data', column: 2, row: 2},
-      ],
-      edges: [
-        {id: 'query', source: 'client', target: 'graphql'},
-        {id: 'db', source: 'graphql', target: 'db'},
-        {id: 'rest', source: 'graphql', target: 'rest-source'},
-        {id: 'grpc', source: 'graphql', target: 'grpc-source'},
-      ],
-      steps: [
-        {title: '1 · Client asks for a shape', edgeId: 'query', from: 'client', to: 'graphql', message: 'user { orders {...} }', description: 'Client mô tả đúng fields và relationships muốn nhận.'},
-        {title: '2 · Resolver reads database', edgeId: 'db', from: 'graphql', to: 'db', message: 'resolve user', description: 'Một phần query có thể được resolve từ database.'},
-        {title: '3 · Resolver calls REST', edgeId: 'rest', from: 'graphql', to: 'rest-source', message: 'REST call', description: 'Field khác có thể cần một REST dependency.'},
-        {title: '4 · Resolver calls gRPC', edgeId: 'grpc', from: 'graphql', to: 'grpc-source', message: 'gRPC call', description: 'Một GraphQL request có thể fan-out thành nhiều backend calls.'},
-        {title: '5 · Wait + compose', from: 'graphql', to: 'client', message: 'requested JSON shape', active: ['db', 'rest-source', 'grpc-source'], description: 'GraphQL layer gom kết quả từ các resolver và compose thành đúng data shape client yêu cầu.'},
-      ],
-    },
-  ]}
-/>
+- **API shape** trả lời caller nhìn thấy contract gì.
+- **Runtime behavior** trả lời message thật sự chạy qua network như thế nào.
+- **System topology** trả lời component nào kết nối với component nào.
 
-**Takeaway:** REST nhấn vào resource request/response; gRPC unary nhấn vào typed remote method call; gRPC streaming giữ một stream sống qua nhiều message; GraphQL có thể fan-out tới nhiều data source rồi compose một response theo shape client yêu cầu.
-
-### Where each style can live in one system
-
-Runtime explainer phía trên trả lời **what happens over time**. Static topology dưới đây trả lời một câu hỏi khác: **what connects to what**.
-
-<ReactFlowDiagram
-  ariaLabel="Client-facing REST/GraphQL boundaries và internal gRPC boundaries trong cùng một system"
-  caption="Client-facing boundary tối ưu cho consumer: REST hoặc GraphQL. Bên trong system, service-to-service boundary có thể dùng gRPC cho typed RPC contract."
-  controls={false}
-  direction="LR"
-  fullscreen
-  height={390}
-  interactive={false}
-  kind="architecture"
-  nodeSpacing={58}
-  primaryPath={['mobile', 'api-layer', 'order', 'payment']}
-  rankSpacing={72}
-  nodes={[
-    {id: 'mobile', eyebrow: 'CLIENT', label: 'Mobile / Web', detail: 'Flexible data needs', role: 'source', size: 'compact'},
-    {id: 'third-party', eyebrow: 'CLIENT', label: 'Third-party Client', detail: 'Public CRUD consumer', role: 'source', size: 'compact'},
-    {id: 'api-layer', eyebrow: 'CLIENT BOUNDARY', label: 'API Layer', detail: 'REST hoặc GraphQL', role: 'process', emphasis: true, size: 'standard'},
-    {id: 'order', eyebrow: 'INTERNAL', label: 'Order Service', detail: 'Service-to-service', role: 'process', size: 'compact'},
-    {id: 'reward', eyebrow: 'INTERNAL', label: 'Reward Service', detail: 'Service-to-service', role: 'process', size: 'compact'},
-    {id: 'payment', eyebrow: 'INTERNAL', label: 'Payment Service', detail: 'Typed RPC contract', role: 'output', size: 'compact'},
-  ]}
-  edges={[
-    {source: 'mobile', target: 'api-layer', label: 'REST / GraphQL', route: 'primary', type: 'straight'},
-    {source: 'third-party', target: 'api-layer', label: 'REST', route: 'secondary', type: 'straight'},
-    {source: 'api-layer', target: 'order', label: 'gRPC', route: 'primary', type: 'straight'},
-    {source: 'api-layer', target: 'reward', label: 'gRPC', route: 'secondary', type: 'straight'},
-    {source: 'order', target: 'payment', label: 'gRPC', route: 'primary', type: 'straight'},
-  ]}
-/>
-
-**Visual takeaway:** cùng một system có thể có hai communication zones: **client-facing → REST / GraphQL** và **internal service-to-service → gRPC**. API style được chọn theo boundary, không phải chọn một protocol duy nhất cho toàn hệ thống.
-
-Không dùng latency/throughput/payload chart ở bài fundamentals này vì chưa có benchmark thật. Quantitative visual chỉ nên xuất hiện khi có deterministic hoặc measured data phù hợp.
+Ba góc nhìn này liên quan nhưng không phải một. Ví dụ generated gRPC stub có thể làm call site trông giống local method, nhưng runtime vẫn là remote call với latency, timeout và service unavailable.
 
 ## Core Concepts
 
@@ -174,7 +86,7 @@ Một mental model thực dụng cho request shape:
 
 `PUT` và `PATCH` cũng cần phân biệt: `PUT` mang replacement semantics, còn `PATCH` phù hợp khi chỉ cập nhật một phần resource.
 
-REST không cấm domain action. `POST /orders/123/cancel` có thể hợp lý khi `cancel` là một state transition cần giữ history, thay vì xóa Order khỏi hệ thống.
+REST không cấm domain action. `POST /orders/123/cancel` có thể hợp lý khi `cancel` là một state transition có domain meaning, thay vì cố ép mọi behavior thành CRUD thuần túy.
 
 ### Idempotency
 
@@ -221,7 +133,7 @@ nhưng vẫn là remote call qua network. Vì vậy latency, timeout, service un
 
 <ReactFlowDiagram
   ariaLabel="Generated gRPC method call vẫn là remote network call"
-  caption="Generated stub làm call site trông local, nhưng network boundary vẫn tồn tại. Runtime request/response đã được minh họa bằng Flow Explainer phía trên."
+  caption="Generated stub làm call site trông local, nhưng network boundary vẫn tồn tại."
   controls={false}
   direction="TB"
   fullscreen
@@ -308,33 +220,214 @@ GraphQL mang lại flexibility cho client nhưng cũng khiến backend phải qu
 
 ## Example
 
-Giả sử một e-commerce system có ba communication boundary:
+Cùng theo dõi một e-commerce system thay vì nhìn ba công nghệ như ba lựa chọn tách rời.
 
-1. **Public CRUD API** cho third-party developers, resource rõ ràng và muốn interface đơn giản → REST là default hợp lý.
-2. **Order Service → Payment Service**, Java ↔ Go, cần strongly typed contract và code generation → gRPC là lựa chọn tự nhiên.
-3. **Mobile Dashboard → API Layer**, mỗi màn hình cần data shape khác nhau và compose User, Order, Reward → GraphQL có lợi thế rõ ràng.
+### Starting Point — public API cho third-party developers
 
-Không cần ép toàn hệ thống dùng cùng một API style. Chọn theo boundary và constraint thực tế.
+Ban đầu platform chỉ cần expose Orders cho external developers. Resource model rõ, HTTP ecosystem phổ biến và consumer cần một interface dễ thử bằng browser tooling hoặc `curl`.
+
+```http
+GET /orders/123
+POST /orders
+```
+
+Ở boundary này, **REST là default hợp lý**. Không có pressure rõ ràng để thêm GraphQL chỉ vì client có thể chọn fields, cũng chưa có lý do buộc external consumer phải dùng generated gRPC client.
+
+### Requirement Changes — service-to-service typed contract
+
+Sau đó `Order Service` cần gọi `Payment Service`. Hai service dùng Java và Go, contract cần strongly typed, code generation hữu ích và interaction có thể phát triển sang streaming.
+
+Boundary này có pressure khác public API. **gRPC trở thành lựa chọn tự nhiên** vì service/method contract và Protobuf phù hợp hơn với nhu cầu nội bộ đó.
+
+Nhưng call site đẹp không loại bỏ remote failure: timeout, retry, deadline và idempotency vẫn phải được thiết kế như distributed-system behavior.
+
+### Requirement Changes Again — mobile dashboard cần data shape linh hoạt
+
+Mobile app xuất hiện nhiều screen khác nhau. Có screen chỉ cần user name và reward points; screen khác cần user, recent orders và payment status. Nếu client phải gọi nhiều endpoint cố định rồi tự compose, network chatter và client orchestration có thể tăng.
+
+Ở client-facing boundary này, **GraphQL đáng cân nhắc** vì client có thể yêu cầu đúng data shape nó cần, còn server resolver layer chịu trách nhiệm compose dữ liệu.
+
+Nhưng flexibility không miễn phí. Nếu resolver fetch từng child record riêng lẻ, một query đẹp phía client có thể biến thành N+1 problem phía backend.
+
+### Watch the communication happen
+
+Ba lựa chọn trên khác nhau không chỉ ở syntax. Flow dưới đây cho thấy runtime behavior thật sự thay đổi thế nào.
+
+<FlowExplainer
+  title="REST vs gRPC vs GraphQL — runtime behavior"
+  description="REST request-response, gRPC remote method và streaming, GraphQL fan-out rồi compose đều là những runtime shape khác nhau."
+  scenarios={[
+    {
+      id: 'rest',
+      label: 'REST',
+      nodes: [
+        {id: 'client', label: 'Client', detail: 'Web / Mobile', role: 'client'},
+        {id: 'server', label: 'REST API', detail: 'Resource endpoint', role: 'service'},
+        {id: 'db', label: 'Database', detail: 'Application data', role: 'database'},
+      ],
+      steps: [
+        {title: '1 · Resource request', from: 'client', to: 'server', message: 'GET /users/123', description: 'Client gửi HTTP request tới resource endpoint.'},
+        {title: '2 · Server reads data', from: 'server', to: 'db', message: 'read user', description: 'Server xử lý request và lấy dữ liệu cần thiết.'},
+        {title: '3 · Response returns', from: 'server', to: 'client', message: '200 OK + JSON', description: 'Kết quả quay lại client theo request-response model.'},
+      ],
+    },
+    {
+      id: 'grpc-unary',
+      label: 'gRPC Unary',
+      nodes: [
+        {id: 'caller', label: 'Order Service', detail: 'Generated client', role: 'client'},
+        {id: 'network', label: 'HTTP/2', detail: 'Remote boundary', role: 'network'},
+        {id: 'payment', label: 'Payment Service', detail: 'RPC implementation', role: 'service'},
+      ],
+      steps: [
+        {title: '1 · Call generated method', from: 'caller', to: 'network', message: 'GetPaymentRequest', description: 'Generated client serialize request để gửi qua network.'},
+        {title: '2 · Cross remote boundary', from: 'network', to: 'payment', message: 'protobuf request', description: 'Latency, timeout và service unavailable vẫn tồn tại.'},
+        {title: '3 · Typed response', from: 'payment', to: 'network', message: 'GetPaymentResponse', description: 'Server trả typed response qua cùng remote boundary.'},
+        {title: '4 · Deserialize result', from: 'network', to: 'caller', message: 'typed result', description: 'Generated client deserialize response và trả kết quả cho caller.'},
+      ],
+    },
+    {
+      id: 'grpc-stream',
+      label: 'gRPC Streaming',
+      nodes: [
+        {id: 'client', label: 'Streaming Client', detail: 'Long-lived RPC', role: 'client'},
+        {id: 'channel', label: 'HTTP/2 Stream', detail: 'Connection stays open', role: 'network'},
+        {id: 'server', label: 'gRPC Server', detail: 'Stream handler', role: 'service'},
+      ],
+      edges: [
+        {id: 'client-channel', source: 'client', target: 'channel'},
+        {id: 'channel-server', source: 'channel', target: 'server'},
+      ],
+      steps: [
+        {title: '1 · Open stream once', from: 'client', to: 'channel', message: 'stream open', description: 'Client mở một RPC stream thay vì nhiều request-response độc lập.'},
+        {title: '2 · Send multiple chunks', from: 'client', to: 'server', message: 'chunk 1 · chunk 2 · chunk 3', repeat: true, description: 'Nhiều message chạy trên cùng long-lived stream.'},
+        {title: '3 · Receive multiple results', from: 'server', to: 'client', message: 'result 1 · result 2 · result 3', repeat: true, description: 'Bidirectional streaming cho phép server cũng gửi nhiều message ngược lại.'},
+      ],
+    },
+    {
+      id: 'graphql',
+      label: 'GraphQL',
+      nodes: [
+        {id: 'client', label: 'Client', detail: 'Chooses fields', role: 'client', column: 0, row: 1},
+        {id: 'graphql', label: 'GraphQL Server', detail: 'Schema + resolvers', role: 'service', column: 1, row: 1},
+        {id: 'db', label: 'Database', detail: 'Resolver source', role: 'database', column: 2, row: 0},
+        {id: 'rest-source', label: 'REST Service', detail: 'Resolver dependency', role: 'data', column: 2, row: 1},
+        {id: 'grpc-source', label: 'gRPC Service', detail: 'Resolver dependency', role: 'data', column: 2, row: 2},
+      ],
+      edges: [
+        {id: 'query', source: 'client', target: 'graphql'},
+        {id: 'db', source: 'graphql', target: 'db'},
+        {id: 'rest', source: 'graphql', target: 'rest-source'},
+        {id: 'grpc', source: 'graphql', target: 'grpc-source'},
+      ],
+      steps: [
+        {title: '1 · Client asks for a shape', edgeId: 'query', from: 'client', to: 'graphql', message: 'user { orders {...} }', description: 'Client mô tả đúng fields và relationships muốn nhận.'},
+        {title: '2 · Resolver reads database', edgeId: 'db', from: 'graphql', to: 'db', message: 'resolve user', description: 'Một phần query có thể được resolve từ database.'},
+        {title: '3 · Resolver calls REST', edgeId: 'rest', from: 'graphql', to: 'rest-source', message: 'REST call', description: 'Field khác có thể cần REST dependency.'},
+        {title: '4 · Resolver calls gRPC', edgeId: 'grpc', from: 'graphql', to: 'grpc-source', message: 'gRPC call', description: 'Một GraphQL request có thể fan-out thành nhiều backend calls.'},
+        {title: '5 · Wait + compose', from: 'graphql', to: 'client', message: 'requested JSON shape', active: ['db', 'rest-source', 'grpc-source'], description: 'GraphQL layer gom kết quả rồi compose đúng data shape client yêu cầu.'},
+      ],
+    },
+  ]}
+/>
+
+### One system, multiple communication zones
+
+Runtime flow trả lời **what happens over time**. Topology dưới đây trả lời **what connects to what**.
+
+<ReactFlowDiagram
+  ariaLabel="Client-facing REST/GraphQL boundaries và internal gRPC boundaries trong cùng một system"
+  caption="Client-facing boundary tối ưu cho consumer; internal boundary có thể tối ưu cho typed service-to-service contract."
+  controls={false}
+  direction="LR"
+  fullscreen
+  height={390}
+  interactive={false}
+  kind="architecture"
+  nodeSpacing={58}
+  primaryPath={['mobile', 'api-layer', 'order', 'payment']}
+  rankSpacing={72}
+  nodes={[
+    {id: 'mobile', eyebrow: 'CLIENT', label: 'Mobile / Web', detail: 'Flexible data needs', role: 'source', size: 'compact'},
+    {id: 'third-party', eyebrow: 'CLIENT', label: 'Third-party Client', detail: 'Public CRUD consumer', role: 'source', size: 'compact'},
+    {id: 'api-layer', eyebrow: 'CLIENT BOUNDARY', label: 'API Layer', detail: 'REST hoặc GraphQL', role: 'process', emphasis: true, size: 'standard'},
+    {id: 'order', eyebrow: 'INTERNAL', label: 'Order Service', detail: 'Service-to-service', role: 'process', size: 'compact'},
+    {id: 'reward', eyebrow: 'INTERNAL', label: 'Reward Service', detail: 'Service-to-service', role: 'process', size: 'compact'},
+    {id: 'payment', eyebrow: 'INTERNAL', label: 'Payment Service', detail: 'Typed RPC contract', role: 'output', size: 'compact'},
+  ]}
+  edges={[
+    {source: 'mobile', target: 'api-layer', label: 'REST / GraphQL', route: 'primary', type: 'straight'},
+    {source: 'third-party', target: 'api-layer', label: 'REST', route: 'secondary', type: 'straight'},
+    {source: 'api-layer', target: 'order', label: 'gRPC', route: 'primary', type: 'straight'},
+    {source: 'api-layer', target: 'reward', label: 'gRPC', route: 'secondary', type: 'straight'},
+    {source: 'order', target: 'payment', label: 'gRPC', route: 'primary', type: 'straight'},
+  ]}
+/>
+
+**Why it works:** mỗi boundary được tối ưu theo consumer và pressure thật của nó. Public consumer không phải chịu internal RPC contract; internal service không phải dùng flexible query language nếu typed RPC đã đủ; mobile client có thể dùng data-composition boundary riêng mà không buộc toàn backend chuyển sang GraphQL.
 
 ## When to Use
 
-- Chọn **REST** khi resource model rõ, CRUD/public API đơn giản, interoperability và ease of consumption quan trọng.
-- Chọn **gRPC** khi internal service-to-service communication cần typed contract, code generation, compact payload hoặc streaming.
-- Chọn **GraphQL** khi client cần flexible data shape hoặc compose data qua nhiều relationships/source.
-- Có thể kết hợp nhiều approach; boundary nào có constraint khác thì có thể có interface khác.
+Chọn **REST** khi:
+
+- resource model rõ và CRUD/domain action map tốt vào HTTP;
+- public API cần interoperability và ease of consumption;
+- caching, HTTP tooling và conventional semantics mang lại nhiều giá trị;
+- client không có pressure lớn về flexible data composition.
+
+Chọn **gRPC** khi:
+
+- internal service-to-service communication cần strongly typed contract;
+- code generation giữa nhiều language giúp giảm integration ambiguity;
+- compact binary payload hoặc streaming là requirement thực tế;
+- consumer chấp nhận generated client và RPC-oriented contract.
+
+Chọn **GraphQL** khi:
+
+- nhiều client có data needs khác nhau;
+- client cần chọn fields/relationships hoặc compose nhiều nguồn dữ liệu;
+- giảm client-side orchestration đáng giá hơn complexity thêm ở server;
+- team sẵn sàng xử lý query complexity, resolver performance, authorization và observability.
+
+Không cần ép toàn hệ thống dùng cùng một API style. Boundary khác constraint thì interface khác cũng có thể là thiết kế tốt.
 
 ## Common Mistakes
 
-- **“HTTP + JSON = REST”:** HTTP transport không tự động tạo ra resource-oriented design.
-- **“GraphQL luôn tốt hơn REST”:** với CRUD đơn giản, GraphQL có thể thêm complexity không cần thiết.
-- **“Một GraphQL request = một DB query”:** resolver layer vẫn có thể phát sinh nhiều query hoặc service call.
+- **“HTTP + JSON = REST”:** HTTP transport không tự động tạo resource-oriented design.
+- **“GraphQL luôn tốt hơn REST”:** với CRUD đơn giản, GraphQL có thể thêm schema/resolver/operational complexity không cần thiết.
+- **“Một GraphQL request = một DB query”:** resolver layer vẫn có thể phát sinh nhiều query hoặc service call và gây N+1.
 - **“gRPC call giống local method nên reliability cũng giống local”:** gRPC vẫn là network call và phải xử lý distributed-system failures.
 - **Reuse Protobuf field numbers:** đổi ý nghĩa của tag đã deploy có thể phá wire compatibility.
-- **“Internal service thì luôn phải dùng gRPC”:** gRPC thường hợp với internal communication, nhưng decision vẫn phải dựa trên constraint thực tế.
+- **“Internal service thì luôn phải dùng gRPC”:** REST có thể hoàn toàn đủ nếu contract đơn giản và interoperability/tooling quan trọng hơn RPC optimization.
+- **“Streaming nghe nhanh hơn nên nên dùng”:** streaming thêm lifecycle, backpressure, cancellation và observability complexity; chỉ dùng khi interaction thật sự cần nhiều message theo thời gian.
+- **Chọn theo benchmark chung chung:** latency/throughput phụ thuộc payload, network, implementation và workload. Không nên biến claim marketing thành decision rule nếu chưa đo workload thật.
 
-## Related Knowledge
+## Decision Guide
 
-- [System Design Fundamentals](./system-design-fundamentals.mdx) — đặt API communication vào kiến trúc rộng hơn, nơi timeout, retry, idempotency và remote failure tương tác với Queue, durable state và consistency control.
+Khi chọn API style cho một boundary, đi theo các câu hỏi này thay vì hỏi “technology nào hiện đại hơn?”:
+
+1. **Consumer là ai?** Browser/mobile, third-party developer hay trusted internal service?
+2. **Caller nghĩ theo resource, operation hay data shape?** Contract nào tự nhiên nhất cho domain interaction?
+3. **Data need có ổn định không?** Fixed response đủ dùng hay nhiều client liên tục cần shape khác nhau?
+4. **Typing và code generation có giá trị bao nhiêu?** Có nhiều language/service team cần shared schema mạnh không?
+5. **Interaction pattern là gì?** Unary request-response hay thật sự cần server/client/bidirectional streaming?
+6. **Failure model cần gì?** Timeout, retry, idempotency, partial failure và cancellation được thể hiện/quan sát thế nào?
+7. **Evolution cost ở đâu?** HTTP contract, Protobuf schema hay GraphQL schema/resolver sẽ được version và migrate ra sao?
+8. **Operational complexity có đáng không?** Team có tooling và observability đủ cho GraphQL resolver fan-out hoặc gRPC fleet không?
+
+Nếu hai option đều đáp ứng requirement, ưu tiên option **đơn giản hơn cho boundary hiện tại**. Đừng mua complexity để giải một future problem chưa xuất hiện.
+
+## Practical Takeaway
+
+Một rule thực dụng:
+
+> **REST cho resource-oriented interoperability, gRPC cho typed RPC communication, GraphQL cho client-driven data composition — nhưng boundary constraint mới là source of truth.**
+
+Khi review một API design, đừng chỉ nhìn endpoint/query/proto. Hãy trace toàn flow:
+
+`consumer need → contract shape → runtime call → failure behavior → evolution cost → operational burden`
+
+Nếu lựa chọn chỉ được giải thích bằng “REST phổ biến”, “gRPC nhanh”, hoặc “GraphQL flexible”, reasoning vẫn chưa đủ. Một engineering decision tốt phải nói rõ **boundary nào**, **pressure nào** và **trade-off nào** đang được tối ưu.
 
 ## Self-test
 
@@ -344,7 +437,7 @@ Không cần ép toàn hệ thống dùng cùng một API style. Chọn theo bou
 4. Vì sao generated gRPC call vẫn cần timeout/retry/error handling?
 5. GraphQL Schema và Resolver khác nhau ở đâu?
 6. Một GraphQL request duy nhất có thể gây N+1 như thế nào?
-7. Với public CRUD API, internal typed microservices và flexible mobile dashboard, bạn sẽ chọn API style nào cho từng boundary?
+7. Với public CRUD API, internal typed microservices và flexible mobile dashboard, bạn sẽ chọn API style nào cho từng boundary và vì sao?
 
 <details>
 <summary>Answers</summary>
@@ -355,6 +448,10 @@ Không cần ép toàn hệ thống dùng cùng một API style. Chọn theo bou
 4. Vì lời gọi vẫn đi qua network và có latency, timeout, network failure hoặc remote service unavailable.
 5. Schema định nghĩa client có thể query gì; Resolver định nghĩa dữ liệu cho field được lấy bằng cách nào.
 6. Một query lấy N parent records rồi resolver fetch child data riêng cho từng parent có thể tạo 1 + N backend calls.
-7. REST cho public CRUD, gRPC cho internal typed communication, GraphQL cho client cần flexible data composition.
+7. REST cho public CRUD vì interoperability/resource model; gRPC cho internal typed communication vì shared typed contract/codegen; GraphQL cho mobile dashboard vì client-driven data composition.
 
 </details>
+
+## Related Knowledge
+
+- [System Design Fundamentals](./system-design-fundamentals.mdx) — đặt API communication vào kiến trúc rộng hơn, nơi timeout, retry, idempotency và remote failure tương tác với queue, durable state và consistency control.
