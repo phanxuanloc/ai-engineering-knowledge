@@ -4,7 +4,7 @@ description: "Topic landing page cho các mental model giúp giảm change impac
 slug: /software-engineering/programming-and-code-design
 ---
 
-import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+import {KnowledgeMap, LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 
 # Programming & Code Design
 
@@ -12,7 +12,15 @@ Programming & Code Design tập trung vào một câu hỏi: **làm sao để m�
 
 ## Topic Overview
 
-Mental map: đặt responsibility đúng chỗ, expose capability qua abstraction phù hợp, giữ implementation details encapsulated và chọn dependency structure làm change impact nhỏ nhất.
+<KnowledgeMap
+  label="Programming and Code Design topic map"
+  levels={[
+    [{title: 'Responsibilities', description: 'Place behavior where it has the strongest cohesion.'}],
+    [{title: 'Boundaries', description: 'Expose stable capabilities instead of leaking implementation details.'}],
+    [{title: 'Dependencies', description: 'Control coupling and dependency direction across modules.'}],
+    [{title: 'Change Impact', description: 'Choose structures that keep future changes local and explainable.'}],
+  ]}
+/>
 
 ## Lessons
 
