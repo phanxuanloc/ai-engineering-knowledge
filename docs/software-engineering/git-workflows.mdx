@@ -6,7 +6,6 @@ sidebar_position: 2
 ---
 
 import {Comparison, Principle, TLDR} from '@site/src/components/Learning';
-import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 # Git Workflows
@@ -14,246 +13,249 @@ import {FlowExplainer} from '@site/src/components/VisualExplainer';
 ## TL;DR
 
 <TLDR>
-Git workflow không chỉ là cách đặt tên branch. Điểm quan trọng là nơi code được tích hợp, branch sống bao lâu, release được hình thành thế nào, history được giữ hay rewrite ra sao, và CI/CD bảo vệ trạng thái cuối cùng như thế nào. Git Flow thiên về release lifecycle; GitHub Flow thiên về Pull Request; GitLab Flow thêm upstream/environment hoặc stable release lines; Trunk-Based Development nhấn mạnh integration liên tục vào trunk.
+Git workflow không phải convention đặt tên branch. Nó là cách team kiểm soát branch lifetime, integration point, release formation và quality gates. GitHub Flow phù hợp khi một `main` luôn deployable; Trunk-Based Development đẩy integration nhanh hơn bằng change cực nhỏ; Git Flow phù hợp release train cần stabilization; GitLab Flow hữu ích khi có downstream environments hoặc nhiều stable release lines.
 </TLDR>
+
+## Why It Matters
+
+Một workflow không phù hợp tạo ra chi phí rất thật: branch diverge lâu, merge conflict lớn, QA test sai snapshot, hotfix bị mất khỏi dòng phát triển kế tiếp, hoặc release trở thành một chuỗi merge khó biết code nào thực sự ra production.
+
+Ngược lại, một workflow tốt giúp team trả lời nhanh ba câu:
+
+1. **Change bắt đầu từ đâu?**
+2. **Change được tích hợp vào đâu?**
+3. **Trạng thái nào thực sự được release?**
+
+Nếu ba câu này không rõ, branch naming dù đẹp đến đâu cũng không cứu được workflow.
 
 ## Mental Model
 
-<Principle label="Decision rule">{'Chọn workflow từ release constraint khó thay đổi nhất: cần release train và stabilization, cần nhiều stable version, hay có thể deploy liên tục từ một trunk luôn xanh.'}</Principle>
+<Principle label="Decision rule">{'Chọn workflow từ release constraint khó thay đổi nhất: cần stabilization trước release, cần nhiều stable version, hay có thể tích hợp và deploy liên tục từ một trunk luôn xanh.'}</Principle>
 
-### Chọn nhanh: khi nào dùng workflow nào?
+Hãy nhìn Git workflow qua bốn trục thay vì nhớ tên pattern:
 
-<Comparison
-  columns={2}
-  label="So sánh Git workflows theo tình huống, ưu điểm và trade-off"
-  items={[
-    {
-      title: 'GitHub Flow',
-      eyebrow: 'DEFAULT CHOICE',
-      description: <><strong>Chọn khi:</strong> một production version, deploy web/service thường xuyên, PR là quality gate.<br/><strong>Được:</strong> ít branch, dễ hiểu, đường tới production ngắn.<br/><strong>Đổi lại:</strong> không tự giải quyết nhiều release line hoặc feature freeze dài.</>,
-    },
-    {
-      title: 'Trunk-Based Development',
-      eyebrow: 'FASTEST INTEGRATION',
-      description: <><strong>Chọn khi:</strong> CI nhanh, test mạnh, feature flag tốt và change chia rất nhỏ.<br/><strong>Được:</strong> feedback sớm, ít merge conflict, trunk phản ánh trạng thái tích hợp thật.<br/><strong>Đổi lại:</strong> dễ thất bại nếu branch vẫn sống nhiều ngày hoặc CI chậm.</>,
-    },
-    {
-      title: 'Git Flow',
-      eyebrow: 'RELEASE TRAIN',
-      description: <><strong>Chọn khi:</strong> mobile/desktop hoặc release train cần freeze scope, QA stabilization và hotfix riêng.<br/><strong>Được:</strong> tách rõ release hiện tại, patch và code cho release kế tiếp.<br/><strong>Đổi lại:</strong> nhiều branch dài hạn, merge-back và overhead.</>,
-    },
-    {
-      title: 'GitLab Flow',
-      eyebrow: 'DOWNSTREAM RELEASES',
-      description: <><strong>Chọn khi:</strong> cần promote qua environment hoặc duy trì nhiều stable version mà không muốn <code>develop</code>.<br/><strong>Được:</strong> main vẫn là upstream; downstream constraint rõ.<br/><strong>Đổi lại:</strong> dễ thành branch maze nếu branch không gắn với nhu cầu release thật.</>,
-    },
-  ]}
-/>
+- **Integration point** — `main`, `develop` hay một upstream branch nào là nơi code gặp nhau?
+- **Branch lifetime** — branch sống vài giờ, vài ngày hay cả release cycle?
+- **Release boundary** — deploy trực tiếp từ integrated branch hay cần release/stable branch?
+- **Promotion model** — code đi thẳng tới production hay đi qua downstream environment/release lines?
 
-:::tip[Shortcut]
-Nếu chưa có constraint đặc biệt, bắt đầu bằng **GitHub Flow**. Khi team cần merge nhiều lần mỗi ngày, thu nhỏ change và thêm feature flag để tiến tới **Trunk-Based**. Chỉ thêm Git Flow hoặc stable/environment branches khi release constraint thực sự đòi hỏi.
-:::
+GitHub Flow và Trunk-Based thường có integration point gần production hơn. Git Flow cố tình thêm release lifecycle. GitLab Flow giữ `main` như upstream nhưng có thể thêm downstream branches để phản ánh environment hoặc stable version.
 
-GitHub Flow và Trunk-Based không loại trừ nhau: GitHub Flow mô tả cơ chế branch + PR, còn Trunk-Based mô tả kỷ luật integration. Một team có thể dùng PR nhưng vẫn merge các change rất nhỏ vào trunk nhiều lần mỗi ngày.
+## Core Concepts
 
-### Từ checkout đến production
+### GitHub Flow — short-lived branch, PR, merge to main
+
+GitHub Flow có model đơn giản:
+
+```text
+main → feature/* → Pull Request → main → deploy
+```
+
+`main` phải luôn ở trạng thái có thể deploy. Feature branch tồn tại đủ lâu để phát triển, review và CI, nhưng không trở thành release line riêng.
+
+Phù hợp với backend/web service deploy thường xuyên. Nếu team chưa có constraint release đặc biệt, đây thường là baseline dễ vận hành nhất.
+
+### Trunk-Based Development — integration frequency là kỷ luật chính
+
+Trunk-Based không chỉ có nghĩa “dùng `main`”. Điểm cốt lõi là **change rất nhỏ, branch rất ngắn và integration rất thường xuyên**.
+
+Feature lớn được chia thành nhiều lát cắt backward-compatible. Incomplete work có thể được merge dưới feature flag thay vì nằm nhiều tuần trên feature branch.
+
+Một team có thể dùng Pull Request như GitHub Flow nhưng vẫn thực hành Trunk-Based nếu PR nhỏ và quay về trunk trong vài giờ. Vì vậy, hai khái niệm này có thể chồng lên nhau.
+
+### Git Flow — release lifecycle tách khỏi development lifecycle
+
+Git Flow thường có hai long-lived branches:
+
+```text
+main     — production history
+develop  — integration cho release kế tiếp
+```
+
+Và ba branch role chính:
+
+```text
+feature/* : develop → develop
+release/* : develop → main + develop
+hotfix/*  : main → main + develop
+```
+
+`release/*` cho phép freeze scope và stabilize trong khi `develop` tiếp tục nhận code cho version sau. `hotfix/*` bắt đầu từ `main` vì production bug phải được sửa dựa trên production state hiện tại.
+
+Chi phí đổi lại là merge-back discipline và nhiều branch state hơn để quản lý.
+
+### GitLab Flow — upstream trước, downstream theo release constraint
+
+GitLab Flow thường giữ `main` làm upstream integration branch, sau đó thêm downstream branch khi thật sự cần:
+
+```text
+feature/* → main → staging → production
+```
+
+hoặc stable version lines:
+
+```text
+main → stable/2.x
+     → stable/1.x
+```
+
+Điểm quan trọng là thay đổi đi **từ upstream xuống downstream**. Environment branch không nên trở thành nơi phát triển ngược rồi merge lên upstream, vì khi đó source of truth bị phân mảnh.
+
+### Workflow khác merge strategy
+
+Workflow trả lời **change đi qua branch nào**. Merge strategy trả lời **history trông như thế nào sau integration**.
+
+Bạn có thể dùng GitHub Flow với squash merge, rebase merge hoặc merge commit. Đừng chọn `squash` hay `rebase` trước khi xác định integration path và release model.
+
+## Example
+
+Giả sử team có hai sản phẩm:
+
+- backend service deploy nhiều lần mỗi ngày;
+- mobile app release hai tuần một lần, cần QA stabilization 2–3 ngày trước khi store submission.
+
+### Starting Point
+
+Ban đầu cả hai repo cùng dùng `feature/* → main` vì đơn giản.
+
+### Requirement Changes
+
+Backend vẫn ổn: PR nhỏ, CI nhanh, deploy liên tục.
+
+Mobile bắt đầu gặp vấn đề: khi QA đang test version 5.2, `main` vẫn nhận feature cho 5.3. Team cần một nơi freeze scope của 5.2 mà không chặn development của 5.3.
+
+### Naive Solution
+
+Một lựa chọn thường thấy là tạo shared `testing` branch và merge ngẫu nhiên các feature vào đó. Nhưng branch này dễ trở thành “giỏ feature”: QA test một tổ hợp, trong khi production lại release subset khác.
+
+### Better Design
+
+- Backend giữ GitHub Flow và dần áp dụng Trunk-Based discipline: branch nhỏ, integration nhanh, feature flag cho incomplete capability.
+- Mobile dùng Git Flow: feature vào `develop`; đến release cut thì tạo `release/5.2`; QA fix đi vào release branch; khi pass thì merge vào `main`, tag release và merge-back fix vào `develop`.
 
 <FlowExplainer
-  title="Một change đi từ branch nào tới production?"
-  description="Chọn scenario rồi đi từng bước: checkout đúng source branch, phát triển, integrate, deploy và merge-back nếu workflow yêu cầu."
+  title="Cùng một feature nhưng đường tới production khác nhau"
+  description="Chọn workflow để thấy integration point và release boundary thay đổi theo constraint."
   scenarios={[
-    {
-      id: 'git-flow',
-      label: 'Git Flow',
-      layout: 'compact',
-      nodes: [
-        {id: 'develop-base', label: 'Start from develop', detail: 'Source for feature branch', role: 'service'},
-        {id: 'feature', label: 'feature/checkout', detail: 'Develop + PR', role: 'client'},
-        {id: 'develop-cut', label: 'Integrate feature', detail: 'PR → develop', role: 'service'},
-        {id: 'release', label: 'release/*', detail: 'Freeze + stabilize', role: 'network'},
-        {id: 'develop-synced', label: 'Preserve release fixes', detail: 'release/* → develop', role: 'service'},
-        {id: 'main', label: 'main', detail: 'Production history', role: 'service'},
-        {id: 'prod', label: 'Production', detail: 'Tagged artifact', role: 'database'},
-      ],
-      edges: [
-        {id: 'checkout-feature', source: 'develop-base', target: 'feature'},
-        {id: 'merge-feature', source: 'feature', target: 'develop-cut'},
-        {id: 'cut-release', source: 'develop-cut', target: 'release'},
-        {id: 'merge-back', source: 'release', target: 'develop-synced'},
-        {id: 'merge-main', source: 'release', target: 'main'},
-        {id: 'deploy-prod', source: 'main', target: 'prod'},
-      ],
-      steps: [
-        {title: '1 · Checkout from develop', edgeId: 'checkout-feature', from: 'develop-base', to: 'feature', message: 'switch -c feature/*', description: 'Feature luôn bắt đầu từ develop mới nhất, không từ main.'},
-        {title: '2 · Integrate the feature', edgeId: 'merge-feature', from: 'feature', to: 'develop-cut', message: 'PR + merge', description: 'Review và CI pass thì feature quay về develop.'},
-        {title: '3 · Cut a release', edgeId: 'cut-release', from: 'develop-cut', to: 'release', message: 'switch -c release/*', description: 'Khi chốt scope, tạo release branch từ develop. Từ đây release và develop có thể nhận commit khác nhau.'},
-        {title: '4 · Close the release', edgeId: 'merge-main', from: 'release', to: 'main', message: 'merge + tag', description: 'Release candidate đã pass được merge vào main và gắn version tag.'},
-        {title: '5 · Deploy the tagged artifact', edgeId: 'deploy-prod', from: 'main', to: 'prod', message: 'deploy v2.1.0', description: 'CI build immutable artifact từ commit/tag trên main rồi deploy artifact đó.'},
-        {title: '6 · Preserve release fixes in develop', edgeId: 'merge-back', from: 'release', to: 'develop-synced', message: 'release/* → develop', description: 'Merge release vào develop để các stabilization fix phát sinh sau cut point cũng tồn tại trong release kế tiếp.'},
-      ],
-    },
     {
       id: 'github-flow',
       label: 'GitHub Flow',
       nodes: [
-        {id: 'main-base', label: 'main', detail: 'Always deployable', role: 'service'},
-        {id: 'branch', label: 'feature/*', detail: 'Short-lived work', role: 'client'},
-        {id: 'pr', label: 'Pull Request', detail: 'Review + CI', role: 'network'},
-        {id: 'main-next', label: 'main', detail: 'Integrated state', role: 'service'},
-        {id: 'prod', label: 'Production', detail: 'Deploy after merge', role: 'database'},
-      ],
-      steps: [
-        {title: '1 · Checkout from main', from: 'main-base', to: 'branch', message: 'switch -c feature/*', description: 'Đồng bộ main rồi tạo short-lived branch từ chính production integration branch.'},
-        {title: '2 · Open the change', from: 'branch', to: 'pr', message: 'push + PR', description: 'Push branch, mở PR, review và chạy required checks.'},
-        {title: '3 · Integrate', from: 'pr', to: 'main-next', message: 'merge', description: 'PR pass thì merge trực tiếp vào main; không có develop hoặc release branch bắt buộc.'},
-        {title: '4 · Deploy', from: 'main-next', to: 'prod', message: 'CD', description: 'Pipeline build và deploy đúng integrated commit trên main.'},
-      ],
-    },
-    {
-      id: 'gitlab-flow',
-      label: 'GitLab Flow',
-      nodes: [
-        {id: 'main-base', label: 'main', detail: 'Upstream source', role: 'service'},
+        {id: 'main-a', label: 'main', detail: 'Always deployable', role: 'service'},
         {id: 'feature', label: 'feature/*', detail: 'Short-lived change', role: 'client'},
-        {id: 'main-next', label: 'main', detail: 'Upstream integrated', role: 'service'},
-        {id: 'staging', label: 'staging', detail: 'Environment branch', role: 'network'},
-        {id: 'production', label: 'production', detail: 'Production branch', role: 'database'},
-        {id: 'runtime', label: 'Production runtime', detail: 'Deployed artifact', role: 'database'},
+        {id: 'pr', label: 'Pull Request', detail: 'Review + CI', role: 'network'},
+        {id: 'main-b', label: 'main', detail: 'Integrated state', role: 'service'},
+        {id: 'prod', label: 'Production', detail: 'Deploy', role: 'database'},
       ],
       steps: [
-        {title: '1 · Checkout from upstream', from: 'main-base', to: 'feature', message: 'switch -c feature/*', description: 'Tạo feature branch từ main mới nhất.'},
-        {title: '2 · Integrate upstream first', from: 'feature', to: 'main-next', message: 'MR + merge', description: 'Merge Request pass thì feature quay về main; main là source of truth upstream.'},
-        {title: '3 · Promote to staging', from: 'main-next', to: 'staging', message: 'merge downstream', description: 'Promote commit đã tích hợp từ main xuống staging branch để kiểm thử môi trường.'},
-        {title: '4 · Promote to production', from: 'staging', to: 'production', message: 'merge downstream', description: 'Chỉ candidate đã pass mới đi tiếp xuống production branch; không merge ngược environment branch vào main.'},
-        {title: '5 · Deploy production branch', from: 'production', to: 'runtime', message: 'CD', description: 'Pipeline deploy artifact truy vết được từ production branch.'},
+        {title: '1 · Branch from main', from: 'main-a', to: 'feature', message: 'short-lived branch', description: 'Feature bắt đầu từ production integration branch mới nhất.'},
+        {title: '2 · Validate the change', from: 'feature', to: 'pr', message: 'PR + CI', description: 'Review và required checks bảo vệ main.'},
+        {title: '3 · Integrate', from: 'pr', to: 'main-b', message: 'merge', description: 'Không có develop hoặc release branch bắt buộc.'},
+        {title: '4 · Deploy', from: 'main-b', to: 'prod', message: 'CD', description: 'Integrated main là source state cho deployment.'},
       ],
     },
     {
-      id: 'trunk-based',
-      label: 'Trunk-Based',
+      id: 'git-flow',
+      label: 'Git Flow',
       nodes: [
-        {id: 'trunk-base', label: 'main / trunk', detail: 'Always green', role: 'service'},
-        {id: 'small-change', label: 'Tiny branch', detail: 'Hours, not days', role: 'client'},
-        {id: 'ci', label: 'CI + Review', detail: 'Fast feedback', role: 'network'},
-        {id: 'trunk-next', label: 'main / trunk', detail: 'Integrated immediately', role: 'service'},
-        {id: 'prod-off', label: 'Production', detail: 'Code live · flag OFF', role: 'database'},
-        {id: 'prod-on', label: 'Users', detail: 'Feature released', role: 'database'},
+        {id: 'develop-a', label: 'develop', detail: 'Next release integration', role: 'service'},
+        {id: 'feature', label: 'feature/*', detail: 'Feature work', role: 'client'},
+        {id: 'develop-b', label: 'develop', detail: 'Integrated feature', role: 'service'},
+        {id: 'release', label: 'release/*', detail: 'Freeze + stabilize', role: 'network'},
+        {id: 'main', label: 'main', detail: 'Production history', role: 'service'},
+        {id: 'prod', label: 'Production', detail: 'Tagged release', role: 'database'},
       ],
       steps: [
-        {title: '1 · Checkout a tiny change', from: 'trunk-base', to: 'small-change', message: 'switch -c feat/*', description: 'Lấy trunk mới nhất và tạo branch chỉ cho một phần nhỏ có thể review độc lập.'},
-        {title: '2 · Get fast feedback', from: 'small-change', to: 'ci', message: 'small PR', description: 'CI nhanh và review change nhỏ; branch nên sống vài giờ, không kéo dài nhiều tuần.'},
-        {title: '3 · Integrate continuously', from: 'ci', to: 'trunk-next', message: 'merge now', description: 'Merge ngay khi pass để tránh divergence; feature lớn được tích hợp qua nhiều lát cắt nhỏ.'},
-        {title: '4 · Deploy without exposing', from: 'trunk-next', to: 'prod-off', message: 'deploy · flag OFF', description: 'Code từ trunk có thể lên production nhưng capability chưa mở cho user.'},
-        {title: '5 · Release independently', from: 'prod-off', to: 'prod-on', message: 'flag ON', description: 'Bật feature flag sau khi quan sát production; release business tách khỏi thời điểm merge.'},
+        {title: '1 · Branch from develop', from: 'develop-a', to: 'feature', message: 'feature/*', description: 'Feature được phát triển cho release kế tiếp, không trực tiếp từ production branch.'},
+        {title: '2 · Integrate into develop', from: 'feature', to: 'develop-b', message: 'PR → develop', description: 'Develop tập hợp code cho release kế tiếp.'},
+        {title: '3 · Cut release branch', from: 'develop-b', to: 'release', message: 'release/*', description: 'Freeze scope để QA stabilize release candidate.'},
+        {title: '4 · Promote to main', from: 'release', to: 'main', message: 'merge + tag', description: 'Candidate pass mới vào production history.'},
+        {title: '5 · Deploy tagged release', from: 'main', to: 'prod', message: 'deploy', description: 'Production nhận artifact của release đã chốt.'},
       ],
     },
   ]}
 />
 
-**Visual takeaway:** Ba câu hỏi luôn phải trả lời được là “checkout từ đâu?”, “merge vào đâu?” và “commit nào được deploy?”. Chỉ Git Flow cần merge-back có hệ thống; GitLab Flow environment đi từ upstream xuống downstream; GitHub Flow và Trunk-Based đi thẳng về main/trunk.
+### Why It Works
 
-#### Command playbook cho cùng một feature `checkout`
-
-- **GitHub Flow:** `git switch main` → `git pull --ff-only` → `git switch -c feature/checkout` → PR vào `main` → CD deploy commit vừa merge.
-- **Trunk-Based:** bắt đầu giống GitHub Flow, nhưng branch chỉ chứa một tiny change và quay về `main` trong vài giờ; deploy liên tục với flag OFF, rồi bật flag để release.
-- **Git Flow:** `git switch develop` → `git pull --ff-only` → `git switch -c feature/checkout` → PR vào `develop` → tạo `release/2.1.0` từ `develop` → merge vào `main`, tag/deploy → merge release fixes về `develop`.
-- **GitLab Flow:** `git switch main` → tạo `feature/checkout` → MR vào upstream `main` → promote cùng commit `main` → `staging` → `production` → deploy.
-
-## Core Concepts
-
-Workflow định nghĩa **đường đi và quality gates**, còn merge strategy định nghĩa **history trông như thế nào sau khi đi qua gate**. Đừng chọn `squash`, `rebase` hay merge commit trước khi xác định branch đích và release path.
-
-### Git Flow lifecycle
-
-Trong Git Flow, `feature/*` đi từ `develop` về `develop`; `release/*` đi từ `develop` về cả `main` và `develop`; `hotfix/*` đi từ `main` về cả `main` và `develop`.
-
-`release/*` dùng để freeze feature và stabilize một release trong khi `develop` tiếp tục cho release sau. `hotfix/*` phải xuất phát từ production state trên `main`, không từ `develop`.
-
-#### Vì sao `release/*` phải quay lại `develop`?
-
-Giả sử lúc cắt release, cả hai branch cùng chứa commit `A`. Sau đó `release/2.1.0` nhận fix `X` do QA phát hiện, còn `develop` nhận commit `B` cho version 2.2. Merge release vào `main` chỉ đưa `A + X` tới production; nó không tự làm `X` xuất hiện trong `develop`. Merge-back tạo trạng thái phát triển kế tiếp chứa cả `B` và `X`.
-
-:::info[Điểm cần nhớ]
-Merge-back bảo toàn **release fixes**, không phải deploy ngược từ production. Nếu release branch không có commit mới sau khi tách, merge-back gần như không mang thêm thay đổi. Nếu team không muốn merge cả branch, có thể cherry-pick từng fix, nhưng phải theo dõi để không bỏ sót.
-:::
-
-<FlowExplainer
-  title="Git Flow hotfix — merge vào main và develop"
-  description="Hotfix đi từ main vì main đại diện production state. Fix phải vào main để patch production và vào develop để release kế tiếp không tái phát bug."
-  scenarios={[
-    {
-      id: 'hotfix',
-      label: 'Critical production bug',
-      layout: 'compact',
-      nodes: [
-        {id: 'main-old', label: 'Production baseline', detail: 'main · v2.1.0', role: 'service'},
-        {id: 'hotfix', label: 'hotfix/auth-crash', detail: 'Branch from main', role: 'network'},
-        {id: 'main-new', label: 'Patch main', detail: 'hotfix/* → main · v2.1.1', role: 'service', column: 2, row: 0},
-        {id: 'prod', label: 'Production', detail: 'Deploy v2.1.1', role: 'database', column: 3, row: 0},
-        {id: 'develop', label: 'Preserve fix', detail: 'hotfix/* → develop · v2.2', role: 'database', column: 2, row: 2},
-      ],
-      edges: [
-        {id: 'cut', source: 'main-old', target: 'hotfix'},
-        {id: 'prod', source: 'hotfix', target: 'main-new'},
-        {id: 'deploy', source: 'main-new', target: 'prod'},
-        {id: 'back', source: 'hotfix', target: 'develop'},
-      ],
-      steps: [
-        {title: '1 · Cut from production', edgeId: 'cut', from: 'main-old', to: 'hotfix', message: 'branch from main', description: 'Không branch từ develop vì develop có thể chứa code của release tương lai.'},
-        {title: '2 · Merge hotfix into main', edgeId: 'prod', from: 'hotfix', to: 'main-new', message: 'hotfix/* → main', description: 'Bắt buộc merge vào main để tạo patch release v2.1.1 cho production.'},
-        {title: '3 · Deploy the patch', edgeId: 'deploy', from: 'main-new', to: 'prod', message: 'deploy v2.1.1', description: 'Build và deploy đúng tagged patch artifact từ main.'},
-        {title: '4 · Merge hotfix into develop', edgeId: 'back', from: 'hotfix', to: 'develop', message: 'hotfix/* → develop', description: 'Cũng merge hotfix vào develop để code cho v2.2 chứa cùng fix và không tái xuất hiện bug.'},
-      ],
-    },
-  ]}
-/>
-
-### Deep dives
-
-- [Git History & Change Integration](./git-history-and-change-integration.mdx) — chọn squash, rebase, merge commit, cherry-pick và phân biệt rewrite local history với sửa shared history.
-- [Release Safety & Traceability](./release-safety-and-traceability.mdx) — CI/merge queue, rollback hoặc roll forward, SemVer/tag/artifact và final release validation.
-
-## Example
-
-Một team muốn chọn workflow cho mobile app có release train và backend deploy liên tục. Mobile phù hợp với Git Flow vì cần freeze/stabilize release; backend phù hợp với GitHub Flow hoặc Trunk-Based vì có thể integrate và deploy từ `main` thường xuyên. Cùng một tổ chức không cần ép mọi repository vào một branch model.
+Backend không gánh branch ceremony không cần thiết. Mobile lại có đúng một stabilization boundary mà release constraint yêu cầu. Workflow được chọn theo **release physics** của từng repository, không theo quy mô công ty hay sở thích cá nhân.
 
 ## When to Use
 
-Đừng bắt đầu từ câu hỏi “team lớn hay nhỏ”. Hãy bắt đầu từ constraint:
-
-1. **Cần support đồng thời nhiều version đã phát hành?** Chọn GitLab Flow với stable branches và backport fix vào đúng release line.
-2. **Cần feature freeze/QA vài ngày hoặc vài tuần trước mỗi release?** Chọn Git Flow; chấp nhận chi phí `develop`, `release/*` và merge-back.
-3. **Có thể release từ main, nhưng change vẫn đi qua PR?** Chọn GitHub Flow.
-4. **Có thể chia change cực nhỏ, merge nhiều lần mỗi ngày và che incomplete work?** Áp dụng Trunk-Based discipline, có thể vẫn dùng GitHub PR.
-
-Nếu câu trả lời thay đổi theo repository, workflow cũng có thể khác: mobile client có thể dùng Git Flow, trong khi backend deploy độc lập dùng GitHub Flow hoặc Trunk-Based. Không cần ép toàn công ty vào một branch model.
+<Comparison
+  columns={2}
+  label="Chọn workflow theo constraint thật"
+  items={[
+    {
+      title: 'GitHub Flow',
+      eyebrow: 'DEFAULT SIMPLE PATH',
+      description: <><strong>Dùng khi:</strong> một production line, deploy thường xuyên, PR là quality gate.<br/><strong>Trade-off:</strong> không tự giải quyết long stabilization hoặc nhiều maintained versions.</>,
+    },
+    {
+      title: 'Trunk-Based',
+      eyebrow: 'FAST INTEGRATION',
+      description: <><strong>Dùng khi:</strong> CI nhanh, test mạnh, change chia nhỏ và feature flag tốt.<br/><strong>Trade-off:</strong> thất bại nếu branch vẫn sống nhiều ngày hoặc main thường xuyên đỏ.</>,
+    },
+    {
+      title: 'Git Flow',
+      eyebrow: 'RELEASE TRAIN',
+      description: <><strong>Dùng khi:</strong> cần freeze/stabilize release và hotfix production song song với next release.<br/><strong>Trade-off:</strong> nhiều branch, merge-back và coordination overhead.</>,
+    },
+    {
+      title: 'GitLab Flow',
+      eyebrow: 'DOWNSTREAM RELEASES',
+      description: <><strong>Dùng khi:</strong> cần environment branches hoặc nhiều stable release lines.<br/><strong>Trade-off:</strong> dễ thành branch maze nếu downstream branch không gắn với constraint thật.</>,
+    },
+  ]}
+/>
 
 ## Common Mistakes
 
 - Nghĩ branch name quyết định workflow; thực tế integration point và branch lifetime quan trọng hơn.
-- Giữ feature branch nhiều tuần trong một team muốn Trunk-Based Development.
-- Merge hotfix của Git Flow chỉ vào `main` mà quên đưa fix trở lại `develop`.
-- Dùng `release/*` cho mọi deploy dù sản phẩm deploy liên tục và không maintain release line riêng.
+- Gọi workflow là Trunk-Based nhưng feature branch vẫn sống hàng tuần.
+- Dùng Git Flow cho service deploy liên tục chỉ vì “enterprise team nên có `develop`”.
+- Merge production hotfix của Git Flow vào `main` nhưng quên đưa fix về `develop`.
+- Dùng environment branch như nơi phát triển độc lập rồi merge ngược lên `main`, phá upstream/downstream model.
+- Tạo shared testing branch chứa nhiều feature nhưng release một subset khác mà không test final candidate.
+- Đồng nhất deploy với release; feature flag có thể cho phép deploy code trước khi mở capability cho user.
 
-## Related Knowledge
+## Decision Guide
 
-- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — API compatibility và backward-compatible evolution giúp các thay đổi nhỏ có thể được merge/deploy an toàn hơn.
-- [Git History & Change Integration](./git-history-and-change-integration.mdx) — merge strategy, rewrite và recovery commands.
-- [Release Safety & Traceability](./release-safety-and-traceability.mdx) — integrated validation, production recovery và artifact traceability.
+Trước khi chọn workflow, hỏi theo thứ tự:
+
+1. **Có thể deploy từ `main` không?** Nếu có, GitHub Flow là baseline tốt.
+2. **Change có thể chia nhỏ và merge trong vài giờ không?** Nếu có, thêm Trunk-Based discipline.
+3. **Có cần freeze scope để stabilize trước release không?** Nếu có, Git Flow đáng cân nhắc.
+4. **Có nhiều stable version phải support đồng thời không?** Nếu có, GitLab Flow với stable branches có thể phù hợp hơn.
+5. **Branch này tồn tại vì constraint thật hay vì convention cũ?** Nếu không có release/integration reason rõ ràng, hãy nghi ngờ branch đó.
+
+Không cần một workflow cho toàn công ty. Mỗi repository có thể có release constraint khác nhau.
+
+## Practical Takeaway
+
+Đừng bắt đầu bằng “Git Flow hay GitHub Flow cái nào tốt hơn?”. Hãy bắt đầu bằng **integration frequency + release boundary + branch lifetime**.
+
+Một workflow tốt làm đường đi của change ngắn và rõ nhất có thể nhưng vẫn giữ đúng control mà release model yêu cầu. Mỗi long-lived branch nên tồn tại vì một responsibility cụ thể; nếu không giải thích được responsibility đó, branch có thể chỉ đang tạo thêm state để đồng bộ.
 
 ## Self-test
 
-1. `feature/*`, `release/*`, `hotfix/*` trong Git Flow được tạo từ đâu và merge về đâu?
-2. GitHub Flow khác Trunk-Based Development ở điểm bản chất nào?
+1. GitHub Flow khác Trunk-Based Development ở điểm bản chất nào?
+2. Vì sao Git Flow cần merge `release/*` và `hotfix/*` trở lại `develop`?
 3. Khi nào GitLab Flow phù hợp hơn GitHub Flow?
-4. Vì sao `release/*` và `hotfix/*` phải merge-back vào `develop`?
+4. Một team gọi mình là Trunk-Based nhưng branch sống 10 ngày. Vấn đề nằm ở đâu?
 
 <details>
 <summary>Answers</summary>
 
-1. Feature: `develop -> develop`; release: `develop -> main + develop`; hotfix: `main -> main + develop`.
-2. GitHub Flow chủ yếu mô tả branch/PR workflow; Trunk-Based nhấn mạnh integration rất thường xuyên, branch cực ngắn và thay đổi nhỏ, thường kết hợp feature flags.
+1. GitHub Flow chủ yếu mô tả branch + PR integration path; Trunk-Based nhấn mạnh integration cực thường xuyên, branch cực ngắn và change rất nhỏ, thường kết hợp feature flags.
+2. Để release fix và production hotfix không biến mất khỏi dòng phát triển của release kế tiếp.
 3. Khi cần downstream environment branches hoặc nhiều stable release lines trong khi vẫn giữ `main` làm upstream.
-4. Để release fixes và production hotfixes không biến mất khỏi dòng phát triển của release kế tiếp.
+4. Team đang thiếu kỷ luật integration cốt lõi của Trunk-Based; việc branch tên gì không thay đổi điều đó.
 
 </details>
+
+## Related Knowledge
+
+- [Git History & Change Integration](./git-history-and-change-integration.mdx) — chọn squash, rebase, merge commit, cherry-pick và phân biệt local/shared history.
+- [Release Safety & Traceability](./release-safety-and-traceability.mdx) — kiểm tra final integrated state, rollback/roll forward và artifact traceability.
+- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — backward-compatible evolution giúp change nhỏ được merge và deploy sớm hơn.
