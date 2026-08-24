@@ -52,8 +52,16 @@ if (!countMatch || Number(countMatch[1]) !== topics.length) {
 for (const file of walk(docsRoot).filter((file) => file.endsWith('.mdx'))) {
   const source = fs.readFileSync(file, 'utf8');
 
-  if (/<details><summary>/u.test(source)) {
-    errors.push(`${relative(file)}: put <details> and <summary> on separate lines for MDX`);
+  if (/<details\b[^>\n]*>[^\S\r\n]*<summary\b/u.test(source)) {
+    errors.push(`${relative(file)}: put <details> and <summary> on separate physical lines for MDX`);
+  }
+
+  if (/<\/summary>[^\S\r\n]+\S/u.test(source)) {
+    errors.push(`${relative(file)}: Markdown content after </summary> must start on a new block`);
+  }
+
+  if (/\S[^\r\n]*<\/details>/u.test(source)) {
+    errors.push(`${relative(file)}: put </details> on its own physical line for MDX`);
   }
 
   for (const match of source.matchAll(/\bto="([^\"]+\.mdx)"/g)) {
