@@ -60,8 +60,16 @@ for (const file of walk(docsRoot).filter((file) => file.endsWith('.mdx'))) {
     errors.push(`${relative(file)}: Markdown content after </summary> must start on a new block`);
   }
 
+  if (/<\/summary>\r?\n(?!\r?\n|\s*<\/details>)/u.test(source)) {
+    errors.push(`${relative(file)}: leave a blank line between </summary> and Markdown content`);
+  }
+
   if (/\S[^\r\n]*<\/details>/u.test(source)) {
     errors.push(`${relative(file)}: put </details> on its own physical line for MDX`);
+  }
+
+  if (/[^\r\n]\r?\n<\/details>/u.test(source)) {
+    errors.push(`${relative(file)}: leave a blank line before </details>`);
   }
 
   for (const match of source.matchAll(/\bto="([^\"]+\.mdx)"/g)) {
