@@ -12,17 +12,21 @@ import {FlowExplainer} from '@site/src/components/VisualExplainer';
 ## TL;DR
 
 <TLDR>
-
-Chat System có ít nhất ba loại state khác nhau: live WebSocket connection, distributed routing/presence state và durable message history. WebSocket chỉ giải quyết realtime transport; message phải sống qua disconnect cần Message Store, còn nhiều connection servers cần registry/router để tìm đúng recipient connection.
-
+Chat System có ít nhất ba loại state khác nhau: live WebSocket connection, distributed connection-routing state và durable message history. WebSocket chỉ giải quyết realtime transport; message phải sống qua disconnect cần Message Store, còn nhiều connection servers cần registry/router để tìm đúng recipient connection.
 </TLDR>
+
+## Why It Matters
+
+Một chat prototype có thể giữ WebSocket và messages trong cùng process. Khi scale lên nhiều instances, assumptions đó vỡ rất nhanh: sender nối vào Server 3 nhưng recipient đang ở Server 17; process restart làm mất connection map; mobile client disconnect vài phút nhưng vẫn phải nhận messages bị lỡ.
+
+Nếu design đồng nhất “message được gửi qua socket” với “message đã được lưu”, “recipient đã nhận” hoặc “recipient đã đọc”, trạng thái sản phẩm sẽ sớm mơ hồ. Chat cần tách **durability**, **routing** và **live transport** thành các trách nhiệm riêng.
 
 ## Mental Model
 
-Một message không chỉ “đi qua WebSocket”. Nó đi qua hai trách nhiệm song song:
+Một message có hai paths liên quan nhưng khác mục tiêu:
 
-- **Durable path:** accept → persist message → expose history/unread state.
-- **Live delivery path:** locate recipient connection → route tới đúng server → push qua WebSocket.
+- **Durable path:** accept → persist → history/unread state.
+- **Live path:** locate recipient connection → route → push qua WebSocket.
 
 <Principle label="State separation">Connection location là ephemeral distributed state; message history là durable business state.</Principle>
 
@@ -30,129 +34,116 @@ Một message không chỉ “đi qua WebSocket”. Nó đi qua hai trách nhi�
   title="Một message đi qua durable path và live delivery path"
   description="Persisted message không phụ thuộc recipient đang online; connection registry chỉ giúp tìm live route hiện tại."
   scenarios={[
-    {
-      id: 'online-recipient',
-      label: 'Recipient online',
-      layout: 'compact',
-      nodes: [
-        {id: 'sender', label: 'User A', detail: 'Server 3', role: 'client'},
-        {id: 'message-service', label: 'Message Service', detail: 'Accept + persist', role: 'service'},
-        {id: 'store', label: 'Message Store', detail: 'Durable history', role: 'database'},
-        {id: 'registry', label: 'Connection Registry', detail: 'B → Server 17', role: 'data'},
-        {id: 'connection', label: 'Connection Server 17', detail: 'Live WebSocket', role: 'service'},
-        {id: 'recipient', label: 'User B', detail: 'Online', role: 'client'},
-      ],
-      edges: [
-        {id: 'sender-service', source: 'sender', target: 'message-service'},
-        {id: 'service-store', source: 'message-service', target: 'store'},
-        {id: 'service-registry', source: 'message-service', target: 'registry'},
-        {id: 'registry-service', source: 'registry', target: 'message-service'},
-        {id: 'service-connection', source: 'message-service', target: 'connection'},
-        {id: 'connection-recipient', source: 'connection', target: 'recipient'},
-      ],
-      steps: [
-        {title: '1 · Accept message', edgeId: 'sender-service', from: 'sender', to: 'message-service', message: 'conversation message', description: 'Message Service nhận message từ connection đang giữ User A.'},
-        {title: '2 · Persist durable history', edgeId: 'service-store', from: 'message-service', to: 'store', message: 'conversation_id', description: 'Message được lưu để sống qua disconnect và hỗ trợ unread/history sync.'},
-        {title: '3 · Locate live route', edgeId: 'service-registry', from: 'message-service', to: 'registry', message: 'where is User B?', description: 'Message Service hỏi registry để tìm connection server đang giữ recipient.'},
-        {title: '4 · Receive route', edgeId: 'registry-service', from: 'registry', to: 'message-service', message: 'Server 17', description: 'Registry chỉ trả routing state; nó không tự vận chuyển business message.'},
-        {title: '5 · Forward to Server 17', edgeId: 'service-connection', from: 'message-service', to: 'connection', message: 'persisted message', description: 'Message Service forward tới đúng instance thay vì dựa vào local memory của sender server.'},
-        {title: '6 · Push over WebSocket', edgeId: 'connection-recipient', from: 'connection', to: 'recipient', message: 'new message', description: 'WebSocket giảm delivery latency; durable copy đã tồn tại độc lập trong Message Store.'},
-      ],
-    },
-    {
-      id: 'offline-recipient',
-      label: 'Recipient offline',
-      layout: 'compact',
-      nodes: [
-        {id: 'sender', label: 'User A', detail: 'Sends message', role: 'client'},
-        {id: 'message-service', label: 'Message Service', detail: 'Accept + persist', role: 'service'},
-        {id: 'store', label: 'Message Store', detail: 'Durable unread', role: 'database'},
-        {id: 'registry', label: 'Connection Registry', detail: 'No live route', role: 'data'},
-        {id: 'recipient', label: 'User B', detail: 'Reconnects later', role: 'client'},
-      ],
-      edges: [
-        {id: 'sender-service', source: 'sender', target: 'message-service'},
-        {id: 'service-store', source: 'message-service', target: 'store'},
-        {id: 'service-registry', source: 'message-service', target: 'registry'},
-        {id: 'recipient-store', source: 'recipient', target: 'store'},
-        {id: 'store-recipient', source: 'store', target: 'recipient'},
-      ],
-      steps: [
-        {title: '1 · Accept message', edgeId: 'sender-service', from: 'sender', to: 'message-service', message: 'conversation message', description: 'Sender path không phụ thuộc recipient đang online.'},
-        {title: '2 · Persist unread message', edgeId: 'service-store', from: 'message-service', to: 'store', message: 'durable message', description: 'Message Store giữ business state qua disconnect.'},
-        {title: '3 · No live route', edgeId: 'service-registry', from: 'message-service', to: 'registry', message: 'offline', description: 'Không có WebSocket để push, nhưng message không bị mất.'},
-        {title: '4 · Reconnect with cursor', edgeId: 'recipient-store', from: 'recipient', to: 'store', message: 'after last_seen', description: 'Client dùng last-seen boundary để yêu cầu phần history bị lỡ.'},
-        {title: '5 · Synchronize history', edgeId: 'store-recipient', from: 'store', to: 'recipient', message: 'unread messages', description: 'Durable path phục hồi state trước khi client tiếp tục live stream.'},
-      ],
-    },
+    {id: 'online-recipient', label: 'Recipient online', layout: 'compact', nodes: [
+      {id: 'sender', label: 'User A', detail: 'Server 3', role: 'client'},
+      {id: 'service', label: 'Message Service', detail: 'Accept + persist', role: 'service'},
+      {id: 'store', label: 'Message Store', detail: 'Durable history', role: 'database'},
+      {id: 'registry', label: 'Connection Registry', detail: 'B → Server 17', role: 'data'},
+      {id: 'connection', label: 'Connection Server 17', detail: 'Live WebSocket', role: 'service'},
+      {id: 'recipient', label: 'User B', detail: 'Online', role: 'client'},
+    ], steps: [
+      {title: '1 · Accept message', from: 'sender', to: 'service', message: 'conversation message', description: 'Message Service nhận message từ sender.'},
+      {title: '2 · Persist', from: 'service', to: 'store', message: 'conversation_id', description: 'Durable history tồn tại độc lập với live connection.'},
+      {title: '3 · Locate route', from: 'service', to: 'registry', message: 'where is B?', description: 'Registry trả connection server hiện giữ recipient.'},
+      {title: '4 · Forward', from: 'service', to: 'connection', message: 'persisted message', description: 'Message được route tới đúng connection server.'},
+      {title: '5 · Push realtime', from: 'connection', to: 'recipient', message: 'new message', description: 'WebSocket tối ưu latency cho recipient đang online.'},
+    ]},
+    {id: 'offline-recipient', label: 'Recipient offline', layout: 'compact', nodes: [
+      {id: 'sender', label: 'User A', detail: 'Sends message', role: 'client'},
+      {id: 'service', label: 'Message Service', detail: 'Accept + persist', role: 'service'},
+      {id: 'store', label: 'Message Store', detail: 'Durable unread', role: 'database'},
+      {id: 'registry', label: 'Connection Registry', detail: 'No live route', role: 'data'},
+      {id: 'recipient', label: 'User B', detail: 'Reconnects later', role: 'client'},
+    ], steps: [
+      {title: '1 · Persist message', from: 'sender', to: 'service', message: 'conversation message', description: 'Sender path không phụ thuộc recipient online.'},
+      {title: '2 · Store unread', from: 'service', to: 'store', message: 'durable message', description: 'Message sống qua disconnect.'},
+      {title: '3 · No live route', from: 'service', to: 'registry', message: 'offline', description: 'Không có socket để push nhưng message không mất.'},
+      {title: '4 · Reconnect', from: 'recipient', to: 'store', message: 'after cursor', description: 'Client dùng cursor/last-seen boundary để lấy phần history bị lỡ.'},
+      {title: '5 · Sync history', from: 'store', to: 'recipient', message: 'missed messages', description: 'Durable path khôi phục state trước khi tiếp tục live stream.'},
+    ]},
   ]}
 />
 
 ## Core Concepts
 
-### WebSocket là delivery channel
+### WebSocket là transport, không phải storage
 
-WebSocket giữ long-lived bidirectional connection, phù hợp với realtime message exchange và tránh polling liên tục. Nhưng connection có thể mất khi mobile network đổi, process restart hoặc user offline. Vì vậy WebSocket không thể là nơi duy nhất giữ message cần đọc lại.
+WebSocket phù hợp cho bidirectional low-latency communication nhưng connection có thể mất khi mobile network đổi, process restart hoặc user offline. Message cần đọc lại không thể chỉ sống trong connection process.
 
-### Connection routing là distributed state
+### Connection routing là distributed ephemeral state
 
-Nếu User A nối vào Server 3 còn User B nối vào Server 17, Server 3 không thể tìm B chỉ bằng local memory. Một shared connection registry/router cần biểu diễn user/session đang thuộc connection server nào để message được forward tới đúng nơi.
+Nếu User A và User B nằm trên hai connection servers khác nhau, sender server cần shared registry/router để biết recipient đang ở đâu. Mapping phải expire/reconcile khi connection churn; stale mapping là normal failure mode cần xử lý.
 
-Registry state có lifecycle ngắn hơn message: connect đăng ký, disconnect/timeout loại bỏ hoặc expire mapping. Stale mapping có thể route nhầm tới connection đã chết, nên routing path phải chấp nhận connection churn thay vì coi registry như durable truth vĩnh viễn.
+### Message Store giữ durable history
 
-### Message Store giữ history qua disconnect
-
-Message cần được persist để recipient offline có thể nhận unread messages và reconnect có thể đồng bộ history. Durable storage cũng tách “message đã được hệ thống chấp nhận” khỏi “recipient đang online và đã nhận live push”. Live delivery thất bại không nhất thiết làm mất message nếu durable path đã thành công.
+Persist message tách “hệ thống đã chấp nhận message” khỏi “recipient đang online”. Offline user vẫn có unread/history path, còn live delivery failure không đồng nghĩa business message bị mất.
 
 ### Delivery state không nên bị đồng nhất
 
-Các trạng thái `accepted/persisted`, `delivered to a live connection` và `read by user` diễn tả ba sự kiện khác nhau. Không nên suy ra “read” chỉ vì server đã ghi socket, hoặc suy ra “not stored” chỉ vì recipient offline. Design message status cần gắn mỗi transition với evidence thực sự mà hệ thống có.
+`persisted`, `delivered to connection` và `read` là ba transitions khác nhau với evidence khác nhau. Server write thành công vào socket không chứng minh user đã đọc.
 
 ### Ordering nên có scope nhỏ nhất cần thiết
 
-Global message ordering đòi coordination rộng và thường không cần thiết. Chat thường cần order trong từng conversation. Dùng `conversation_id` như ordering/partition key giúp message cùng conversation đi qua một ordered path, trong khi các conversation khác có thể xử lý độc lập.
+Global total order thường đắt và không cần thiết. Per-conversation ordering thường đủ cho chat semantics và cho phép các conversations khác xử lý song song. `conversation_id` thường là natural partition/ordering scope.
 
-Điều này không tự giải quyết mọi reconnect/duplicate case, nhưng nó xác định rõ invariant thay vì yêu cầu toàn hệ thống có một total order đắt đỏ.
+### Reconnect là synchronization path
 
-### Reconnect là một data synchronization path
-
-Sau disconnect, client không nên giả định live stream liên tục. Nó cần một cursor/last-seen boundary để hỏi durable store những message bị lỡ, rồi hợp nhất với live delivery. Do đó reconnect không chỉ là mở lại socket; nó còn là khôi phục state từ durable history.
+Reconnect không chỉ mở socket mới. Client cần cursor/last-seen token để fetch missed history, dedupe nếu live stream overlap và sau đó resume realtime updates.
 
 ## Example
 
-User A gửi message cho User B:
+### Starting Point
 
-1. A đang nối vào Connection Server 3.
-2. Message được accept và persist với `conversation_id`.
-3. Registry cho biết B đang nối vào Server 17.
-4. Server 3/router forward message tới Server 17, rồi Server 17 push qua WebSocket.
-5. Nếu B offline hoặc connection mapping stale, live push thất bại nhưng durable message vẫn tồn tại.
-6. Khi B reconnect, client đồng bộ phần history sau last-seen boundary.
+Một single-node chat app giữ connection map và messages trong memory.
 
-Design này tách rõ durability khỏi low-latency delivery và không buộc một failed socket write phải làm mất business message.
+### Requirement Changes
+
+Service scale horizontal, mobile clients disconnect thường xuyên và users cần history/unread state.
+
+### Naive Fix
+
+Thêm nhiều WebSocket servers sau Load Balancer nhưng mỗi server chỉ biết local connections. Message từ Server 3 không biết User B đang ở Server 17; restart làm mất local history.
+
+### Root Cause
+
+Live connection state, routing state và durable message state có lifecycle và guarantee khác nhau nhưng đang bị trộn trong một process.
+
+### Better Design
+
+Persist message vào Message Store, externalize connection registry, route live message tới instance giữ recipient và dùng reconnect cursor để sync missed history. Scope ordering theo conversation thay vì toàn hệ thống.
+
+### Why It Works
+
+Durability không phụ thuộc socket lifecycle, routing hoạt động qua nhiều instances và reconnect trở thành deterministic data-sync path thay vì “hy vọng client không bỏ lỡ event”.
 
 ## When to Use
 
-- Dùng WebSocket khi cần bidirectional realtime communication.
-- Externalize connection routing khi có nhiều connection servers hoặc cần failover.
-- Persist message trước/độc lập với live delivery khi offline recipient không được mất message.
-- Scope ordering theo conversation/entity thay vì global khi business requirement cho phép.
-- Thiết kế reconnect như history synchronization, không chỉ socket re-establishment.
+Dùng WebSocket khi cần bidirectional realtime communication; externalize routing khi có nhiều connection servers; persist trước/độc lập với live delivery khi offline messages không được mất; dùng per-conversation ordering khi business semantics cho phép.
+
+Một system nhỏ có thể bắt đầu single-node. Đừng thêm distributed registry trước khi có nhu cầu scale/failover thật, nhưng cũng đừng coi in-memory connection map là durable architecture.
 
 ## Common Mistakes
 
-- **Coi WebSocket là Message Store:** disconnect hoặc restart làm mất state chỉ nằm trong connection process.
-- **Giữ connection location chỉ trong local RAM:** server gửi không biết recipient đang ở instance nào.
-- **Đồng nhất delivered với read:** socket delivery không chứng minh user đã xem message.
-- **Yêu cầu global order:** tăng coordination cost dù chỉ per-conversation order mới có ý nghĩa.
-- **Bỏ qua stale registry:** connection churn làm routing state lỗi thời.
-- **Reconnect mà không sync history:** message trong khoảng offline có thể bị bỏ lỡ.
+- Coi WebSocket là Message Store.
+- Giữ connection location chỉ trong local RAM khi đã có nhiều servers.
+- Đồng nhất delivered với read.
+- Yêu cầu global ordering không cần thiết.
+- Bỏ qua stale registry/connection churn.
+- Reconnect mà không sync missed history.
 
-## Related Knowledge
+## Decision Guide
 
-- [System Design Fundamentals](./system-design-fundamentals.mdx) — phân biệt realtime transport, coordination state và durable state.
-- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — bổ sung streaming/remote-failure mental model cho communication boundary.
-- [Database Design Foundations](./database-design-foundations.mdx) — làm rõ persistent message model, access patterns và source-of-truth semantics.
+1. Message phải survive disconnect/process restart không?
+2. Ordering cần global, per conversation hay weaker?
+3. Recipient connection được locate qua bao nhiêu instances/regions?
+4. Registry freshness/TTL và stale-route recovery thế nào?
+5. `persisted`, `delivered`, `read` được chứng minh bằng event nào?
+6. Reconnect cursor/deduplication hoạt động ra sao?
+7. Presence có cần strong correctness hay chỉ best-effort?
+
+## Practical Takeaway
+
+Chat scale tốt khi bạn tách đúng state ownership: **WebSocket vận chuyển**, **registry định tuyến**, **Message Store giữ history**, còn conversation scope định nghĩa ordering cần thiết. Khi các boundary đó rõ, offline delivery, reconnect và horizontal scaling trở thành những paths có thể reasoning riêng thay vì một khối “realtime” mơ hồ.
 
 ## Self-test
 
@@ -162,13 +153,12 @@ Design này tách rõ durability khỏi low-latency delivery và không buộc m
 4. Vì sao per-conversation ordering thường phù hợp hơn global ordering?
 5. Reconnect cần làm gì ngoài mở lại WebSocket?
 
-<details>
-<summary>Answers</summary>
-
-1. WebSocket vận chuyển realtime; registry tìm server giữ live connection; Message Store giữ history qua disconnect.
-2. Sender server không biết recipient connection nằm trên instance khác và local state không hỗ trợ failover/global routing.
-3. Persisted là durable accept; delivered là tới live connection; read cần acknowledgement/user action riêng.
-4. Nó bảo vệ invariant có ý nghĩa trong chat với coordination scope nhỏ hơn và cho phép conversation khác xử lý độc lập.
-5. Dùng last-seen/cursor boundary để lấy message bị lỡ từ durable history rồi hợp nhất với live stream mới.
-
+<details><summary>Answers</summary>
+1. WebSocket vận chuyển realtime; registry tìm live route; Message Store giữ durable history. 2. Sender server không biết recipient nằm trên instance khác và local state không hỗ trợ failover. 3. Persisted là durable accept; delivered là tới live connection; read cần acknowledgment/user action riêng. 4. Nó bảo vệ invariant có ý nghĩa với coordination scope nhỏ hơn. 5. Fetch missed history từ cursor rồi hợp nhất với live stream.
 </details>
+
+## Related Knowledge
+
+- [System Design Fundamentals](./system-design-fundamentals.mdx)
+- [API Communication Fundamentals](./api-communication-fundamentals.mdx)
+- [Database Design Foundations](./database-design-foundations.mdx)
