@@ -4,7 +4,7 @@ description: Topic landing page cho integration, history, release safety và tra
 slug: /software-engineering/development-workflows
 ---
 
-import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+import {KnowledgeMap, LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 
 # Development Workflows
 
@@ -12,7 +12,16 @@ Development Workflows tổ chức cách code changes đi từ local work tới s
 
 ## Topic Overview
 
-Mental map: **Branch / change → Integrate → Validate → Release → Recover / trace**. Workflow tốt giảm thời gian diverge và làm trạng thái release rõ ràng hơn.
+<KnowledgeMap
+  label="Development Workflows topic map"
+  levels={[
+    [{title: 'Change', description: 'Create a focused code change from a known base.'}],
+    [{title: 'Integrate', description: 'Bring changes together early enough to expose conflicts and divergence.'}],
+    [{title: 'Validate', description: 'Use automated and human checks before promotion.'}],
+    [{title: 'Release', description: 'Move a known revision into production with explicit safety controls.'}],
+    [{title: 'Recover & Trace', description: 'Rollback, revert or diagnose exactly what changed and when.'}],
+  ]}
+/>
 
 ## Lessons
 
