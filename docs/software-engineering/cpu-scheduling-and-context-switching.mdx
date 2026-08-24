@@ -10,11 +10,22 @@ import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 # CPU Scheduling & Context Switching
 
 ## TL;DR
-<TLDR>OS scheduler quyết định runnable thread nào nhận CPU time trên cores hữu hạn. **Context switch** có overhead và có thể giảm cache locality. Với CPU-bound work, tăng runnable workers vượt compute capacity có thể tăng latency mà throughput gần như không tăng.</TLDR>
 
-<Principle label="Mental rule">CPU-bound parallelism bị giới hạn bởi compute capacity. Sau một điểm, thêm workers chủ yếu thêm scheduling overhead.</Principle>
+<TLDR>
+OS scheduler quyết định runnable thread nào nhận CPU time trên cores hữu hạn. **Context switch** có overhead và có thể giảm cache locality. Với CPU-bound work, tăng runnable workers vượt compute capacity có thể tăng latency mà throughput gần như không tăng.
+</TLDR>
+
+## Why It Matters
+
+Một production service CPU 100% thường được “fix” bằng cách thêm threads/workers. Nhưng nếu workload đã CPU-bound, thêm runnable work không tạo thêm compute capacity. Scheduler chỉ phải chia cùng số cores cho nhiều competitors hơn, làm run queue và context-switch pressure tăng.
+
+Để sizing đúng, cần phân biệt **running**, **runnable** và **waiting**. CPU utilization cao nói “cores bận”; nó chưa nói tại sao latency cao hoặc thêm worker có ích hay không.
 
 ## Mental Model
+
+<Principle label="Mental rule">
+CPU-bound parallelism bị giới hạn bởi compute capacity. Sau một điểm, thêm workers chủ yếu thêm scheduling overhead.
+</Principle>
 
 <ReactFlowDiagram
   ariaLabel="Many runnable workers compete for limited CPU cores"
@@ -42,10 +53,13 @@ import {ReactFlowDiagram} from '@site/src/components/Diagrams';
 
 ## Core Concepts
 
-### Scheduler
+### Scheduler multiplexes finite cores
+
 Machine có số cores hữu hạn nhưng có thể có nhiều runnable threads. Scheduler chọn subset nào chạy tại từng thời điểm; `100 threads` không có nghĩa `100 tasks` đang parallel.
 
-### Runnable khác running
+### Runnable khác waiting
+
+High latency + many runnable threads thường gợi ý CPU contention. High latency + low CPU + many blocked threads lại gợi ý I/O, lock hoặc downstream wait.
 
 <ReactFlowDiagram
   ariaLabel="CPU symptom diagnosis branches"
@@ -66,39 +80,81 @@ Machine có số cores hữu hạn nhưng có thể có nhiều runnable threads
   caption="CPU utilization một mình không đủ: cần biết threads đang runnable hay waiting."
 />
 
-### Context switching
-Switching giữa executions cần save/restore state và có indirect cost như cache/TLB locality giảm. Context switches là normal; vấn đề là excessive runnable work làm system dành quá nhiều effort để rotate workers.
+### Context switching có direct và indirect cost
 
-### CPU-bound worker sizing
-Một starting mental model là bounded parallelism gần available compute capacity rồi đo throughput/latency. 8–16 workers có thể phù hợp hơn 128 workers trên machine 8 cores tùy runtime/workload.
-
-### I/O-bound khác CPU-bound
-I/O-bound tasks có thể có concurrency cao hơn số cores vì phần lớn thời gian đang chờ network/database/disk. Đây là lý do async I/O và CPU worker pools cần strategy khác nhau.
+Switching giữa executions cần save/restore CPU state. Cost lớn hơn thường đến từ locality disruption: caches/TLB bị thay đổi, working set của execution trước không còn “nóng”. Context switch là bình thường; **excessive runnable work** mới là signal đáng quan tâm.
 
 ### Worker pool là capacity boundary
-Bounded pool giới hạn số tasks cạnh tranh CPU; queue phía trước hấp thụ demand thay vì biến mọi pending task thành runnable worker.
+
+Bounded pool giới hạn số tasks cạnh tranh CPU. Queue phía trước hấp thụ demand thay vì biến mọi pending task thành runnable worker. Đây là backpressure cho compute resource.
+
+### CPU-bound sizing phải đo throughput và latency cùng lúc
+
+Một starting point là workers gần available compute capacity, sau đó benchmark. Với 8 cores, 8–16 workers có thể tốt hơn 128 workers, nhưng exact number còn phụ thuộc blocking ratio, runtime, GC và workload shape.
+
+### I/O-bound cần model khác
+
+I/O-bound tasks có thể có concurrency cao hơn số cores vì phần lớn thời gian đang chờ. Đây là lý do async I/O và CPU worker pools không nên dùng cùng một sizing rule.
 
 ## Example
-Document parsing service trên 8 cores có 128 workers, CPU 98%, run queue/context switches rất cao, throughput gần ngang 16 workers nhưng latency tăng mạnh. Root cause phù hợp là excessive runnable CPU-bound workers. Trong cùng AI service, CPU-heavy preprocessing nên dùng bounded parallel workers, còn LLM/Vector DB/GitHub calls nên dùng async I/O + bounded concurrency.
+
+### Starting Point
+
+Document parsing service chạy trên machine 8 cores với 8 workers. Throughput tăng gần tuyến tính khi tăng từ 1 lên 8 workers.
+
+### Requirement Changes
+
+Traffic tăng. Team tăng pool lên 128 workers với kỳ vọng “nhiều workers = nhiều throughput”.
+
+### Pain Appears
+
+CPU giữ ~98–100%, run queue và context switches tăng mạnh. Throughput gần như ngang 16 workers nhưng p95 latency cao hơn đáng kể.
+
+### Root Cause
+
+Parsing là CPU-bound. Sau khi cores đã bão hòa, 112 workers bổ sung không tạo thêm compute; chúng chỉ chờ scheduler và cạnh tranh cache locality.
+
+### Better Design
+
+Giữ bounded worker pool gần vùng throughput tối ưu, queue work phía trước và scale horizontally nếu cần thêm aggregate compute capacity. Nếu task có bước LLM/Vector DB/GitHub call, tách I/O waiting sang async orchestration thay vì giữ CPU workers ngồi chờ.
+
+### Why It Works
+
+Workload không còn tạo runnable pressure vượt xa số cores. Scheduler churn giảm, queueing boundary explicit hơn và latency ổn định hơn trong khi throughput giữ gần maximum compute capacity.
 
 ## When to Use
+
 - CPU gần saturation nhưng throughput không tăng khi thêm workers.
 - Run queue/context switches tăng mạnh.
 - Sizing CPU worker pools.
 - Phân biệt CPU saturation với waiting problem.
+- Thiết kế mixed workload có cả CPU và external I/O.
 
 ## Common Mistakes
+
 - **CPU cao → thêm threads:** có thể làm scheduler overhead tệ hơn.
 - **CPU thấp → service khỏe:** threads có thể đang blocked/waiting.
 - **N threads = N parallel tasks:** hardware/runtime giới hạn parallelism.
 - **Dùng cùng strategy cho CPU-bound và I/O-bound:** bottleneck khác nhau.
+- **Context switches phải bằng 0:** scheduler cần switching; vấn đề là mức excessive và symptom đi kèm.
 
-## Related Knowledge
-- [Process, Thread & Concurrency](./process-thread-and-concurrency.mdx) — thread là execution path.
-- [Async I/O & Event Loop](./async-io-and-event-loop.mdx) — waiting concurrency khác CPU parallelism.
-- [Memory Management](./memory-management.mdx) — excessive threads còn có per-thread memory cost.
+## Decision Guide
+
+Khi latency cao, kiểm tra:
+
+1. CPU utilization có bão hòa không?
+2. Threads/tasks chủ yếu **runnable** hay **waiting**?
+3. Run queue tăng theo load không?
+4. Tăng workers có tăng throughput hay chỉ tăng latency/context switches?
+5. Workload có blocking fraction đáng kể không?
+6. Nếu compute đã saturated, scale-up/scale-out hay giảm work per request có hợp lý hơn thêm local workers không?
+
+## Practical Takeaway
+
+Với CPU-bound systems, worker count là **competition level**, không phải compute capacity. Hãy tìm vùng mà throughput gần tối đa nhưng runnable queue và latency chưa bùng nổ; sau đó dùng queue/backpressure để giữ hệ thống quanh vùng đó.
 
 ## Self-test
+
 1. Runnable và running khác nhau thế nào?
 2. Vì sao 128 CPU-heavy workers trên 8 cores có thể chậm hơn 16 workers?
 3. CPU thấp nhưng latency cao gợi ý loại waiting nào?
@@ -111,3 +167,9 @@ Document parsing service trên 8 cores có 128 workers, CPU 98%, run queue/conte
 3. I/O wait, lock contention, downstream latency hoặc blocked workers.
 
 </details>
+
+## Related Knowledge
+
+- [Process, Thread & Concurrency](./process-thread-and-concurrency.mdx) — thread là execution path.
+- [Async I/O & Event Loop](./async-io-and-event-loop.mdx) — waiting concurrency khác CPU parallelism.
+- [Memory Management](./memory-management.mdx) — excessive threads còn có per-thread memory cost.

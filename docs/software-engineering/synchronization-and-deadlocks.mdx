@@ -11,11 +11,22 @@ import {FlowExplainer} from '@site/src/components/VisualExplainer';
 # Synchronization & Deadlocks
 
 ## TL;DR
-<TLDR>Synchronization bảo vệ shared invariants bằng cách giới hạn concurrent executions trong critical section. **Race** làm state có thể sai, **contention** làm hệ thống chậm, còn **deadlock** làm executions không còn progress.</TLDR>
 
-<Principle label="Mental rule">Lock chỉ nên bao phủ invariant cần bảo vệ; lock rộng hoặc giữ lock qua slow I/O có thể đổi correctness problem thành performance problem.</Principle>
+<TLDR>
+Synchronization bảo vệ shared invariants bằng cách giới hạn concurrent executions trong critical section. **Race** làm state có thể sai, **contention** làm hệ thống chậm, còn **deadlock** làm executions không còn progress.
+</TLDR>
+
+## Why It Matters
+
+Lock thường được thêm vào để “fix race”, nhưng lock cũng tạo ra một resource mới mà executions phải cạnh tranh. Một critical section quá rộng có thể biến bug correctness thành bottleneck latency; nhiều locks acquire không nhất quán có thể tạo deadlock.
+
+Mục tiêu không phải “lock càng nhiều càng an toàn”. Mục tiêu là bảo vệ đúng invariant với **critical section nhỏ nhất đủ đúng**, đồng thời giữ waiting và coordination complexity trong giới hạn có thể vận hành.
 
 ## Mental Model
+
+<Principle label="Mental rule">
+Lock chỉ nên bao phủ invariant cần bảo vệ; lock rộng hoặc giữ lock qua slow I/O có thể đổi correctness problem thành performance problem.
+</Principle>
 
 <ReactFlowDiagram
   ariaLabel="Synchronization flow from shared invariant to correct state"
@@ -46,16 +57,21 @@ import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 ## Core Concepts
 
-### Critical section
-Critical section là phần code thao tác shared invariant mà competing executions không được phép interleave theo cách phá correctness. Boundary phải xuất phát từ invariant, không phải độ dài function.
+### Critical section xuất phát từ invariant
 
-### Mutex và mutual exclusion
-Mutex cho phép một holder vào protected section tại một thời điểm. Lock không làm operation nhanh hơn; nó chủ động giảm concurrency để đổi lấy correctness.
+Critical section là phần operation mà competing executions không được phép interleave theo cách phá correctness. Boundary phải xuất phát từ invariant, không phải độ dài function. Có lúc chỉ hai statements cần được protected; có lúc cả một state transition phải atomic.
 
-### Lock contention
-Contention xuất hiện khi nhiều executions cạnh tranh cùng lock. Signal điển hình là CPU không quá cao, requests vẫn hoàn thành nhưng nhiều threads waiting và critical section giữ lock lâu. Slow network/disk/LLM call trong lock thường khuếch đại waiting.
+### Mutex đổi concurrency lấy correctness
 
-### Deadlock
+Mutex cho phép một holder vào protected section tại một thời điểm. Lock không làm operation nhanh hơn; nó chủ động serialize một phần work để giữ invariant.
+
+### Contention là queue trước lock
+
+Khi nhiều executions cùng cần một lock, contenders phải wait. Nếu lock hold time tăng từ `5 ms` lên `2 s` vì network call, mỗi request giữ lock lâu hơn hàng trăm lần và queue có thể tăng rất nhanh dù CPU thấp.
+
+### Deadlock là cyclic dependency giữa holders
+
+Deadlock thường cần circular wait: A giữ resource 1 và chờ resource 2, trong khi B giữ resource 2 và chờ resource 1. Cả hai đều không thể tự progress để release resource đang giữ.
 
 <FlowExplainer
   title="Circular wait hình thành như thế nào"
@@ -80,66 +96,99 @@ Contention xuất hiện khi nhiều executions cạnh tranh cùng lock. Signal 
         {id: 'b-lock-a', source: 'b', target: 'lock-a'},
       ],
       steps: [
-        {
-          title: '1 · A acquire Lock A',
-          description: 'Thread A acquire Lock A và tiếp tục giữ resource này.',
-          from: 'a',
-          to: 'lock-a',
-          message: 'acquire',
-          persistent: ['a', 'lock-a'],
-        },
-        {
-          title: '2 · B acquire Lock B',
-          description: 'Thread B acquire Lock B; lúc này mỗi thread đang giữ một lock khác nhau.',
-          from: 'b',
-          to: 'lock-b',
-          message: 'acquire',
-          persistent: ['a', 'lock-a', 'b', 'lock-b'],
-        },
-        {
-          title: '3 · A chờ Lock B',
-          description: 'A cần Lock B nhưng B đang giữ nó. A phải chờ và vẫn chưa release Lock A.',
-          from: 'a',
-          to: 'lock-b',
-          message: 'wait',
-          persistent: ['a', 'lock-a', 'b', 'lock-b'],
-        },
-        {
-          title: '4 · B chờ Lock A',
-          description: 'B cũng cần Lock A đang do A giữ. Circular wait khép kín nên cả hai không còn progress.',
-          from: 'b',
-          to: 'lock-a',
-          message: 'wait',
-          persistent: ['a', 'lock-a', 'b', 'lock-b'],
-        },
+        {title: '1 · A acquire Lock A', description: 'A acquire Lock A và tiếp tục giữ resource này.', from: 'a', to: 'lock-a', message: 'acquire', persistent: ['a', 'lock-a']},
+        {title: '2 · B acquire Lock B', description: 'B acquire Lock B; mỗi thread đang giữ một lock khác nhau.', from: 'b', to: 'lock-b', message: 'acquire', persistent: ['a', 'lock-a', 'b', 'lock-b']},
+        {title: '3 · A chờ Lock B', description: 'A cần Lock B nhưng B đang giữ nó. A vẫn chưa release Lock A.', from: 'a', to: 'lock-b', message: 'wait', persistent: ['a', 'lock-a', 'b', 'lock-b']},
+        {title: '4 · B chờ Lock A', description: 'B cần Lock A đang do A giữ. Circular wait khép kín nên cả hai không progress.', from: 'b', to: 'lock-a', message: 'wait', persistent: ['a', 'lock-a', 'b', 'lock-b']},
       ],
     },
   ]}
 />
 
-### Consistent lock ordering
-Nếu nhiều locks phải được acquire, một ordering thống nhất như `UserLock → OrderLock` giúp phá khả năng hình thành circular wait do code acquire ngược thứ tự.
+### Consistent lock ordering phá circular wait
+
+Nếu code luôn acquire `UserLock → OrderLock`, một execution không được phép làm ngược `OrderLock → UserLock`. Ordering thống nhất loại bỏ một hướng dependency cần thiết để vòng circular wait hình thành.
+
+### Lock scope và lock granularity là trade-off
+
+Lock quá rộng dễ hiểu nhưng serialize nhiều unrelated work. Lock quá nhỏ tăng complexity và có thể không còn bảo vệ trọn invariant. Fine-grained locking chỉ đáng dùng khi contention thực sự là bottleneck và correctness model vẫn rõ.
 
 ## Example
-Một payment endpoint giữ mutex trong external payment call ~2s sẽ biến network wait của một request thành lock wait của nhiều requests. Nếu invariant cho phép, external I/O nên ở ngoài critical section và protected state transition nên ngắn. Nếu side effect và state transition phải coordinated, cần transaction/state machine/idempotency phù hợp chứ không chỉ di chuyển code máy móc.
+
+### Starting Point
+
+Payment service cập nhật một in-memory ledger được dùng bởi nhiều threads. Ta thêm mutex quanh state transition để tránh race.
+
+### Requirement Changes
+
+Sau đó code gọi external payment provider trong cùng block:
+
+```ts
+await mutex.runExclusive(async () => {
+  validateLedger();
+  await provider.charge(input); // ~2s network wait
+  applyLedgerUpdate();
+});
+```
+
+### Pain Appears
+
+Mutex vẫn đúng về mutual exclusion, nhưng một request giữ lock trong toàn bộ network wait. Các requests khác không thể tiến qua ledger dù CPU gần như idle.
+
+### Root Cause
+
+Lock hold time đã bị coupling với external latency. Correctness boundary và slow I/O boundary bị gom chung mà chưa chứng minh là cần thiết.
+
+### Better Design
+
+Nếu invariant cho phép, giữ protected state transition ngắn và đưa slow I/O ra ngoài:
+
+```ts
+const result = await provider.charge(input);
+
+await mutex.runExclusive(async () => {
+  applyLedgerUpdate(result);
+});
+```
+
+Nếu side effect và local state phải coordinated theo semantics mạnh hơn, cần state machine, idempotency, transaction/outbox hoặc compensation phù hợp — không chỉ “move await ra ngoài” một cách máy móc.
+
+### Why It Works
+
+Critical section chỉ giữ resource trong khoảng thời gian state thật sự cần mutual exclusion. External wait không còn serialize mọi contender, nên correctness boundary rõ hơn và contention giảm.
 
 ## When to Use
-- Shared mutable state cần mutual exclusion trong cùng boundary.
+
+- Shared mutable state cần mutual exclusion trong cùng coordination boundary.
 - Latency tăng, CPU thấp, thread dump cho thấy nhiều workers chờ mutex.
 - Requests treo và thread dump cho thấy circular waiting.
+- Một operation cần acquire nhiều locks/resources và phải thiết kế ordering.
 
 ## Common Mistakes
-- **Concurrency bug → thêm lock:** phải xác định shared state/invariant trước.
+
+- **Concurrency bug → thêm lock ngay:** phải xác định shared state và invariant trước.
 - **Lock cả function:** dễ serialize unrelated work.
 - **Giữ lock qua slow I/O:** kéo dài waiting cho mọi contender.
-- **Local lock bảo vệ distributed state:** mutex chỉ có hiệu lực với executions cùng coordination mechanism.
+- **Local lock bảo vệ distributed state:** mutex chỉ hiệu lực với executions cùng coordination mechanism.
+- **Fine-grained locks mặc định tốt hơn:** thêm locks làm reasoning và deadlock surface lớn hơn.
 
-## Related Knowledge
-- [Process, Thread & Concurrency](./process-thread-and-concurrency.mdx) — nguồn gốc shared-state race.
-- [Async I/O & Event Loop](./async-io-and-event-loop.mdx) — waiting model cho slow I/O.
-- [Database Design Foundations](./database-design-foundations.mdx) — persistent invariant ở database boundary.
+## Decision Guide
+
+Trước khi thêm lock, hỏi:
+
+1. Invariant nào đang bị race?
+2. Tất cả competing executions có thật sự đi qua cùng lock không?
+3. Critical section nhỏ nhất vẫn bảo vệ trọn invariant là gì?
+4. Trong critical section có network/disk/LLM call hoặc blocking work không?
+5. Có nhiều locks không? Nếu có, ordering có explicit và consistent không?
+6. Contention cao đến mức cần partition state, sharding lock hoặc đổi ownership model chưa?
+
+## Practical Takeaway
+
+Lock là **correctness mechanism có capacity cost**. Review lock bằng hai câu song song: “nó có bảo vệ đúng invariant không?” và “nó giữ resource bao lâu, bao nhiêu contenders phải chờ?”. Nếu chỉ trả lời câu đầu, production latency vẫn có thể thất bại.
 
 ## Self-test
+
 1. Race, contention và deadlock khác nhau thế nào?
 2. Vì sao mutex tăng correctness nhưng có thể giảm throughput?
 3. Consistent lock ordering giảm deadlock risk bằng cách nào?
@@ -152,3 +201,9 @@ Một payment endpoint giữ mutex trong external payment call ~2s sẽ biến n
 3. Mọi execution acquire cùng thứ tự nên khó hình thành circular wait.
 
 </details>
+
+## Related Knowledge
+
+- [Process, Thread & Concurrency](./process-thread-and-concurrency.mdx) — nguồn gốc shared-state race.
+- [Async I/O & Event Loop](./async-io-and-event-loop.mdx) — waiting model cho slow I/O.
+- [Database Design Foundations](./database-design-foundations.mdx) — persistent invariant ở database boundary.
