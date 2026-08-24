@@ -1,6 +1,6 @@
 ---
 title: "Observability & Reliability Fundamentals"
-description: "Mental model để quan sát production system, định vị failure và đánh giá reliability bằng telemetry, SLI, SLO và user-visible outcomes."
+description: "Mental model để quan sát production system, định vị failure và bảo vệ user-visible reliability bằng telemetry, SLI, SLO và recovery signals."
 tags: [observability, reliability, monitoring, telemetry, sli, slo]
 ---
 
@@ -13,15 +13,30 @@ import {FlowExplainer} from '@site/src/components/VisualExplainer';
 
 <TLDR>
 
-**Observability** giúp biến một production problem từ “system có vẻ lỗi” thành evidence có thể điều tra. **Reliability** hỏi hệ thống có cung cấp outcome đủ ổn định cho user hay không — không chỉ API còn sống, mà còn phải xét latency, task success/correctness và các constraint quan trọng.
+**Observability** giúp biến một production problem từ “system có vẻ lỗi” thành evidence có thể điều tra. **Reliability** hỏi hệ thống có cung cấp outcome đủ ổn định cho user hay không. Metrics giúp detect, traces giúp locate, logs giúp explain; SLI/SLO biến outcome cần bảo vệ thành mục tiêu có thể đo và vận hành.
 
 </TLDR>
 
+## Why It Matters
+
+Production system không fail theo cách gọn gàng. API vẫn trả `200 OK` nhưng task có thể sai; CPU vẫn bình thường nhưng dependency bên ngoài đang timeout; aggregate error rate tăng nhưng không nói request đang hỏng ở service nào.
+
+Nếu thiếu observability, team biết **có vấn đề** nhưng phải đoán nguyên nhân. Nếu thiếu reliability target, team có rất nhiều telemetry nhưng lại không biết degradation nào thực sự quan trọng với user.
+
+Hai phần vì thế bổ sung cho nhau:
+
+- **Observability** tạo evidence để hiểu runtime behavior.
+- **Reliability engineering** xác định outcome nào phải được bảo vệ và hệ thống được phép fail đến mức nào.
+
+<Principle label="Operational pressure">Telemetry chỉ có giá trị khi nó giúp engineer đi từ user-visible symptom tới quyết định điều tra hoặc recovery. Reliability target chỉ có giá trị khi nó phản ánh outcome mà user thực sự quan tâm.</Principle>
+
 ## Mental Model
 
-Production operation có thể nhìn bằng chuỗi:
+Hãy hình dung production operation như một vòng điều khiển:
 
-**System behavior → Telemetry → Detect → Locate → Explain → Recover**
+**User outcome → Telemetry → Detect → Locate → Explain → Recover → Improve**
+
+Observability nằm chủ yếu ở phần **Telemetry → Explain**. Reliability bao trùm cả vòng: chọn outcome cần bảo vệ, đặt target, phát hiện khi target bị đe dọa, rồi giảm impact và cải thiện hệ thống sau failure.
 
 Ba telemetry signal phổ biến đóng vai trò khác nhau:
 
@@ -31,7 +46,7 @@ Ba telemetry signal phổ biến đóng vai trò khác nhau:
 
 <FlowExplainer
   title="Từ degradation tới root cause"
-  description="Một Agent đang giảm task success: telemetry giúp thu hẹp vấn đề từ signal tổng hợp tới failure cụ thể."
+  description="Một Coding Agent giảm task success: telemetry giúp thu hẹp vấn đề từ symptom tổng hợp tới failure cụ thể."
   scenarios={[
     {
       id: 'agent-incident',
@@ -39,47 +54,49 @@ Ba telemetry signal phổ biến đóng vai trò khác nhau:
       layout: 'compact',
       presentation: 'progressive',
       nodes: [
-        {id: 'metrics', label: 'Metrics', detail: 'Error rate ↑', role: 'data'},
-        {id: 'trace', label: 'Trace', detail: 'Locate failing span', role: 'service'},
-        {id: 'logs', label: 'Logs', detail: 'Timeout + retries', role: 'data'},
-        {id: 'cause', label: 'Root cause', detail: 'External tool degraded', role: 'service'},
+        {id: 'outcome', label: 'User outcome', detail: 'Task success ↓', role: 'client'},
+        {id: 'metrics', label: 'Metrics', detail: 'Tool timeout rate ↑', role: 'data'},
+        {id: 'trace', label: 'Trace', detail: 'Search span slow', role: 'service'},
+        {id: 'logs', label: 'Logs', detail: '429 + retries', role: 'data'},
+        {id: 'cause', label: 'Root cause', detail: 'Provider rate-limited', role: 'service'},
       ],
       steps: [
-        {title: '1 · Detect', from: 'metrics', to: 'trace', message: 'error rate ↑', description: 'Metrics cho biết hệ thống đang degrade, nhưng chưa chỉ ra request fail ở boundary nào.'},
-        {title: '2 · Locate', from: 'trace', to: 'logs', message: 'tool span failed', description: 'Trace chỉ ra Tool là span bất thường trong request path.'},
-        {title: '3 · Explain', from: 'logs', to: 'cause', message: 'timeout + retry', description: 'Logs cung cấp event cụ thể để giải thích failure và chọn mitigation phù hợp.'},
+        {title: '1 · Detect', from: 'outcome', to: 'metrics', message: 'SLO at risk', description: 'Task-success degradation cho biết user-visible reliability đang bị ảnh hưởng; metrics giúp xác nhận signal nào thay đổi cùng lúc.'},
+        {title: '2 · Locate', from: 'metrics', to: 'trace', message: 'follow failing requests', description: 'Trace chỉ ra phần bất thường nằm ở Search Tool span thay vì model inference hay persistence.'},
+        {title: '3 · Explain', from: 'trace', to: 'logs', message: 'inspect span events', description: 'Logs tại đúng span cho thấy provider trả 429 và client đang retry.'},
+        {title: '4 · Act', from: 'logs', to: 'cause', message: 'rate-limit pressure', description: 'Evidence đủ cụ thể để chọn mitigation như backoff, traffic shaping, fallback hoặc giảm concurrency.'},
       ],
     },
   ]}
 />
 
-Đây là **debugging shortcut**, không phải quy tắc bắt buộc mọi incident đều phải bắt đầu từ Metrics. Investigation có thể bắt đầu từ signal nào đang có; giá trị lớn nhất đến từ việc correlate chúng bằng cùng request/trace identity.
-
-<Principle label="Operational mental model">Monitoring giúp theo dõi known failure modes; observability cung cấp đủ signal để điều tra cả những failure chưa dự đoán trước.</Principle>
+Đây là **investigation path**, không phải quy tắc mọi incident đều phải bắt đầu từ Metrics. Engineer có thể bắt đầu từ alert, trace, log, support ticket hoặc synthetic check. Điều quan trọng là các signal có thể correlate về cùng request, user journey hoặc operation.
 
 ## Core Concepts
 
 ### Logs, Metrics và Traces
 
 <ConceptGrid>
-  <ConceptCard title="Metrics">Numbers aggregated over time như request rate, error rate, p95 latency hoặc tool timeout rate. Rất mạnh cho dashboard, alert và phát hiện xu hướng.</ConceptCard>
-  <ConceptCard title="Logs">Event records có context như request ID, tool name, error code hoặc retry count. Dùng để xem chi tiết điều gì đã xảy ra.</ConceptCard>
-  <ConceptCard title="Traces">End-to-end request path gồm các span. Dùng để xác định request đi qua service nào và bottleneck/failure nằm ở đâu trong distributed flow.</ConceptCard>
+  <ConceptCard title="Metrics">Numbers aggregated over time như request rate, error rate, p95 latency hoặc tool timeout rate. Mạnh cho dashboard, alert, trend và capacity signal.</ConceptCard>
+  <ConceptCard title="Logs">Event records có context như request ID, tool name, error code hoặc retry count. Mạnh khi cần xem điều gì cụ thể đã xảy ra.</ConceptCard>
+  <ConceptCard title="Traces">End-to-end request path gồm các span. Mạnh khi cần xác định request đi qua đâu và bottleneck/failure nằm ở boundary nào.</ConceptCard>
 </ConceptGrid>
 
-Một cách nhớ ngắn:
+Một cách nhớ hữu ích:
 
 - **Metrics → WHAT changed?**
 - **Traces → WHERE in the request path?**
 - **Logs → WHAT exactly happened there?**
 
-Không nên biến ba signal thành ba silo riêng. Correlation mới giúp đi từ dashboard tới request cụ thể rồi tới event/root cause.
+Đây không phải mapping tuyệt đối. Metrics có thể mang dimensions, logs có thể chứa timing, traces có thể chứa events. Điểm quan trọng hơn là **correlation**: từ aggregate symptom phải drill down được tới request/span/event liên quan thay vì vận hành ba silo telemetry tách biệt.
 
 ### Monitoring vs Observability
 
-**Monitoring** thường bắt đầu từ những condition đã biết trước: `error_rate > 5%`, `p95 > 3s`, database connection pool gần cạn. Nó trả lời tốt câu hỏi “known bad condition có đang xảy ra không?”.
+**Monitoring** thường bắt đầu từ những condition đã biết trước: `error_rate > 5%`, `p95 > 3s`, database connection pool gần cạn. Nó rất tốt cho câu hỏi: **known bad condition có đang xảy ra không?**
 
-**Observability** rộng hơn: hệ thống phát ra đủ telemetry để engineer đặt những câu hỏi mới trong lúc incident xảy ra. CPU/RAM bình thường không chứng minh user experience bình thường; failure có thể nằm ở dependency, retry loop, dữ liệu, tool call hoặc behavior ở application layer.
+**Observability** là khả năng suy luận internal state từ system outputs/telemetry đủ giàu. Trong thực tế engineering, nó cho phép team đặt câu hỏi mới khi incident xảy ra: tenant nào bị ảnh hưởng, request nào đi qua dependency chậm, retry bắt đầu ở đâu, hay failure chỉ xuất hiện với một model/provider cụ thể.
+
+Monitoring không phải phiên bản “thấp hơn” cần thay thế. Một production system tốt thường dùng monitoring để phát hiện known risks và observability để điều tra khi symptom không khớp playbook sẵn có.
 
 ### SLI, SLO và SLA
 
@@ -87,7 +104,9 @@ Không nên biến ba signal thành ba silo riêng. Correlation mới giúp đi 
 - **SLO — Service Level Objective:** target mong muốn cho SLI, ví dụ successful request ratio `>= 99.9%` trong một tháng.
 - **SLA — Service Level Agreement:** cam kết business/external với customer; vi phạm có thể kéo theo service credit hoặc consequence khác.
 
-Ví dụ: target `99.9%` nhưng tháng này đo được `99.7%` thì **99.9% là SLO**, **99.7% là SLI**, và SLO đã bị miss. Không phải mọi SLO đều cần trở thành SLA.
+Ví dụ nếu target là `99.9%` nhưng tháng này đo được `99.7%` thì **99.7% là SLI**, **99.9% là SLO**, và SLO đã bị miss. SLA có thể dùng threshold khác và không phải mọi SLO đều cần trở thành SLA.
+
+SLO còn tạo một decision boundary quan trọng: team không cần tối ưu mọi reliability metric tới 100%. Target giúp cân bằng reliability với delivery speed, complexity và cost.
 
 ### Availability không đồng nghĩa Reliability
 
@@ -101,64 +120,146 @@ Một API có thể trả `200 OK` gần như mọi request nhưng vẫn tạo u
 
 Vì vậy reliability phải bám vào **user-visible outcome**, không chỉ infrastructure health.
 
-Với AI system, một useful reliability view thường cần kết hợp availability/latency với **task success hoặc correctness**. Đây là mental model, không phải một công thức cộng điểm cố định.
+Với AI system, reliability view thường cần kết hợp availability/latency với **task success hoặc correctness**. Không nên cộng chúng thành một “reliability score” tùy ý nếu mỗi signal đang bảo vệ một failure mode khác nhau.
 
 ### Failure, detection và recovery
 
-Distributed systems có network timeout, dependency outage, overload, bad deploy, rate limit và machine failure. Reliability engineering không chỉ cố “không bao giờ hỏng”; nó còn tối ưu khả năng detect, diagnose, contain và recover khi failure xảy ra.
+Distributed systems có network timeout, dependency outage, overload, bad deploy, rate limit và machine failure. Reliability engineering không chỉ cố “không bao giờ hỏng”; nó còn giảm **frequency, blast radius và recovery time** của failure.
 
-**MTTR** là một recovery-oriented metric thường dùng để theo dõi tốc độ restore/recovery sau incident. Ở checkpoint này chỉ cần hiểu vai trò của nó trong mental model recovery; incident response và reliability operations cần deep dive riêng sau này.
+Một useful lifecycle là:
+
+**Prevent where economical → Detect quickly → Diagnose with evidence → Contain impact → Recover → Learn**
+
+**MTTR** là một recovery-oriented metric thường dùng để theo dõi tốc độ restore/recovery sau incident. Nó không thay thế SLI/SLO: SLO mô tả outcome cần bảo vệ, còn MTTR giúp nhìn vào khả năng phục hồi sau khi failure xảy ra.
 
 ## Example
 
-Giả sử AI Coding Agent có production metrics:
+Giả sử team vận hành một AI Coding Agent dùng external Search Tool.
+
+### Starting Point
+
+Ban đầu dashboard trông rất khỏe:
 
 - HTTP availability: `99.99%`
-- p95 latency: `1.8s`
+- p95 API latency: `1.8s`
+- infrastructure CPU/memory: bình thường
+
+Nếu đây là toàn bộ telemetry, team có thể kết luận service reliable.
+
+### Requirement Changes
+
+Sau khi product trưởng thành, team bắt đầu đo outcome mà user thực sự cần:
+
 - Agent task success: `91%`
 - Task-success SLO: `>= 98%`
+- Search Tool timeout rate: tăng mạnh trong 30 phút gần nhất
 
-Nếu chỉ nhìn availability, team có thể kết luận service “healthy”. Nhưng từ phía user, Agent fail gần 1/10 task và đang miss SLO quan trọng. Hệ thống **available nhưng không reliable theo outcome cần bảo vệ**.
+Bây giờ bức tranh thay đổi: endpoint vẫn available nhưng gần 1/10 task không hoàn thành. **Availability signal đúng, nhưng nó đang đo sai lớp outcome để đại diện cho reliability của Agent.**
 
-Khi error rate tăng, trace của một request có thể cho thấy phần lớn thời gian nằm ở một Tool span; logs của span đó lại cho thấy timeout và retry. Ba signal cùng nhau biến symptom tổng hợp thành failure cụ thể có thể mitigation.
+### Naive Investigation
+
+Team mở application logs và search `timeout`. Họ thấy hàng nghìn events từ model call, vector retrieval, Search Tool và database. Có evidence nhưng chưa có đường nối từ failed task tới đúng dependency.
+
+Thêm logs không tự động tạo observability. Nếu thiếu `trace_id`, span context hoặc dimensions phù hợp, engineer vẫn phải đoán.
+
+### Root Cause
+
+Team chọn một failed task từ task-success metric, mở distributed trace và thấy Search Tool span chiếm phần lớn latency. Logs gắn với span đó cho biết provider trả `429`, client retry ba lần rồi timeout.
+
+Root cause không phải “API chậm” nói chung. Failure chain cụ thể là:
+
+**Provider rate limit → retries → tool timeout → agent cannot finish task → task-success SLO degrades**
+
+### Better Operational Design
+
+Team cải thiện cả observability lẫn reliability:
+
+- propagate `trace_id` qua agent run và tool calls;
+- đo `tool_timeout_rate` theo provider;
+- giữ task success làm user-visible SLI;
+- alert theo SLO burn/degradation thay vì chỉ CPU hoặc HTTP uptime;
+- dùng exponential backoff, concurrency control và fallback cho provider pressure;
+- review incident để điều chỉnh dependency budget và retry policy.
+
+### Why It Works
+
+Thiết kế mới không tốt hơn vì có “nhiều telemetry hơn”. Nó tốt hơn vì evidence nối được **user outcome → request path → concrete failure**, còn mitigation tác động đúng failure boundary.
+
+Nếu lần sau task success giảm nhưng Search Tool bình thường, team không cần mặc định blame provider. Họ có cùng investigation model để kiểm tra model call, retrieval, persistence hoặc dependency khác.
 
 ## When to Use
 
-- Khi production có latency/error/task-success degradation nhưng infrastructure dashboard chưa chỉ ra root cause.
-- Khi thiết kế telemetry cho microservices, RAG pipeline hoặc AI Agent có nhiều dependency.
-- Khi cần chọn SLI phản ánh user experience thay vì chỉ server/process health.
-- Khi cần tách measured behavior, engineering target và external commitment.
-- Khi review incident và cần nối detection, diagnosis và recovery thành một operational loop.
+Observability và reliability thinking đặc biệt quan trọng khi:
+
+- production có latency/error/task-success degradation nhưng infrastructure dashboard chưa chỉ ra root cause;
+- microservices, RAG pipeline hoặc AI Agent có nhiều remote dependency và failure boundary;
+- cần chọn SLI phản ánh user experience thay vì chỉ server/process health;
+- cần tách measured behavior, engineering target và external commitment;
+- review incident và cần nối detection, diagnosis, mitigation và recovery thành một operational loop.
+
+Với service nhỏ, ít dependency và failure modes đơn giản, bạn không nhất thiết cần tracing platform phức tạp ngay từ đầu. Structured logs, vài outcome metrics và correlation ID có thể là điểm khởi đầu hợp lý.
 
 ## Common Mistakes
 
 - **Có nhiều logs nghĩa là có observability:** log không searchable, không structured hoặc không correlate theo request/trace ID có thể rất khó dùng.
+- **Thu mọi telemetry có thể thu:** cardinality, storage và query cost tăng nhưng signal-to-noise giảm. Instrument theo câu hỏi vận hành cần trả lời.
 - **CPU/RAM bình thường nghĩa là service healthy:** infrastructure metrics chỉ là một lớp signal.
 - **HTTP 200 nghĩa là task thành công:** đặc biệt sai với AI systems và workflow nhiều bước.
 - **SLO và SLA là một:** SLO là engineering objective; SLA là agreement/commitment với external consequence.
 - **Reliability = zero failure:** production engineering còn phải detect, contain và recover tốt khi failure xảy ra.
-- **Dùng một aggregate metric che critical outcome:** availability cao không bù được task success/correctness đang vi phạm target quan trọng.
+- **Alert trên mọi metric:** alert nên dẫn tới action; dashboard signal không nhất thiết phải đánh thức on-call.
+- **Retry mọi failure:** retry có thể khuếch đại overload hoặc rate-limit pressure nếu không có backoff, budget và idempotency phù hợp.
 
-## Related Knowledge
+## Decision Guide
 
-- [Observability & Reliability](./observability-and-reliability.mdx) — broad-topic learning map.
-- [System Design Fundamentals](./system-design-fundamentals.mdx) — thiết kế architecture và failure boundaries trước khi vận hành production.
-- [Evaluation Fundamentals](../ai-fundamentals/evaluation-fundamentals.mdx) — đánh giá behavior/quality trong controlled evaluation; production observability bổ sung evidence từ real traffic và real dependencies.
-- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — timeout, retry, idempotency và remote failure semantics trên service boundary.
+Khi thiết kế hoặc review observability/reliability, đi theo thứ tự câu hỏi sau:
+
+1. **User-visible outcome nào phải được bảo vệ?** Request success, checkout completion, agent task success, freshness hay correctness?
+2. **SLI nào đo outcome đó đủ trực tiếp?** Tránh chọn CPU/RAM chỉ vì dễ đo.
+3. **Target nào thực sự cần?** SLO cao hơn kéo theo cost và architectural pressure lớn hơn; đừng mặc định 100%.
+4. **Nếu SLI degrade, telemetry có giúp drill down không?** Có thể đi từ metric tới trace rồi tới relevant events/logs không?
+5. **Failure boundary nào cần containment?** Timeout, retry budget, circuit breaker, fallback, queue hay load shedding có phù hợp không?
+6. **Alert có actionable không?** Người nhận alert có biết cần kiểm tra hoặc làm gì tiếp theo không?
+7. **Sau recovery, system học được gì?** Cần sửa instrumentation, threshold, runbook, dependency policy hay architecture?
+
+<Principle label="Decision heuristic">Bắt đầu từ outcome cần bảo vệ, không bắt đầu từ telemetry tool. Instrumentation là phương tiện để hiểu và bảo vệ reliability, không phải mục tiêu tự thân.</Principle>
+
+## Practical Takeaway
+
+Khi một production system “vẫn chạy” nhưng user phàn nàn, đừng hỏi trước tiên **server có healthy không?** Hãy hỏi:
+
+- Outcome nào của user đang degrade?
+- Signal nào chứng minh degradation đó?
+- Có thể trace từ outcome tới request/dependency cụ thể không?
+- Evidence tại failure boundary nói gì?
+- Mitigation đang giảm impact hay vô tình khuếch đại failure?
+
+Mental model cần giữ lại là:
+
+**Measure what users depend on → correlate telemetry around that outcome → investigate from symptom to boundary → recover deliberately → feed what you learn back into the system.**
 
 ## Self-test
 
-1. Khi error rate tăng, Metrics đã cho biết degradation nhưng cần xác định service/tool nào fail, signal nào nên ưu tiên?
+1. Error rate tăng nhưng chưa biết service/tool nào fail. Signal nào thường hữu ích nhất để locate failure trong request path, và vì sao?
 2. Vì sao HTTP availability cao chưa đủ chứng minh một AI Agent reliable?
 3. Phân biệt SLI, SLO và SLA bằng một ví dụ ngắn.
-4. Monitoring và Observability khác nhau ở loại câu hỏi nào chúng hỗ trợ?
+4. Monitoring và Observability hỗ trợ hai loại câu hỏi khác nhau như thế nào?
+5. Team đã có hàng triệu log lines nhưng không thể nối failed task tới đúng dependency. Vấn đề observability chính là gì?
 
 <details>
 <summary>Answers</summary>
 
-1. Traces, vì chúng cho biết request đi qua đâu và span/service/tool nào fail hoặc chậm.
+1. Traces thường hữu ích nhất vì chúng biểu diễn request path và các span/service/tool mà request đã đi qua; sau đó có thể drill down vào logs/events của span bất thường.
 2. Vì reliability phải phản ánh user-visible outcome; Agent có thể trả HTTP 200 nhưng task success/correctness vẫn thấp.
-3. SLI là behavior đo được, SLO là target cho SLI, SLA là external/business commitment có thể kèm consequence.
-4. Monitoring mạnh với known conditions/failure modes; Observability cho phép investigation các câu hỏi mới bằng telemetry đủ giàu và có correlation.
+3. Ví dụ: `99.7%` successful requests đo được là SLI, target `>= 99.9%` là SLO, còn một customer contract cam kết `99.5%` kèm service credit là SLA.
+4. Monitoring mạnh với known conditions/failure modes; Observability giúp investigation những câu hỏi mới bằng telemetry đủ giàu và có correlation.
+5. Thiếu correlation/context để đi từ user outcome hoặc request tới relevant trace/span/event; thêm volume log không giải quyết được vấn đề đó.
 
 </details>
+
+## Related Knowledge
+
+- [Observability & Reliability](./observability-and-reliability.mdx) — broad-topic map của production visibility và reliability.
+- [System Design Fundamentals](./system-design-fundamentals.mdx) — architecture, dependency và failure boundaries trước khi vận hành production.
+- [Evaluation Fundamentals](../ai-fundamentals/evaluation-fundamentals.mdx) — đánh giá behavior/quality trong controlled evaluation; production observability bổ sung evidence từ real traffic và real dependencies.
+- [API Communication Fundamentals](./api-communication-fundamentals.mdx) — timeout, retry, idempotency và remote failure semantics trên service boundary.
