@@ -4,7 +4,7 @@ description: Learning map từ task success tới evaluators, datasets, metrics,
 slug: /ai-fundamentals/evaluation
 ---
 
-import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+import {KnowledgeMap, LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 
 # Evaluation
 
@@ -12,7 +12,17 @@ Evaluation biến câu hỏi mơ hồ “model có tốt không?” thành một
 
 ## Topic Overview
 
-Mental map: **Task success → Evaluation method → Test cases → Metrics → Reliability → Regression gate**. Mỗi layer trả lời một câu hỏi khác nhau; landing page này chỉ giúp định hướng giữa các layers.
+<KnowledgeMap
+  label="Evaluation topic map"
+  levels={[
+    [{title: 'Task Success', description: 'Define the behavior and quality dimensions that matter.'}],
+    [{title: 'Evaluation Method', description: 'Choose deterministic checks, model-based evaluation or human review.'}],
+    [{title: 'Test Cases', description: 'Build representative cases and meaningful slices.'}],
+    [{title: 'Metrics', description: 'Aggregate evidence without hiding hard failures.'}],
+    [{title: 'Reliability', description: 'Reason about uncertainty, sample size and significance.'}],
+    [{title: 'Regression Gate', description: 'Turn evaluation evidence into release decisions.'}],
+  ]}
+/>
 
 ## Lessons
 
