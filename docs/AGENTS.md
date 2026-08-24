@@ -110,7 +110,7 @@ A compact `TL;DR` may remain at the top, but its compression must not become the
 
 ### MDX block safety
 
-When authoring or rewriting `.mdx`, do not compact nested block tags onto one line when Docusaurus/MDX parsing depends on block boundaries.
+When authoring or rewriting `.mdx`, do not compact nested block tags onto one physical line when Docusaurus/MDX parsing depends on block boundaries.
 
 In particular, always write collapsible answers as separate block tags with blank lines around Markdown content:
 
@@ -123,7 +123,27 @@ Markdown content here.
 </details>
 ```
 
-Never generate `<details><summary>Answers</summary>` on one line. Treat this as a build-safety invariant for all generated and edited docs. When touching files that contain `<details>` blocks, preserve or normalize this safe form before committing.
+Treat **every same-line variant** as unsafe, not only the exact literal `<details><summary>Answers</summary>`. These are also forbidden:
+
+```mdx
+<details> <summary>Answers</summary>
+<details>    <summary>Answers</summary>
+<summary>Answers</summary> Markdown content
+Markdown content </details>
+```
+
+The invariant is based on **physical line boundaries**, not the amount of whitespace between tags. `<details>`, `<summary>...</summary>`, Markdown body content, and `</details>` must remain block-safe and must never be compressed by an editor, formatter, or AI rewrite.
+
+Before committing any docs change that creates, rewrites, or touches disclosure blocks:
+
+1. run `npm run docs:format-mdx` to normalize known unsafe compact forms;
+2. inspect the resulting diff and commit any normalization that belongs to the change;
+3. run `npm run docs:check`;
+4. run the required production build for the touched area.
+
+`npm run build` also runs the normalizer before docs validation as a CI safety net. That safety net exists to prevent deployment from failing on a whitespace-only MDX regression; it is **not** permission to leave malformed source in the repository. Source files should be committed in canonical block-safe form.
+
+When touching files that contain `<details>` blocks, preserve or normalize this safe form before committing. A build or docs rewrite is not complete until this invariant has been checked.
 
 ## Do not over-compress at capture time
 
