@@ -16,10 +16,12 @@ function normalizeDetailsBlocks(source) {
   return source
     // MDX block tags must not be compacted onto the same physical line.
     .replace(/<details\b([^>\n]*)>[\t ]*<summary\b([^>\n]*)>/gu, '<details$1>\n<summary$2>')
-    // Markdown content inside a disclosure block must start on its own block.
+    // Markdown content inside a disclosure block must start after a blank line.
     .replace(/<\/summary>[\t ]+(?=\S)/gu, '</summary>\n\n')
-    // Keep the closing block tag separate from trailing Markdown content.
-    .replace(/([^\r\n])[\t ]*<\/details>/gu, '$1\n\n</details>');
+    .replace(/<\/summary>\r?\n(?!\r?\n)/gu, '</summary>\n\n')
+    // Keep the closing block tag on its own line with a blank line before it.
+    .replace(/([^\r\n])[\t ]*<\/details>/gu, '$1\n\n</details>')
+    .replace(/([^\r\n])\r?\n<\/details>/gu, '$1\n\n</details>');
 }
 
 let changed = 0;
