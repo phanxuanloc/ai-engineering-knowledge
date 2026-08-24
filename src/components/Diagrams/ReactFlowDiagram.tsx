@@ -165,6 +165,7 @@ export function ReactFlowDiagram({ariaLabel, background = false, caption, classN
   const [isFullscreen, setIsFullscreen] = useState(false);
   const mobile = useMobileDiagramLayout();
   const effectiveDirection: FlowDirection = mobile && direction === 'LR' ? 'TB' : direction;
+  const diagramNavigationEnabled = interactive && isFullscreen;
 
   useEffect(() => {
     const updateFullscreen = () => setIsFullscreen(document.fullscreenElement === canvasRef.current);
@@ -253,8 +254,8 @@ export function ReactFlowDiagram({ariaLabel, background = false, caption, classN
   }, [effectiveDirection, fitPadding, mobile, setFlowNodes, viewportNodes]);
   const graphIsLarge = nodes.length >= 15 || layout.bounds.width > 1600 || layout.bounds.height > 1400;
   const showMiniMap = minimap === true || (minimap === 'auto' && graphIsLarge);
-  const showControls = controls ?? interactive;
-  const draggable = nodesDraggable ?? false;
+  const showControls = controls ?? diagramNavigationEnabled;
+  const draggable = (nodesDraggable ?? false) && diagramNavigationEnabled;
   const canvasHeight = mobile
     ? Math.min(960, Math.max(380, layout.bounds.height + 96))
     : height ?? Math.min(900, Math.max(300, layout.bounds.height + 56));
@@ -262,10 +263,10 @@ export function ReactFlowDiagram({ariaLabel, background = false, caption, classN
   return (
     <figure className={clsx(styles.reactFlowFigure, className)} aria-label={ariaLabel}>
       <div className={styles.reactFlowCanvas} ref={canvasRef} style={{height: canvasHeight}}>
-        <ReactFlow key={`${effectiveDirection}-${mobile ? 'mobile' : 'desktop'}`} aria-label={ariaLabel} colorMode="system" edges={flowEdges} elementsSelectable={false} fitView fitViewOptions={{padding: fitPadding, maxZoom: 1}} maxZoom={1.6} minZoom={mobile ? 0.4 : 0.35} nodes={flowNodes} nodesConnectable={false} nodesDraggable={draggable} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onInit={(instance) => { flowRef.current = instance; requestAnimationFrame(() => instance.fitView({padding: fitPadding, maxZoom: 1, duration: 0})); }} onNodesChange={onNodesChange} panOnDrag={interactive} preventScrolling={!interactive} proOptions={{hideAttribution: true}} zoomOnDoubleClick={interactive} zoomOnPinch={interactive} zoomOnScroll={interactive}>
+        <ReactFlow key={`${effectiveDirection}-${mobile ? 'mobile' : 'desktop'}`} aria-label={ariaLabel} colorMode="system" edges={flowEdges} elementsSelectable={false} fitView fitViewOptions={{padding: fitPadding, maxZoom: 1}} maxZoom={1.6} minZoom={mobile ? 0.4 : 0.35} nodes={flowNodes} nodesConnectable={false} nodesDraggable={draggable} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onInit={(instance) => { flowRef.current = instance; requestAnimationFrame(() => instance.fitView({padding: fitPadding, maxZoom: 1, duration: 0})); }} onNodesChange={onNodesChange} panOnDrag={diagramNavigationEnabled} preventScrolling={diagramNavigationEnabled} proOptions={{hideAttribution: true}} zoomOnDoubleClick={diagramNavigationEnabled} zoomOnPinch={diagramNavigationEnabled} zoomOnScroll={diagramNavigationEnabled}>
           {background && <Background variant={BackgroundVariant.Dots} gap={22} size={1} />}
           {showControls && <Controls position="bottom-right" showInteractive={draggable} />}
-          {showMiniMap && <MiniMap pannable zoomable position="top-right" />}
+          {showMiniMap && <MiniMap pannable={diagramNavigationEnabled} zoomable={diagramNavigationEnabled} position="top-right" />}
         </ReactFlow>
         {fullscreen && <button aria-label={isFullscreen ? 'Exit fullscreen diagram' : 'View diagram fullscreen'} className={styles.fullscreenButton} onClick={toggleFullscreen} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'} type="button">{isFullscreen ? '↙' : '↗'}</button>}
       </div>
