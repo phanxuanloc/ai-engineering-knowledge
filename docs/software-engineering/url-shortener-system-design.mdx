@@ -147,8 +147,15 @@ URL Shortener không cần một architecture đặc biệt bí ẩn. Hãy tách
 4. Vì sao aggregate cache capacity không chứng minh hệ thống chịu được viral URL?
 5. Yêu cầu nào có thể làm lựa chọn giữa `301` và `302` thay đổi?
 
-<details><summary>Answers</summary>
-1. Chúng có traffic ratio, latency sensitivity và operation khác nhau. 2. ID cấp uniqueness; Base62 chỉ biểu diễn ID ngắn hơn. 3. Miss làm một request đọc Database; cache loss tạo nhiều miss nhưng mapping vẫn còn trong durable store. 4. Một key có thể tập trung traffic vào một shard/node. 5. Caching, analytics visibility, destination mutability và mức control muốn giữ tại service.
+<details>
+<summary>Answers</summary>
+
+1. Chúng có traffic ratio, latency sensitivity và operation khác nhau.
+2. ID cấp uniqueness; Base62 chỉ biểu diễn ID ngắn hơn.
+3. Miss làm một request đọc Database; cache loss tạo nhiều miss nhưng mapping vẫn còn trong durable store.
+4. Một key có thể tập trung traffic vào một shard/node.
+5. Caching, analytics visibility, destination mutability và mức control muốn giữ tại service.
+
 </details>
 
 ## Related Knowledge
