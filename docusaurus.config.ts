@@ -56,7 +56,7 @@ const config: Config = {
         },
         blog: {},
         theme: {
-          customCss: './src/css/custom.css',
+          customCss: ['./src/css/custom.css', './src/css/mobile-search.css'],
         },
       } satisfies Preset.Options,
     ],
