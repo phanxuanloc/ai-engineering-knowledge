@@ -17,9 +17,13 @@
   }
 
   .aa-DetachedContainer {
+    --aa-font-size: 16px;
+    --aa-search-input-height: 44px;
     height: 100dvh;
     max-height: 100dvh;
     overscroll-behavior-x: none;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   /*
@@ -75,6 +79,8 @@
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
+    font-size: 16px !important;
+    line-height: 1.25;
   }
 
   .aa-DetachedCancelButton {
