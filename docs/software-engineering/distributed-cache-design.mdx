@@ -12,37 +12,37 @@ import {FlowExplainer} from '@site/src/components/VisualExplainer';
 ## TL;DR
 
 <TLDR>
-
-Cache là **fast copy**, không phải source of truth. Nó giảm latency và repeated read load nhưng đổi lại thêm freshness, invalidation và failure complexity. Production cache design cần phân biệt **Hot Key** với **Cache Stampede**, chọn read/write strategy theo correctness requirement, và không dùng TTL như giải pháp duy nhất cho security-critical freshness.
-
+Cache là **fast copy**, không phải source of truth. Nó giảm latency và repeated read load nhưng đổi lại thêm freshness, invalidation và failure complexity. Production cache design phải phân biệt **Hot Key** với **Cache Stampede**, chọn read/write strategy theo correctness requirement và không dùng TTL như giải pháp duy nhất cho security-critical freshness.
 </TLDR>
+
+## Why It Matters
+
+Cache thường được thêm vì một lý do rất hợp lý: Database đang chịu quá nhiều repeated reads. Nhưng ngay khi cache xuất hiện, hệ thống có thêm một bản copy có thể stale, expire, mất toàn bộ sau restart hoặc trở thành hotspot mới.
+
+Một design chỉ hỏi “dùng Redis không?” là chưa đủ. Cần trả lời dữ liệu nào được phép stale, khi nào invalidate, cache miss sẽ dồn tải xuống đâu, một popular key expire thì chuyện gì xảy ra, và write path có được phép trả success trước khi durable source được cập nhật hay không.
+
+Cache vì thế là trade-off: **đổi performance lấy consistency + failure complexity**.
 
 ## Mental Model
 
-<Principle label="Cache rule">Cache đổi performance lấy thêm consistency và failure complexity. Source of truth quyết định business fact; cache chỉ giúp truy cập fact đó nhanh hơn.</Principle>
+<Principle label="Cache rule">Source of truth quyết định business fact; cache chỉ giữ một fast copy đủ fresh cho use case.</Principle>
 
 <FlowExplainer
   title="Cache-Aside: fast path và recovery path"
-  description="Cache HIT phục vụ read trực tiếp; MISS quay về source of truth rồi populate lại cache."
+  description="Cache HIT phục vụ read nhanh; MISS quay về source of truth rồi populate lại fast copy."
   scenarios={[
-    {
-      id: 'cache-aside',
-      label: 'Cache-Aside read',
-      layout: 'compact',
-      nodes: [
-        {id: 'client', label: 'Client', detail: 'GET product', role: 'user'},
-        {id: 'app', label: 'Application', detail: 'Owns cache policy', role: 'service'},
-        {id: 'cache', label: 'Cache', detail: 'Fast copy', role: 'data'},
-        {id: 'db', label: 'Database', detail: 'Source of truth', role: 'database'},
-      ],
-      steps: [
-        {title: '1 · Read cache', from: 'client', to: 'app', message: 'GET product', description: 'Application nhận read request và kiểm tra cache trước.'},
-        {title: '2 · HIT', from: 'app', to: 'cache', message: 'GET key', description: 'Nếu cache có dữ liệu fresh-enough, response tránh Database.'},
-        {title: '3 · MISS', from: 'cache', to: 'db', message: 'cache miss', description: 'Khi entry không tồn tại hoặc expire, source of truth cung cấp dữ liệu canonical.'},
-        {title: '4 · Repopulate', from: 'db', to: 'cache', message: 'fresh value', description: 'Application/cache policy populate fast copy cho các reads tiếp theo.'},
-        {title: '5 · Return', from: 'cache', to: 'client', message: 'product', description: 'Subsequent reads có thể quay lại fast path.'},
-      ],
-    },
+    {id: 'cache-aside', label: 'Cache-Aside read', layout: 'compact', nodes: [
+      {id: 'client', label: 'Client', detail: 'GET product', role: 'user'},
+      {id: 'app', label: 'Application', detail: 'Owns cache policy', role: 'service'},
+      {id: 'cache', label: 'Cache', detail: 'Fast copy', role: 'data'},
+      {id: 'db', label: 'Database', detail: 'Source of truth', role: 'database'},
+    ], steps: [
+      {title: '1 · Request', from: 'client', to: 'app', message: 'GET product', description: 'Application nhận read request.'},
+      {title: '2 · Lookup fast copy', from: 'app', to: 'cache', message: 'GET key', description: 'Cache được kiểm tra trước.'},
+      {title: '3 · Miss fallback', from: 'cache', to: 'db', message: 'MISS', description: 'Source of truth cung cấp canonical value khi entry không có hoặc hết hạn.'},
+      {title: '4 · Repopulate', from: 'db', to: 'cache', message: 'fresh value', description: 'Fast path được khôi phục cho reads sau.'},
+      {title: '5 · Return', from: 'cache', to: 'client', message: 'product', description: 'Subsequent reads tránh repeated origin load.'},
+    ]},
   ]}
 />
 
@@ -50,96 +50,113 @@ Cache là **fast copy**, không phải source of truth. Nó giảm latency và r
 
 ### Cache-Aside, TTL và invalidation
 
-Với Cache-Aside, application đọc cache trước; MISS mới đọc Database và populate cache. **TTL** giới hạn entry được phép tồn tại/fresh trong một khoảng, nhưng không đảm bảo dữ liệu đổi trong DB sẽ lập tức xuất hiện ở cache.
+Cache-Aside để application kiểm tra cache trước, miss mới đọc Database và populate. **TTL** giới hạn lifetime nhưng không đảm bảo Database update sẽ xuất hiện ngay trong cache. Khi freshness quan trọng, write path thường cần explicit invalidate/update; TTL đóng vai safety net.
 
-Khi freshness quan trọng, write path thường update source of truth rồi **explicitly invalidate/update cache**. TTL vẫn hữu ích như safety net. Với permission bị revoke, chờ TTL 30 phút có thể tạo security violation nên explicit invalidation là bắt buộc hơn việc chỉ tăng/giảm TTL.
+Với permission revoke, stale 30 phút có thể là security violation. Đây là ví dụ điển hình cho việc TTL không thay thế correctness policy.
 
-### Hot Key
+### Hot Key là traffic concentration
 
-Hot Key là một key nhận traffic không cân xứng, khiến node/partition phục vụ key đó thành hotspot dù aggregate cluster vẫn còn capacity. Cache vẫn có thể HIT bình thường; vấn đề là **traffic concentration**, không phải cache miss.
+Hot Key xảy ra khi một key nhận traffic không cân xứng và làm node/partition chứa nó quá tải dù cluster-wide hit rate vẫn rất tốt. Đây là distribution problem, không phải cache-miss problem.
 
-### Cache Stampede
+### Cache Stampede là concurrent rebuild
 
-Cache Stampede xảy ra khi một hot/popular entry expire hoặc mất, nhiều requests cùng thấy MISS rồi cùng rebuild/query source of truth. Root cause là **concurrent rebuild**, vì vậy single-flight/locking, stale-while-revalidate, proactive refresh hoặc TTL jitter có thể giảm herd behavior.
+Khi popular entry expire/mất, nhiều requests cùng miss và cùng query/rebuild origin. Root cause là herd behavior. Single-flight/locking, stale-while-revalidate, proactive refresh và TTL jitter là các cách giảm concurrent rebuild tùy semantics.
 
 <FlowExplainer
   title="Hot Key có thể biến thành Cache Stampede khi expire"
-  description="Traffic tập trung vốn đã làm một key nóng; khi key expire, cùng lượng traffic đó có thể đồng loạt rơi xuống Database."
+  description="Traffic tập trung vốn đã làm key nóng; khi entry mất, cùng traffic đó có thể đồng loạt rơi xuống Database."
   scenarios={[
-    {
-      id: 'stampede',
-      label: 'Expire → herd',
-      layout: 'compact',
-      nodes: [
-        {id: 'traffic', label: 'High Traffic', detail: 'Many concurrent reads', role: 'network'},
-        {id: 'cache', label: 'Hot Cache Key', detail: 'TTL expires', role: 'data'},
-        {id: 'lock', label: 'Single-flight', detail: 'One rebuild winner', role: 'service'},
-        {id: 'db', label: 'Database', detail: 'Protected origin', role: 'database'},
-      ],
-      steps: [
-        {title: '1 · Popular key expires', from: 'traffic', to: 'cache', message: 'many reads', description: 'Nhiều requests gần như đồng thời gặp cùng cache MISS.'},
-        {title: '2 · Coalesce rebuild', from: 'cache', to: 'lock', message: 'MISS', description: 'Chỉ một request/worker được phép rebuild; các request khác wait hoặc dùng stale value theo policy.'},
-        {title: '3 · One origin read', from: 'lock', to: 'db', message: 'load source', description: 'Database không phải nhận hàng nghìn identical rebuild queries.'},
-        {title: '4 · Restore fast path', from: 'db', to: 'cache', message: 'fresh value', description: 'Winner populate cache rồi traffic quay về HIT path.'},
-      ],
-    },
+    {id: 'stampede', label: 'Expire → herd', layout: 'compact', nodes: [
+      {id: 'traffic', label: 'High Traffic', detail: 'Concurrent reads', role: 'network'},
+      {id: 'cache', label: 'Hot Cache Key', detail: 'TTL expires', role: 'data'},
+      {id: 'singleflight', label: 'Single-flight', detail: 'One rebuild winner', role: 'service'},
+      {id: 'db', label: 'Database', detail: 'Protected origin', role: 'database'},
+    ], steps: [
+      {title: '1 · Popular entry expires', from: 'traffic', to: 'cache', message: 'many reads', description: 'Nhiều requests gần như đồng thời gặp cùng MISS.'},
+      {title: '2 · Coalesce rebuild', from: 'cache', to: 'singleflight', message: 'MISS', description: 'Một request rebuild; requests khác wait hoặc dùng stale value theo policy.'},
+      {title: '3 · One origin read', from: 'singleflight', to: 'db', message: 'load source', description: 'Database không nhận hàng nghìn identical queries.'},
+      {title: '4 · Restore fast path', from: 'db', to: 'cache', message: 'fresh value', description: 'Entry được repopulate và traffic quay về cache.'},
+    ]},
   ]}
 />
 
 ### Write-through và Write-behind
 
-**Write-through** coi write hoàn tất sau khi backing store được cập nhật theo write path, phù hợp hơn khi durable state phải đúng ngay trước success. **Write-behind** chấp nhận backing store cập nhật async để đổi lấy write throughput/latency tốt hơn; nó chỉ hợp khi eventual consistency chấp nhận được và durability được bảo vệ bằng durable log/queue hoặc cơ chế tương đương.
+**Write-through** giữ write success gắn chặt với backing store update, phù hợp hơn khi durable canonical state phải đúng trước response. **Write-behind** defer backing-store update để tối ưu latency/throughput, chỉ phù hợp khi eventual consistency được chấp nhận và pending writes có durability/replay.
 
-Analytics counters, telemetry hoặc recommendation signals có thể hợp write-behind/batched writes. Bank balance, payment, critical order state hay security permission thường không nên dùng volatile cache-first write-behind làm default.
+### Durability không đồng nghĩa sync Database write
 
-### Durability khác synchronous Database write
-
-“Không được mất dữ liệu” không đồng nghĩa mọi event phải sync-write thẳng Database. Một durable queue/log có thể nhận event trước, sau đó consumer aggregate và flush theo batch; durability đến từ khả năng persist/replay, còn freshness có thể trễ vài phút.
+Một durable log/queue có thể persist event trước rồi consumer batch/aggregate vào Database sau. Điều quan trọng là event có thể replay và không mất; freshness là một dimension khác durability.
 
 ## Example
 
-`product:123` nhận traffic rất cao. Khi key vẫn HIT nhưng Redis node chứa nó overload, đó là **Hot Key**. Nếu key expire và 20.000 requests cùng MISS rồi query Database khiến CPU 100%, failure cụ thể là **Cache Stampede**. Giải pháp trực tiếp không phải tăng connection pool mà là coalesce rebuild để chỉ một request nạp dữ liệu canonical.
+### Starting Point
 
-Với `user:123:permissions`, nếu admin revoke `deploy_prod`, update source of truth rồi invalidate/update cache ngay. TTL có thể giữ vai trò fallback nhưng không được biến 30 phút stale permission thành security window.
+Product API query Database cho mọi request. Database CPU tăng vì nhiều reads cùng một product.
+
+### Requirement Changes
+
+Team thêm Cache-Aside và latency giảm mạnh. Sau đó `product:123` viral, rồi entry expire trong peak traffic.
+
+### Naive Fix
+
+Tăng Database connection pool để chịu cache misses. Khi popular key expire, hàng nghìn requests cùng query origin và Database overload nhanh hơn.
+
+### Root Cause
+
+Hot Key là concentrated traffic; Stampede là simultaneous rebuild sau miss. Tăng origin concurrency không loại bỏ herd behavior.
+
+### Better Design
+
+Giữ Database là source of truth, cache repeated reads, monitor per-key load, coalesce rebuild bằng single-flight hoặc stale-while-revalidate, dùng explicit invalidation cho correctness-critical changes và chọn write strategy theo durability/freshness needs.
+
+### Why It Works
+
+Design tách rõ fast copy khỏi canonical state và xử lý failure theo root cause: hot-key mitigation cho skew, rebuild coordination cho stampede, invalidation cho stale correctness và durable buffering khi write-behind cần không mất data.
 
 ## When to Use
 
-- Dùng Cache-Aside cho read-heavy data khi application có thể quản lý HIT/MISS và freshness policy.
-- Dùng TTL khi stale trong một bounded window là chấp nhận được.
-- Dùng explicit invalidation/update khi freshness/correctness quan trọng hơn simplicity.
-- Dùng single-flight hoặc tương đương cho hot entries có nguy cơ stampede.
-- Dùng write-behind khi write volume cao, eventual consistency chấp nhận được và có durability/replay phù hợp.
+Cache phù hợp khi repeated reads hoặc expensive computation tạo bottleneck và một bounded stale policy chấp nhận được. Cache không phải default cho mọi table/query; nếu data access đã nhanh, traffic thấp hoặc freshness tuyệt đối quan trọng, extra cache layer có thể tăng complexity nhiều hơn value.
 
 ## Common Mistakes
 
-- **Cache = source of truth:** cache eviction/restart không được làm mất canonical business fact.
-- **TTL giải quyết consistency:** TTL chỉ giới hạn lifetime; dữ liệu vẫn có thể stale cho tới expiration.
-- **Hot Key = Cache Stampede:** Hot Key là traffic skew; Stampede là nhiều concurrent rebuilds sau MISS/expire.
-- **Tăng Database connection pool để chữa stampede:** có thể cho herd đập origin mạnh hơn thay vì loại root cause.
-- **Write-behind = ghi RAM rồi hy vọng:** production write-behind cần durability nếu event không được phép mất.
+- Cache = source of truth.
+- TTL = consistency guarantee.
+- Hot Key = Cache Stampede.
+- Tăng DB connection pool để chữa stampede.
+- Write-behind = ghi volatile RAM rồi hy vọng flush sau.
+- Không capacity-plan cold start/cache loss.
 
-## Related Knowledge
+## Decision Guide
 
-- [System Design Fundamentals](./system-design-fundamentals.mdx) — phân biệt fast copy với durable source of truth.
-- [URL Shortener System Design](./url-shortener-system-design.mdx) — read-heavy caching và hot-key skew.
-- [CORS, Caching & CDN](./cors-caching-and-cdn.mdx) — HTTP/browser/CDN caching ở web boundary.
-- [Database Design Foundations](./database-design-foundations.mdx) — transaction và durable business state.
+1. Dữ liệu nào là canonical source of truth?
+2. Stale bao lâu là chấp nhận được theo từng use case?
+3. Update cần explicit invalidation hay TTL đủ?
+4. Cache loss/cold start tạo origin load bao nhiêu?
+5. Key distribution có skew/hot key không?
+6. Popular-entry miss có cần single-flight/stale-while-revalidate không?
+7. Write path cần durable-before-success hay eventual backing-store update?
+8. Metrics nào theo dõi hit rate, eviction, hot key, origin QPS và rebuild latency?
+
+## Practical Takeaway
+
+Hãy thiết kế cache bằng bốn câu hỏi: **copy của cái gì, fresh đến mức nào, miss/rebuild xảy ra thế nào, failure đẩy tải về đâu**. Khi source of truth và freshness contract rõ, Cache-Aside, invalidation, stampede protection và write strategy trở thành các quyết định có lý do thay vì một bộ “best practices” rời rạc.
 
 ## Self-test
 
-1. Hot Key và Cache Stampede khác nhau ở câu hỏi nào?
+1. Hot Key và Cache Stampede khác nhau thế nào?
 2. Vì sao TTL không đủ cho permission revoke?
 3. Single-flight giải quyết root cause của stampede thế nào?
 4. Khi nào write-behind hợp hơn write-through?
-5. Durable queue giúp analytics write-behind giữ dữ liệu bằng cách nào?
+5. Durable queue giúp write-behind giữ data bằng cách nào?
 
-<details>
-<summary>Answers</summary>
-
-1. Hot Key hỏi traffic tập trung ở key/partition nào; Stampede hỏi điều gì xảy ra khi nhiều requests cùng MISS và rebuild.
-2. TTL có thể để stale permission tồn tại tới expiration; security-critical change cần invalidation/update chủ động.
-3. Nó coalesce nhiều rebuild requests thành một origin load rồi repopulate cache.
-4. Khi write throughput/latency quan trọng, eventual consistency chấp nhận được và durability được bảo vệ.
-5. Event được persist/replay trước khi consumer aggregate và flush Database async, nên không cần đồng bộ Database write trên mỗi event.
-
+<details><summary>Answers</summary>
+1. Hot Key là traffic skew; Stampede là concurrent rebuild sau miss/expire. 2. Permission có thể stale cho tới expiration nên cần explicit invalidation/update. 3. Nó coalesce nhiều rebuilds thành một origin load. 4. Khi eventual consistency chấp nhận được và throughput/latency quan trọng, với durability được bảo vệ. 5. Event được persist/replay trước khi consumer flush backing store async.
 </details>
+
+## Related Knowledge
+
+- [System Design Fundamentals](./system-design-fundamentals.mdx)
+- [URL Shortener System Design](./url-shortener-system-design.mdx)
+- [CORS, Caching & CDN](./cors-caching-and-cdn.mdx)
+- [Database Design Foundations](./database-design-foundations.mdx)
