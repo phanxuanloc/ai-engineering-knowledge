@@ -1,6 +1,6 @@
 ---
 title: Testing Fundamentals
-description: Chọn Unit, Integration hay End-to-End test theo boundary và risk cần chứng minh.
+description: Chọn Unit, Integration hay End-to-End test theo risk, boundary và confidence cần chứng minh.
 tags: [testing, quality-engineering, software-engineering]
 ---
 
@@ -8,96 +8,381 @@ tags: [testing, quality-engineering, software-engineering]
 
 ## TL;DR
 
-Testing tạo **confidence khi hệ thống thay đổi**. Chọn test boundary nhỏ nhất vẫn đủ chứng minh behavior và risk quan trọng: logic thuần thường là Unit, boundary thật thường là Integration, còn critical user journey mới cần E2E.
-
-## Mental Model
+Testing không phải cuộc thi viết nhiều test nhất. Mục tiêu là tạo **confidence khi hệ thống thay đổi** bằng cách kiểm tra đúng risk ở đúng boundary.
 
 Mental model cốt lõi:
 
-**Production behavior → Risk → Test boundary → Confidence**
+**Production behavior → Risk → Test boundary → Evidence → Confidence**
 
-| Risk nằm ở đâu? | Test ưu tiên | Vì sao |
+- **Unit Test** phù hợp khi risk nằm trong logic nội bộ và có thể chứng minh mà không cần infrastructure thật.
+- **Integration Test** phù hợp khi risk nằm ở database, transaction, serialization, framework wiring hoặc contract giữa các component.
+- **End-to-End (E2E) Test** phù hợp khi cần chứng minh một critical user journey xuyên qua nhiều layer của hệ thống.
+
+Không có test level nào “cao cấp hơn” test level khác. Một test tốt là test dùng **boundary nhỏ nhất vẫn đủ thật để chứng minh behavior đang quan tâm**.
+
+## Why It Matters
+
+Một feature có thể chạy đúng ở local nhưng vẫn fail ở production dù code coverage cao và unit test đều xanh.
+
+Ví dụ checkout có thể gặp những lỗi rất khác nhau:
+
+- discount tính sai vì business rule sai;
+- transaction tạo `order` thành công nhưng ghi `ledger` thất bại;
+- JSON request làm mất field `currency` vì serialization config;
+- frontend, API và payment service đều chạy riêng lẻ nhưng toàn bộ checkout journey vẫn fail khi deploy.
+
+Nếu mọi risk đều được test bằng Unit Test, ta dễ **mock away chính behavior cần chứng minh**. Nếu mọi risk đều được đẩy lên E2E, suite lại chậm, flaky và khó debug.
+
+Vì vậy câu hỏi quan trọng không phải:
+
+> “Feature này cần Unit hay Integration hay E2E?”
+
+Mà là:
+
+> **Failure nào ta muốn ngăn, failure đó chỉ xuất hiện ở boundary nào, và test nhỏ nhất nào vẫn đủ chứng minh nó?**
+
+## Mental Model
+
+Hãy hình dung production system như nhiều lớp contract lồng nhau.
+
+Một test càng mở rộng boundary thì càng quan sát được nhiều behavior thật, nhưng cũng thường tăng cost:
+
+| Boundary | Confidence chính | Cost thường gặp |
 | --- | --- | --- |
-| Logic bên trong một component | **Unit** | Nhanh, deterministic, dễ isolate |
-| DB, transaction, JSON, schema, service contract | **Integration** | Cần chứng minh behavior qua boundary thật |
-| User journey xuyên hệ thống | **E2E** | Cần confidence rằng whole flow hoạt động |
+| Một function/class nhỏ | Logic nội bộ | Thấp |
+| Component + dependency thật | Integration behavior | Trung bình |
+| Whole user journey | System behavior | Cao |
 
-Không có test level nào “cao cấp hơn” test level khác. Mỗi level trả lời một câu hỏi khác nhau.
+Điều quan trọng là **match boundary với source of risk**.
+
+Nếu risk là `calculateDiscount()` trả sai, database thật không giúp test tốt hơn. Nhưng nếu risk là transaction rollback của PostgreSQL, mock repository không thể cung cấp evidence cần thiết.
+
+Một heuristic hữu ích:
+
+> **Use the smallest boundary that still contains the behavior you need to prove.**
 
 ## Core Concepts
 
-### Unit Test
+### Unit Test — prove local logic
 
-Unit test kiểm tra một đơn vị logic nhỏ, thường không cần network, database thật hoặc external service. Nó phù hợp với business rules, validation, transformation, algorithms và edge cases.
+Unit Test kiểm tra behavior trong một boundary nhỏ và cô lập tương đối khỏi infrastructure nặng như database, network hoặc external service.
 
-Ví dụ: `amount <= 0` phải bị reject hoặc `calculateDiscount()` phải trả đúng discount là Unit Test điển hình.
+Nó đặc biệt phù hợp với:
 
-### Integration Test
+- business rules;
+- validation;
+- transformation;
+- algorithms;
+- decision logic;
+- edge cases có nhiều combination.
 
-Integration test kiểm tra nhiều thành phần có tương tác đúng qua boundary thật hay không. Đây là layer quan trọng khi risk nằm ở transaction, SQL/schema, serialization, framework mapping hoặc service contract.
+Ví dụ:
 
-Nếu cần chứng minh transaction thực sự rollback, column `NOT NULL` thực sự được enforce, hoặc request JSON thực sự map đủ field `currency`, mock không cung cấp đủ confidence.
+```ts
+function validatePayment(amount: number) {
+  if (amount <= 0) {
+    throw new Error('INVALID_AMOUNT');
+  }
+}
+```
 
-### End-to-End Test
+Test `amount <= 0` không cần PostgreSQL, HTTP server hay payment provider thật. Risk hoàn toàn nằm trong local logic.
 
-E2E kiểm tra một critical user journey xuyên qua phần lớn hệ thống, ví dụ user thanh toán từ frontend rồi thấy trạng thái `SUCCESS`.
+Unit Test thường nhanh và deterministic, nên là nơi tốt để bao phủ nhiều edge case.
 
-E2E cho confidence rộng nhưng thường chậm hơn, setup phức tạp hơn, dễ flaky hơn và failure khó debug hơn. Vì vậy không nên dùng E2E để thay thế mọi test nhỏ hơn.
+### Integration Test — prove a real boundary
 
-### Test Pyramid là trade-off, không phải quota
+Integration Test kiểm tra nhiều thành phần có tương tác đúng qua boundary mà production thực sự sử dụng hay không.
 
-Test Pyramid không yêu cầu một tỷ lệ cố định. Ý chính là giữ phần lớn checks ở boundary nhỏ, nhanh và deterministic; bổ sung Integration tests cho boundary quan trọng; giữ E2E cho các business flow thật sự đáng bảo vệ xuyên hệ thống.
+Các risk điển hình:
 
-### Coverage không đồng nghĩa confidence
+- SQL/query behavior;
+- transaction;
+- schema constraint;
+- ORM mapping;
+- JSON serialization/deserialization;
+- HTTP routing;
+- framework configuration;
+- contract giữa service và dependency thật hoặc realistic test environment.
 
-100% code coverage vẫn có thể bỏ sót behavior quan trọng. Coverage trả lời “đoạn code nào đã được execute bởi test?”, không trả lời “risk quan trọng đã được chứng minh đủ chưa?”.
+Ví dụ requirement:
+
+> Nếu ghi `payment` thành công nhưng ghi `ledger_entry` thất bại thì toàn transaction phải rollback.
+
+Mock repository chỉ chứng minh application code **đã gọi** `rollback()` hoặc đã không gọi một method nào đó. Nó không chứng minh database thật thực hiện transaction đúng.
+
+Khi behavior cần chứng minh tồn tại ở boundary thật, integration test phải giữ boundary đó trong test.
+
+### End-to-End Test — prove a critical journey
+
+E2E Test kiểm tra một user journey xuyên qua nhiều phần của hệ thống, ví dụ:
+
+```text
+User clicks Pay
+→ Frontend sends request
+→ API validates
+→ Payment service charges
+→ Order status becomes SUCCESS
+→ UI displays confirmation
+```
+
+E2E hữu ích vì nó bắt được class lỗi mà test nhỏ hơn có thể bỏ sót:
+
+- sai route;
+- service wiring sai;
+- auth/config mismatch;
+- incompatible deployment;
+- integration giữa frontend và backend;
+- flow tổng thể không hoàn thành dù từng component riêng lẻ đều pass.
+
+Đổi lại, E2E thường:
+
+- chậm hơn;
+- setup phức tạp hơn;
+- dễ flaky hơn;
+- failure khó khoanh vùng hơn;
+- đắt hơn khi maintain.
+
+Vì vậy E2E nên bảo vệ **critical journeys**, không thay thế Unit và Integration tests.
+
+### Test level được xác định bởi exercised boundary
+
+Tên folder, test framework hoặc class name không quyết định test level.
+
+Một test dùng Jest vẫn có thể là Integration Test nếu nó khởi động database thật và exercise repository thật. Ngược lại, một test gọi HTTP handler nhưng mock gần như toàn bộ dependency có thể chỉ chứng minh một boundary rất nhỏ.
+
+Hãy hỏi:
+
+> **Test đang exercise những component/boundary thật nào?**
+
+thay vì:
+
+> “File này nằm trong thư mục `integration-tests` à?”
+
+### Test Pyramid là cost model, không phải quota
+
+Test Pyramid thường gợi ý:
+
+- nhiều test nhỏ, nhanh, deterministic;
+- ít hơn integration tests nhưng đủ bao phủ boundary quan trọng;
+- số lượng E2E nhỏ hơn và tập trung vào critical flows.
+
+Ý nghĩa chính là **economics of feedback** chứ không phải tỷ lệ cố định kiểu 70/20/10.
+
+Một system có nhiều SQL logic có thể cần integration tests dày hơn. Một pure library có thể gần như chỉ cần unit tests. Một frontend-heavy product có thể đầu tư nhiều component/browser tests hơn.
+
+### Coverage khác confidence
+
+Code coverage đo xem code nào đã được execute trong test. Nó không tự trả lời:
+
+- requirement quan trọng đã được assert đúng chưa;
+- edge case quan trọng đã được test chưa;
+- mock có che mất production failure không;
+- integration contract có thực sự hoạt động không.
+
+Ví dụ test này có thể đạt coverage cao nhưng rất yếu:
+
+```ts
+expect(() => calculateDiscount(order)).not.toThrow();
+```
+
+Function được execute, nhưng test không chứng minh discount đúng.
+
+Coverage là signal để tìm vùng chưa được exercise, không phải thước đo trực tiếp của confidence.
 
 ## Example
 
-Giả sử payment service có bốn requirement:
+Ta dùng một checkout flow xuyên suốt để thấy cách chọn test boundary theo risk.
 
-| Requirement | Test phù hợp |
-| --- | --- |
-| `amount <= 0` phải bị reject | **Unit** |
-| Ghi `payment` và `ledger entry` phải cùng transaction | **Integration** |
-| Request JSON không được làm mất field `currency` | **Integration** |
-| User thanh toán và thấy trạng thái `SUCCESS` | **E2E** |
+### Starting Point — business rule đơn giản
 
-Một feature có thể cần cả ba layer. Không cần chọn một test type duy nhất cho toàn feature.
+Checkout có rule:
+
+```ts
+if (amount <= 0) {
+  throw new InvalidAmountError();
+}
+```
+
+Risk: logic validation sai.
+
+Boundary cần chứng minh chỉ là local business logic, nên Unit Test là đủ:
+
+```ts
+it('rejects non-positive amount', () => {
+  expect(() => validateAmount(0)).toThrow(InvalidAmountError);
+});
+```
+
+Thêm database thật ở đây chỉ tăng setup mà không tăng confidence đáng kể.
+
+### Requirement Changes — transaction xuất hiện
+
+Sau đó checkout phải ghi cả `payments` và `ledger_entries` trong cùng transaction:
+
+```text
+BEGIN
+  INSERT payment
+  INSERT ledger_entry
+COMMIT
+```
+
+Requirement:
+
+> Nếu `ledger_entry` fail thì `payment` không được tồn tại.
+
+Một Unit Test có thể mock repository và verify application code gọi đúng method, nhưng transaction rollback là behavior của database/runtime boundary.
+
+Risk đã dịch chuyển từ local logic sang integration behavior, nên cần Integration Test với database đủ thật để tạo evidence:
+
+```text
+Given ledger insert fails
+When checkout writes payment + ledger in one transaction
+Then neither record is committed
+```
+
+### Another Change — API contract có thể lệch
+
+Client gửi:
+
+```json
+{
+  "amount": 100,
+  "currency": "USD"
+}
+```
+
+Nếu serializer/config làm mất `currency`, business logic phía trong có thể vẫn có unit test xanh vì test gọi function trực tiếp bằng object hoàn chỉnh.
+
+Risk lúc này nằm ở HTTP/serialization boundary, nên một Integration Test qua real request mapping phù hợp hơn.
+
+### Critical Journey — whole checkout phải hoạt động
+
+Cuối cùng product muốn bảo vệ journey quan trọng nhất:
+
+```text
+User enters card
+→ clicks Pay
+→ backend creates successful payment
+→ order becomes PAID
+→ success screen appears
+```
+
+Đây là nơi một số ít E2E tests có giá trị. Nó không thay thế các test nhỏ hơn; nó chứng minh các boundary quan trọng **kết hợp với nhau** thành journey đúng.
+
+### Why this split works
+
+Mỗi test level đang giữ một trách nhiệm khác nhau:
+
+| Risk | Smallest sufficient boundary | Test |
+| --- | --- | --- |
+| `amount <= 0` validation | Local logic | Unit |
+| DB transaction rollback | App + real DB boundary | Integration |
+| JSON field mapping | HTTP/serialization boundary | Integration |
+| User completes payment journey | Whole deployed flow | E2E |
+
+Khi test fail, boundary nhỏ còn giúp diagnosis nhanh hơn. Unit failure thường chỉ vào logic. Integration failure chỉ vào contract/infrastructure. E2E failure báo rằng journey tổng thể hỏng, sau đó các test nhỏ hơn hỗ trợ khoanh vùng nguyên nhân.
 
 ## When to Use
 
-- Chọn **Unit** khi risk nằm trong business logic nội bộ và dependency thật không cần thiết để chứng minh behavior.
-- Chọn **Integration** khi bug có thể chỉ xuất hiện ở database, transaction, serialization, configuration hoặc service boundary.
-- Chọn **E2E** khi cần bảo vệ critical user journey xuyên hệ thống.
-- Bắt đầu từ câu hỏi “cái gì có thể hỏng?” thay vì bắt đầu từ framework test đang có.
+### Prefer Unit Test when
+
+- risk nằm trong local business logic;
+- có nhiều edge cases cần feedback nhanh;
+- infrastructure thật không tạo thêm evidence;
+- dependency có thể thay bằng test double mà không che mất risk chính.
+
+### Prefer Integration Test when
+
+- correctness phụ thuộc database, transaction hoặc schema;
+- serialization/framework wiring có thể gây bug;
+- contract giữa component quan trọng hơn internal implementation;
+- một mock không thể mô phỏng đủ behavior cần chứng minh.
+
+### Prefer E2E Test when
+
+- flow là critical business journey;
+- cần chứng minh nhiều deployed components hoạt động cùng nhau;
+- lỗi wiring/configuration xuyên hệ thống là risk thật;
+- chi phí chạy/maintain được biện minh bởi business impact.
 
 ## Common Mistakes
 
-- **Dùng E2E cho mọi business rule:** làm suite chậm và khó debug mà không tăng confidence tương xứng.
-- **Mock database khi database chính là risk:** test sẽ loại bỏ behavior cần kiểm chứng.
-- **Đánh đồng coverage cao với quality cao:** execution coverage không đảm bảo behavioral coverage.
-- **Chọn test type theo tên class:** test level phụ thuộc boundary thực sự được exercise, không phụ thuộc tên file hoặc framework.
+### Dùng E2E cho mọi business rule
+
+Nếu mọi edge case discount đều đi qua browser → API → DB → payment sandbox, feedback loop sẽ rất chậm và failure khó debug. Hãy giữ phần lớn combinatorial logic ở boundary nhỏ hơn.
+
+### Mock database khi database chính là risk
+
+Nếu mục tiêu là chứng minh SQL constraint hoặc transaction, mock repository đã loại bỏ phần quan trọng nhất khỏi test.
+
+### Chạy integration infrastructure nhưng assert quá yếu
+
+Khởi động PostgreSQL không tự biến test thành test tốt. Test vẫn phải assert behavior có ý nghĩa, ví dụ state cuối cùng, rollback hoặc contract.
+
+### Đánh đồng coverage cao với quality cao
+
+Coverage có thể tăng bằng test không có meaningful assertion. Bắt đầu từ risk/behavior rồi mới dùng coverage để tìm blind spots.
+
+### Over-test implementation details
+
+Một suite có thể rất nhiều test nhưng cực kỳ brittle nếu nó assert private calls, internal sequence hoặc structure không mang business meaning. Refactor nhỏ sẽ làm test fail dù observable behavior không đổi.
+
+### Không phân biệt confidence và redundancy
+
+Ba test ở ba level kiểm tra cùng một trivial branch không tự tạo gấp ba confidence. Mỗi layer nên có lý do tồn tại và risk riêng cần bảo vệ.
+
+## Decision Guide
+
+Khi thêm test cho một behavior mới, đi theo chuỗi câu hỏi này:
+
+1. **Behavior nào phải đúng?** Viết outcome ở góc nhìn caller/user/system.
+2. **Failure thực tế có thể xuất hiện ở đâu?** Local logic, DB, serializer, network contract hay whole journey?
+3. **Boundary nhỏ nhất nào vẫn chứa failure đó?** Đừng mở rộng test hơn mức cần thiết.
+4. **Dependency nào có thể fake/mock mà không che mất risk?** Nếu mock bỏ đi chính behavior cần chứng minh, boundary đang quá nhỏ.
+5. **Test này có deterministic và diagnosable không?** Nếu không, xem có thể hạ behavior xuống layer nhỏ hơn không.
+6. **Business impact có đủ lớn để justify E2E không?** Chỉ giữ E2E cho flow đáng bảo vệ xuyên hệ thống.
+
+Một rule of thumb hữu ích:
+
+> **Test behavior where it becomes real.**
+
+Logic trở nên real trong code boundary. Transaction trở nên real ở database boundary. User journey trở nên real khi các deployed pieces thực sự chạy cùng nhau.
+
+## Practical Takeaway
+
+Khi review một test suite, đừng chỉ hỏi “có đủ Unit/Integration/E2E chưa?”. Hãy hỏi:
+
+- risk quan trọng nhất của feature là gì?
+- mỗi risk đang được chứng minh ở boundary nào?
+- có test nào mở boundary quá rộng so với behavior không?
+- có mock nào đang che mất production behavior không?
+- E2E nào thật sự bảo vệ critical journey?
+- coverage tăng có đi kèm meaningful assertions không?
+
+Một suite tốt không phải suite nhiều test nhất. Nó là suite cung cấp **đúng confidence với feedback cost hợp lý**.
+
+## Self-test
+
+1. `calculateDiscount()` có nhiều edge cases nhưng không phụ thuộc DB/network. Test boundary nào hợp lý nhất và vì sao?
+2. Requirement yêu cầu `order` và `inventory_reservation` rollback cùng nhau khi một insert fail. Vì sao mock repository không đủ evidence?
+3. API contract có field `currency` nhưng unit test gọi service trực tiếp bằng object đã populated đầy đủ. Loại bug nào vẫn có thể bị bỏ sót?
+4. Khi nào E2E đáng dùng dù chậm và khó maintain hơn?
+5. Vì sao 100% code coverage vẫn không đảm bảo confidence cao?
+
+<details>
+<summary>Answers</summary>
+
+1. Unit Test, vì risk nằm trong local logic và infrastructure thật không tạo thêm evidence cần thiết.
+2. Vì rollback là behavior của transaction/database thật; mock chỉ mô phỏng collaborator chứ không chứng minh production transaction semantics.
+3. Bug ở HTTP/serialization/mapping boundary, ví dụ `currency` bị drop hoặc map sai trước khi vào service.
+4. Khi cần bảo vệ critical user journey hoặc integration xuyên nhiều deployed component có business impact cao.
+5. Coverage chỉ đo code đã được execute; nó không chứng minh assertion đúng, risk quan trọng được bao phủ hoặc production boundary được test đủ thật.
+
+</details>
 
 ## Related Knowledge
 
 - [Test Doubles & Mocking](./test-doubles-and-mocking)
 - [Database Design](./database-design-foundations)
 - [API Communication](./api-communication-fundamentals)
-
-## Self-test
-
-1. Logic discount tính sai nhưng không liên quan network/DB nên ưu tiên test nào?
-2. Transaction lưu order không rollback khi update inventory fail nên ưu tiên test nào?
-3. Vì sao 100% coverage không chứng minh hệ thống được test tốt?
-4. Khi nào E2E đáng dùng dù chi phí cao hơn?
-
-<details>
-<summary>Answers</summary>
-
-1. Unit Test.
-2. Integration Test với database boundary đủ thật để chứng minh transaction behavior.
-3. Coverage chỉ cho biết code được execute; nó không chứng minh các behavior/risk quan trọng đã được kiểm tra đúng.
-4. Khi cần bảo vệ critical user journey xuyên qua nhiều layer của hệ thống.
-
-</details>
