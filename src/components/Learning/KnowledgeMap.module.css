@@ -47,10 +47,25 @@
   padding: 1.3rem;
 }
 
-.mapTrackStacked {
+.mapTrackWrapped {
   display: grid;
-  gap: 1.55rem;
-  justify-items: center;
+  gap: 1.8rem;
+}
+
+.mapRow {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2rem;
+  direction: ltr;
+}
+
+.mapRowReverse {
+  direction: rtl;
+}
+
+.mapRowReverse > * {
+  direction: ltr;
 }
 
 .mapLevelGroup {
@@ -60,11 +75,6 @@
   min-width: 0;
   flex-direction: column;
   gap: .55rem;
-}
-
-.mapTrackStacked .mapLevelGroup {
-  width: min(100%, 46rem);
-  flex: none;
 }
 
 .mapLevelGroup:not(:last-child)::after {
@@ -90,19 +100,48 @@
   transform: rotate(45deg);
 }
 
-.mapTrackStacked .mapLevelGroup:not(:last-child)::after {
-  top: auto;
-  right: 50%;
-  bottom: -1.05rem;
-  width: 1px;
-  height: .7rem;
+.mapRowReverse .mapLevelGroup:not(:last-child)::after {
+  right: auto;
+  left: -1.55rem;
 }
 
-.mapTrackStacked .mapLevelGroup:not(:last-child)::before {
-  top: auto;
-  right: calc(50% - 3px);
-  bottom: -1.07rem;
+.mapRowReverse .mapLevelGroup:not(:last-child)::before {
+  right: auto;
+  left: -1.58rem;
+  transform: rotate(225deg);
+}
+
+.mapTrackWrapped .mapRow:not(:last-child)::after {
+  position: absolute;
+  right: calc(12.5% - .5px);
+  bottom: -1.28rem;
+  width: 1px;
+  height: .8rem;
+  content: '';
+  background: var(--learning-active);
+}
+
+.mapTrackWrapped .mapRow:not(:last-child)::before {
+  position: absolute;
+  z-index: 1;
+  right: calc(12.5% - 3.5px);
+  bottom: -1.3rem;
+  width: 7px;
+  height: 7px;
+  content: '';
+  border-top: 1.5px solid var(--learning-active);
+  border-right: 1.5px solid var(--learning-active);
   transform: rotate(135deg);
+}
+
+.mapTrackWrapped .mapRowReverse:not(:last-child)::after {
+  right: auto;
+  left: calc(12.5% - .5px);
+}
+
+.mapTrackWrapped .mapRowReverse:not(:last-child)::before {
+  right: auto;
+  left: calc(12.5% - 3.5px);
 }
 
 .mapIndexRow {
@@ -125,10 +164,6 @@
   height: 100%;
 }
 
-.mapTrackStacked .mapLevel {
-  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
-}
-
 .mapNode {
   position: relative;
   display: flex;
@@ -146,10 +181,6 @@
   border: 1px solid var(--learning-border);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgb(15 23 42 / 5%);
-}
-
-.mapTrackStacked .mapNode {
-  width: 100%;
 }
 
 .mapNode::before {
@@ -193,12 +224,12 @@
 }
 
 @media (max-width: 996px) {
-  .mapTrack {
+  .mapTrack:not(.mapTrackWrapped) {
     display: grid;
     gap: 1.55rem;
   }
 
-  .mapLevelGroup:not(:last-child)::after {
+  .mapTrack:not(.mapTrackWrapped) .mapLevelGroup:not(:last-child)::after {
     top: auto;
     right: 50%;
     bottom: -1.05rem;
@@ -206,17 +237,19 @@
     height: .7rem;
   }
 
-  .mapLevelGroup:not(:last-child)::before {
+  .mapTrack:not(.mapTrackWrapped) .mapLevelGroup:not(:last-child)::before {
     top: auto;
     right: calc(50% - 3px);
     bottom: -1.07rem;
     transform: rotate(135deg);
   }
 
-  .mapLevelGroup,
-  .mapTrackStacked .mapLevelGroup {
-    width: min(100%, 42rem);
-    justify-self: center;
+  .mapRow {
+    gap: 1rem;
+  }
+
+  .mapLevelGroup {
+    min-width: 0;
   }
 
   .mapNode {
@@ -234,14 +267,50 @@
     display: none;
   }
 
-  .mapLevel,
-  .mapTrackStacked .mapLevel {
-    grid-template-columns: 1fr;
+  .mapTrackWrapped {
+    gap: 1.55rem;
   }
 
-  .mapLevelGroup,
-  .mapTrackStacked .mapLevelGroup {
-    width: 100%;
+  .mapRow,
+  .mapRowReverse {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.55rem;
+    direction: ltr;
+  }
+
+  .mapRow .mapLevelGroup:not(:last-child)::after,
+  .mapRowReverse .mapLevelGroup:not(:last-child)::after,
+  .mapTrackWrapped .mapRow:not(:last-child)::after,
+  .mapTrackWrapped .mapRowReverse:not(:last-child)::after {
+    top: auto;
+    right: 50%;
+    bottom: -1.05rem;
+    left: auto;
+    width: 1px;
+    height: .7rem;
+  }
+
+  .mapRow .mapLevelGroup:not(:last-child)::before,
+  .mapRowReverse .mapLevelGroup:not(:last-child)::before,
+  .mapTrackWrapped .mapRow:not(:last-child)::before,
+  .mapTrackWrapped .mapRowReverse:not(:last-child)::before {
+    top: auto;
+    right: calc(50% - 3px);
+    bottom: -1.07rem;
+    left: auto;
+    transform: rotate(135deg);
+  }
+
+  .mapTrackWrapped .mapRow:not(:last-child)::after,
+  .mapTrackWrapped .mapRowReverse:not(:last-child)::after,
+  .mapTrackWrapped .mapRow:not(:last-child)::before,
+  .mapTrackWrapped .mapRowReverse:not(:last-child)::before {
+    display: none;
+  }
+
+  .mapLevel {
+    grid-template-columns: 1fr;
   }
 
   .mapNode {
