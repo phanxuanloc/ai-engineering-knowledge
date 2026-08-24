@@ -4,7 +4,7 @@ description: Topic landing page cho data modeling, indexing và transactional co
 slug: /software-engineering/databases
 ---
 
-import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+import {KnowledgeMap, LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 
 # Databases
 
@@ -12,7 +12,16 @@ Databases tập trung vào cách biến business facts thành persistent state c
 
 ## Topic Overview
 
-Mental map: **Business facts → Data model → Access patterns → Indexes → Transactions / Isolation**.
+<KnowledgeMap
+  label="Databases topic map"
+  levels={[
+    [{title: 'Business Facts', description: 'Identify the state and invariants the system must preserve.'}],
+    [{title: 'Data Model', description: 'Represent entities, relationships and constraints explicitly.'}],
+    [{title: 'Access Patterns', description: 'Start from the reads and writes that matter operationally.'}],
+    [{title: 'Indexes', description: 'Accelerate important access paths with deliberate write/storage cost.'}],
+    [{title: 'Transactions & Isolation', description: 'Preserve correctness when operations overlap or fail.'}],
+  ]}
+/>
 
 ## Lessons
 
