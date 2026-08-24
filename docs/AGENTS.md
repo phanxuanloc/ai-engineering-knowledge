@@ -108,6 +108,23 @@ Follow these rules:
 
 A compact `TL;DR` may remain at the top, but its compression must not become the depth of the whole article. Self-tests are optional; do not use learner-progress-style quizzes as a substitute for a strong reader-facing conclusion.
 
+### MDX block safety
+
+When authoring or rewriting `.mdx`, do not compact nested block tags onto one line when Docusaurus/MDX parsing depends on block boundaries.
+
+In particular, always write collapsible answers as separate block tags with blank lines around Markdown content:
+
+```mdx
+<details>
+<summary>Answers</summary>
+
+Markdown content here.
+
+</details>
+```
+
+Never generate `<details><summary>Answers</summary>` on one line. Treat this as a build-safety invariant for all generated and edited docs. When touching files that contain `<details>` blocks, preserve or normalize this safe form before committing.
+
 ## Do not over-compress at capture time
 
 Do not turn a rich learning/discussion session into a public article containing only the learner's demonstrated bullet points.
