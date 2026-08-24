@@ -4,7 +4,7 @@ description: Topic landing page cho communication boundaries và API integration
 slug: /software-engineering/api-and-integration
 ---
 
-import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+import {KnowledgeMap, LandingCard, LandingCardGrid} from '@site/src/components/Learning';
 
 # API & Integration
 
@@ -12,7 +12,15 @@ API & Integration tập trung vào cách hai systems trao đổi capability và 
 
 ## Topic Overview
 
-Mental map: **Caller needs → Contract → Communication style → Operational trade-offs**. REST, gRPC và GraphQL là choices theo boundary, không phải một ranking chung.
+<KnowledgeMap
+  label="API and Integration topic map"
+  levels={[
+    [{title: 'Caller Need', description: 'Start from the capability and data the consumer actually needs.'}],
+    [{title: 'Contract', description: 'Define stable request, response and error semantics across the boundary.'}],
+    [{title: 'Communication Style', description: 'Choose REST, gRPC, GraphQL or another style from boundary constraints.'}],
+    [{title: 'Operational Trade-offs', description: 'Evaluate latency, coupling, tooling, evolution and failure behavior.'}],
+  ]}
+/>
 
 ## Lessons
 
