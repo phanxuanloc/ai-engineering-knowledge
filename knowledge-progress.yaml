@@ -32,6 +32,7 @@ topics:
       landing: docs/ai-fluency/index.mdx
       articles:
         - docs/ai-fluency/ai-fluency-framework.mdx
+        - docs/ai-fluency/ai-fluency-fundamentals.mdx
     learning:
       status: not_started
       next_checkpoint: null
