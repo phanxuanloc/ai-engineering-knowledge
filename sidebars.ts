@@ -25,15 +25,24 @@ const sidebars: SidebarsConfig = {
         },
       ],
     },
-  {
-    type: 'category',
-    label: 'AI Fluency',
-    collapsible: false,
-    link: {type: 'doc', id: 'ai-fluency/index'},
-    items: [
-      'ai-fluency/ai-fluency-framework',
-    ],
-  },
+    {
+      type: 'category',
+      label: 'AI Fluency',
+      collapsible: false,
+      link: {type: 'doc', id: 'ai-fluency/index'},
+      items: [
+        {
+          type: 'category',
+          label: 'AI Fluency Framework',
+          collapsible: true,
+          collapsed: true,
+          link: {type: 'doc', id: 'ai-fluency/ai-fluency-framework'},
+          items: [
+            'ai-fluency/ai-fluency-fundamentals',
+          ],
+        },
+      ],
+    },
     {
       type: 'category',
       label: 'AI Coding',
