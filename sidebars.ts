@@ -25,6 +25,15 @@ const sidebars: SidebarsConfig = {
         },
       ],
     },
+  {
+    type: 'category',
+    label: 'AI Fluency',
+    collapsible: false,
+    link: {type: 'doc', id: 'ai-fluency/index'},
+    items: [
+      'ai-fluency/ai-fluency-framework',
+    ],
+  },
     {
       type: 'category',
       label: 'AI Coding',
