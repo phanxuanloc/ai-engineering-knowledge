@@ -1,512 +1,106 @@
 ---
 title: AI Fluency Framework
-description: Cách cộng tác với AI hiệu quả, có phán đoán và có trách nhiệm bằng mental model 3 levels và 4D.
+description: Bản đồ nền tảng để hiểu cách con người cộng tác với AI qua 3 levels of interaction và 4D.
 sidebar_position: 1
 ---
 
+import {LandingCard, LandingCardGrid} from '@site/src/components/Learning';
+
 # AI Fluency Framework
 
-## TL;DR
+## The Big Idea
 
-**AI Fluency** không phải là biết nhiều prompt tricks hay một AI tool cụ thể. Đó là khả năng cộng tác với AI một cách:
+AI Fluency là khả năng cộng tác với AI một cách **effective, efficient, ethical và safe**.
 
-- **Effective** — đạt đúng mục tiêu;
-- **Efficient** — dùng thời gian, công sức và capability hợp lý;
-- **Ethical** — phù hợp với trách nhiệm và giá trị;
-- **Safe** — giảm rủi ro về dữ liệu, bảo mật và hậu quả ngoài ý muốn.
+Câu hỏi trung tâm không phải chỉ là:
 
-Một người AI-fluent liên tục trả lời bốn câu hỏi:
-
-> **Nên giao gì cho AI? Cần mô tả gì để AI hiểu đúng? Làm sao đánh giá kết quả? Và ai chịu trách nhiệm cho outcome?**
-
-AI Fluency Framework tổ chức những năng lực này thành **4D**:
-
-> **Delegation → Description → Discernment → Diligence**
-
-## Why It Matters
-
-AI có thể tạo output rất nhanh nhưng vẫn sai. AI có thể viết code, phân tích hoặc đề xuất solution, nhưng không tự hiểu đầy đủ business context và cũng không chịu trách nhiệm cho hậu quả.
-
-Vì vậy, kỹ năng bền vững không phải là sưu tập các prompt tricks.
-
-Đó là học cách thiết kế **Human–AI collaboration**.
-
-Một collaboration tốt cần human judgment để:
-
-- xác định problem và mục tiêu;
-- chọn phần việc phù hợp để giao;
-- cung cấp context và constraints;
-- đánh giá output;
-- kiểm soát risk;
-- sở hữu quyết định cuối cùng.
-
-## Mental Model
-
-Hãy xem AI không chỉ là một **output generator**.
-
-Hãy xem AI là một **collaboration partner**.
-
-Một vòng lặp tốt thường là:
-
-```text
-Human judgment
-      ↓
-Describe the problem
-      ↓
-AI contribution
-      ↓
-Human evaluation
-      ↓
-Refine direction
-      ↺
-```
-
-Điểm quan trọng:
-
-> **AI capability có thể thay đổi nhanh. Human judgment trong collaboration vẫn là năng lực cốt lõi.**
-
-## Core Concepts
-
-### 1. Three Levels of AI Interaction
-
-Human–AI interaction có thể diễn ra ở ba mức.
-
-#### Automation
-
-Human giao một task rõ ràng để AI thực hiện.
-
-Ví dụ:
-
-- format dữ liệu;
-- generate boilerplate;
-- summarize documents;
-- classify tickets.
-
-Automation phù hợp khi task rõ ràng và outcome dễ validate.
-
-#### Augmentation
-
-Human và AI cùng giải quyết problem.
-
-AI có thể:
-
-- mở rộng khả năng sáng tạo;
-- đề xuất options;
-- tìm trade-offs;
-- phản biện assumptions;
-- tăng tốc exploration.
-
-Human vẫn giữ judgment và ownership.
-
-> **AI as a thinking partner** là mental model quan trọng của Augmentation.
-
-#### Agency
-
-Human thiết lập:
-
-- goal;
-- context;
-- knowledge;
-- tools;
-- constraints;
-- behavioral boundaries.
-
-Sau đó AI system có thể chủ động thực hiện nhiều bước để đạt goal.
-
-AI Agents là ví dụ điển hình.
-
-> **Agency càng cao, Delegation và Diligence càng quan trọng.**
-
-### 2. Delegation — Decide What to Give AI
-
-Delegation là khả năng phân chia công việc giữa Human và AI.
-
-Câu hỏi không phải:
-
-> “AI có làm được không?”
+> “Prompt nào tốt nhất?”
 
 Mà là:
 
-> **“Phần nào AI nên làm, phần nào Human nên giữ, và phần nào cần collaboration?”**
+- Nên giao phần nào cho AI?
+- AI cần biết gì để đóng góp đúng?
+- Làm sao đánh giá output?
+- Rủi ro nào vẫn thuộc trách nhiệm của con người?
 
-Delegation tốt cần ba năng lực:
+Bốn câu hỏi này tạo thành **4D Framework**:
 
-- **Problem Awareness** — hiểu mục tiêu, constraints và failure modes;
-- **Platform Awareness** — hiểu strengths và limitations của tools/models;
-- **Task Delegation** — phân rã work và phân chia responsibility phù hợp.
-
-Ví dụ trong software development:
-
-| Task | Ownership |
+| Capability | Câu hỏi chính |
 |---|---|
-| Understand requirements | Human |
-| Explore codebase | AI-assisted |
-| Generate boilerplate | AI |
-| Design trade-offs | Human + AI |
-| Review critical correctness | Human |
-| Approve production release | Human |
+| **Delegation** | Nên giao gì cho AI? |
+| **Description** | Cần mô tả context, expectations và boundaries như thế nào? |
+| **Discernment** | Làm sao biết output có đúng và phù hợp? |
+| **Diligence** | Làm sao sử dụng và deploy kết quả một cách có trách nhiệm? |
 
-### 3. Description — Communicate What Matters
+## Mental Map
 
-AI không thể đọc suy nghĩ của bạn.
+AI Fluency không xem AI như một “shortcut machine”.
 
-Description tốt có thể gồm ba lớp.
+Mental model hữu ích hơn là:
 
-#### Product Description
+> **Human judgment designs the collaboration; AI contributes capability; Human judgment evaluates and owns the outcome.**
 
-Mô tả output mong muốn:
+Ba mức interaction cho thấy mức autonomy tăng dần:
 
-- format;
-- audience;
-- scope;
-- quality bar;
-- constraints.
+<LandingCardGrid>
+  <LandingCard eyebrow="Level 1" title="Automation" description="AI thực hiện một task rõ ràng theo chỉ thị." />
+  <LandingCard eyebrow="Level 2" title="Augmentation" description="Human và AI cùng suy nghĩ, khám phá và giải quyết problem." />
+  <LandingCard eyebrow="Level 3" title="Agency" description="Human thiết lập goals, context, tools và boundaries để AI system chủ động thực hiện nhiều bước." />
+</LandingCardGrid>
 
-#### Process Description
+**Agency không đơn giản là Automation mạnh hơn.** Khi AI có nhiều quyền chủ động hơn, quality của Delegation và Diligence trở nên quan trọng hơn.
 
-Mô tả approach hoặc workflow cần đi qua.
-
-Ví dụ:
-
-```text
-1. Inspect the existing architecture.
-2. Identify constraints.
-3. Propose options.
-4. Compare trade-offs.
-5. Recommend an approach.
-```
-
-#### Performance Description
-
-Mô tả cách AI nên collaboration:
-
-- act as a critical reviewer;
-- challenge assumptions;
-- stay concise;
-- explain trade-offs;
-- avoid unsupported assumptions.
-
-Description không chỉ là “viết prompt hay”.
-
-Đó là cung cấp **context, expectations và boundaries** để AI có thể đóng góp đúng.
-
-### 4. Discernment — Know Whether AI Is Right
-
-AI output có thể:
-
-- fluent;
-- detailed;
-- confident;
-
-mà vẫn sai.
-
-Discernment là khả năng đánh giá output theo ba góc độ.
-
-#### Product Discernment
-
-Output có:
-
-- correct?
-- relevant?
-- complete?
-- useful?
-- phù hợp với constraints?
-
-#### Process Discernment
-
-Approach có hợp lý không?
-
-Cần kiểm tra:
-
-- assumptions;
-- logic;
-- missing cases;
-- trade-offs.
-
-#### Performance Discernment
-
-AI có đang collaboration đúng cách không?
-
-Ví dụ:
-
-- có bám mục tiêu không?
-- có hallucinate assumptions không?
-- có phản biện đủ không?
-- có quá confident không?
-
-> **Fluency is not correctness.**
-
-### 5. Diligence — Stay Responsible
-
-Diligence là khả năng sử dụng AI một cách có trách nhiệm.
-
-Nguyên tắc cốt lõi:
-
-> **Delegating work does not delegate responsibility.**
-
-Ba lớp quan trọng:
-
-#### Creation Diligence
-
-Cân nhắc dữ liệu trước khi đưa vào AI:
-
-- sensitive data;
-- secrets;
-- customer information;
-- proprietary information.
-
-#### Transparency Diligence
-
-Khi phù hợp, minh bạch về:
-
-- AI đóng vai trò gì;
-- mức độ AI contribution;
-- phần nào vẫn do Human quyết định.
-
-#### Deployment Diligence
-
-Trước khi public hoặc deploy:
-
-- validate;
-- test;
-- review;
-- assess consequences.
-
-## Example
-
-### AI-Assisted Authentication Design
-
-Một team cần xây dựng authentication module cho SaaS application.
-
-#### Starting Point
-
-Engineer chỉ hỏi:
-
-> “Design an authentication system.”
-
-AI sẽ dễ đưa ra một solution generic.
-
-#### Better Delegation
-
-Team phân chia:
-
-- requirements → Human;
-- research options → AI-assisted;
-- architecture trade-offs → Human + AI;
-- boilerplate → AI;
-- security review → Human;
-- production approval → Human.
-
-#### Better Description
-
-Engineer cung cấp:
-
-```text
-System:
-- Spring Boot monolith
-- Existing user database
-
-Requirements:
-- OAuth login
-- JWT authentication
-- Multi-tenant support
-
-Constraints:
-- Preserve backward compatibility
-
-Expected output:
-- Architecture options
-- Trade-offs
-- Recommendation
-```
-
-#### Discernment
-
-Engineer kiểm tra:
-
-- JWT strategy có phù hợp không?
-- refresh token có an toàn không?
-- tenant isolation có bị bỏ sót không?
-- proposal có phù hợp với existing architecture không?
-
-#### Diligence
-
-Trước production:
-
-- secrets có bị expose không?
-- generated code có được review không?
-- logs có chứa sensitive information không?
-- security failure modes đã được kiểm tra chưa?
-
-AI có thể đóng góp ở nhiều bước.
-
-Nhưng Human vẫn sở hữu outcome cuối cùng.
-
-## Description–Discernment Loop
-
-AI collaboration tốt hiếm khi là one-shot prompting.
-
-Thường là:
-
-```text
-Description
-    ↓
-AI Response
-    ↓
-Discernment
-    ↓
-Feedback
-    ↓
-Better Description
-    ↺
-```
-
-Ví dụ AI đưa ra architecture quá generic.
-
-Thay vì cố tìm một “magic prompt”, hãy dùng Discernment để xác định thiếu gì:
-
-- scale assumptions?
-- security requirements?
-- existing architecture?
-- business constraints?
-
-Sau đó Description lại với context tốt hơn.
-
-> **Better output thường đến từ better iteration, không phải một magic prompt.**
-
-## When to Use
-
-Framework này đặc biệt hữu ích khi:
-
-- làm việc với AI assistants;
-- AI-assisted Software Engineering;
-- sử dụng Coding Agents;
-- thiết kế AI Agents;
-- xây dựng workflows có autonomous AI actions;
-- triển khai AI trong organization.
-
-## Common Mistakes
-
-### Treating AI Fluency as Prompt Engineering
-
-Prompting chỉ là một phần của **Description**.
-
-AI Fluency còn cần:
-
-- Delegation;
-- Discernment;
-- Diligence.
-
-### Optimizing Prompts Before Understanding the Problem
-
-Một prompt dài không thể cứu một problem definition mơ hồ.
-
-> Improve problem understanding before optimizing the prompt.
-
-### Trusting Fluent Output
-
-Output nghe convincing không có nghĩa là correct.
-
-### Delegating Without Boundaries
-
-Đặc biệt nguy hiểm với Agents.
-
-Cần xác định:
-
-- permissions;
-- tools;
-- constraints;
-- stop conditions;
-- approval points.
-
-### Treating Human-in-the-Loop as a Final Approve Button
-
-Human contribution nên xuất hiện từ đầu:
-
-- framing problem;
-- setting goals;
-- providing domain knowledge;
-- evaluating trade-offs;
-- owning responsibility.
-
-## Decision Guide
-
-Trước một AI-assisted task, hãy hỏi:
+## The Four Capabilities
 
 ### Delegation
 
-> AI nên làm phần nào?
+Chia responsibility giữa Human và AI.
+
+Delegation tốt cần:
+
+- **Problem Awareness** — hiểu mục tiêu, constraints và failure modes;
+- **Platform Awareness** — hiểu strengths và limitations của tools/models;
+- **Task Delegation** — quyết định phần nào Human giữ, AI làm hoặc cả hai cùng collaboration.
 
 ### Description
 
-> AI cần biết gì để làm đúng?
+Cung cấp information giúp AI đóng góp đúng.
+
+Description thường gồm:
+
+- **Product Description** — output mong muốn;
+- **Process Description** — approach hoặc workflow;
+- **Performance Description** — cách AI nên collaboration.
 
 ### Discernment
 
-> Tôi đánh giá kết quả dựa trên tiêu chuẩn nào?
+Đánh giá AI thay vì tin output vì nó fluent hoặc confident.
+
+Discernment xem xét:
+
+- **Product** — output có correct, relevant và useful?
+- **Process** — assumptions và logic có hợp lý?
+- **Performance** — AI có đang bám đúng mục tiêu và behavior mong muốn?
 
 ### Diligence
 
-> Risk nào tồn tại và ai chịu trách nhiệm cho outcome?
+Giữ responsibility khi sử dụng AI.
 
-Nếu chưa trả lời được bốn câu hỏi này, Human–AI collaboration thường chưa được thiết kế đủ rõ.
+Diligence bao gồm:
 
-## Practical Takeaway
+- **Creation** — bảo vệ privacy, secrets và sensitive data;
+- **Transparency** — minh bạch về AI contribution khi phù hợp;
+- **Deployment** — validate, test và review trước khi outcome ảnh hưởng đến người khác hoặc production.
 
-Một workflow đơn giản:
+## Start Here
 
-```text
-1. Define the problem
-        ↓
-2. Decide Human vs AI responsibilities
-        ↓
-3. Provide context and constraints
-        ↓
-4. Let AI contribute
-        ↓
-5. Evaluate critically
-        ↓
-6. Refine direction
-        ↓
-7. Validate risks
-        ↓
-8. Human owns the final outcome
-```
+<LandingCardGrid>
+  <LandingCard
+    eyebrow="Foundation"
+    title="AI Fluency Fundamentals"
+    description="Mental model đầy đủ, 3 levels of interaction, 4D framework và cách áp dụng vào AI-assisted Software Engineering."
+    to="/docs/ai-fluency/ai-fluency-fundamentals"
+  />
+</LandingCardGrid>
 
-Mental model quan trọng nhất:
-
-> **AI Fluency không phải là làm cho AI thông minh hơn.**
-
-> **Đó là làm cho sự cộng tác giữa Human và AI thông minh hơn.**
-
-## Self-test
-
-<details>
-<summary>1. Một AI agent có thể tự động deploy code lên production. Điều này có nghĩa Human không còn responsibility?</summary>
-
-Không.
-
-Delegation không chuyển responsibility. Human vẫn phải quyết định permissions, boundaries, validation và approval requirements.
-
-</details>
-
-<details>
-<summary>2. AI đưa ra câu trả lời rất chi tiết và tự tin. Năng lực nào cần được dùng tiếp theo?</summary>
-
-Discernment. Cần đánh giá correctness, assumptions, reasoning và fitness với problem thực tế.
-
-</details>
-
-<details>
-<summary>3. Engineer liên tục sửa prompt nhưng AI vẫn không tạo được solution tốt. Điều gì có thể đang thiếu?</summary>
-
-Problem Awareness hoặc Description. Có thể problem chưa được hiểu rõ hoặc AI chưa có đủ context, constraints và success criteria.
-
-</details>
-
-## Related Knowledge
-
-- **Context Engineering** — quản lý information AI cần để make better decisions.
-- **Evaluation** — đánh giá quality và reliability của AI outputs/systems.
-- **AI Agents** — mở rộng Delegation thành autonomous workflows.
-- **Security Engineering** — kiểm soát permissions, secrets và operational risk khi AI có access tới systems.
+Bắt đầu với **AI Fluency Fundamentals** trước. Các deep dive về từng capability chỉ nên được tách khi cần một teaching journey riêng, tránh biến framework thành nhiều bài trùng lặp.
