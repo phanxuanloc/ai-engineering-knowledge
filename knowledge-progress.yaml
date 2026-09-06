@@ -24,6 +24,18 @@ topics:
       status: understood
       next_checkpoint: null
 
+  ai-fluency:
+    title: AI Fluency
+    category: AI Fluency
+    sharing:
+      status: published
+      landing: docs/ai-fluency/index.mdx
+      articles:
+        - docs/ai-fluency/ai-fluency-framework.mdx
+    learning:
+      status: not_started
+      next_checkpoint: null
+
   context-engineering:
     title: Context Engineering
     category: AI Coding
